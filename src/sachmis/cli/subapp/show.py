@@ -1,12 +1,12 @@
 from pathlib import Path
 
 import typer
+from silvasta.cli.setup import attach_callback, logger_catch
 
-from ..core.data import DataManager
-from ..core.models import Geminis, Groks
-from ..utils.config import ConfigManager
-from ..utils.log import logger_catch
-from ..utils.print import printer
+from sachmis.core.data import DataManager
+from sachmis.core.models import Geminis, Groks
+from sachmis.utils.config import ConfigManager
+from sachmis.utils.print import printer
 
 
 def main() -> None:
@@ -19,6 +19,7 @@ app = typer.Typer(
     help="Show statistics, configurations and more",
     no_args_is_help=True,
 )
+attach_callback(app)
 
 
 @app.callback()

@@ -1,10 +1,10 @@
 from typing import Annotated
 
 import typer
+from silvasta.cli.setup import attach_callback, logger_catch
 
-from ..core.data import DataManager
-from ..utils.log import logger_catch, logging_callback
-from ..utils.print import printer
+from sachmis.core.data import DataManager
+from sachmis.utils.print import printer
 
 
 def main() -> None:
@@ -17,7 +17,7 @@ app = typer.Typer(
     help="Local base as home of forest",
     no_args_is_help=True,
 )
-app.callback()(logging_callback)
+attach_callback(app)
 
 
 @app.callback()

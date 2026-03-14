@@ -1,11 +1,12 @@
+from typing import Annotated
+
 import typer
 from loguru import logger
+from silvasta.cli.setup import attach_callback, logger_catch
 
-from typing import Annotated
-from ..core.data import DataManager
-from ..utils.log import logger_catch
-from ..utils.print import printer
-from ..core.uploader import XaiUploader
+from sachmis.core.data import DataManager
+from sachmis.core.uploader import XaiUploader
+from sachmis.utils.print import printer
 
 
 def main() -> None:
@@ -17,6 +18,7 @@ app = typer.Typer(
     help="Local supporting file management",
     no_args_is_help=True,
 )
+attach_callback(app)
 
 
 @app.callback()

@@ -1,15 +1,18 @@
 from pathlib import Path
-from ..core.data import DataManager
-from loguru import logger
 from typing import Annotated
 
 import typer
+from loguru import logger
+from silvasta.cli.setup import logger_catch
 
-from ..core.models import Geminis, Groks, Models
-from ..core.executor import prepare_for_fire
-from ..utils.log import logger_catch
-from ..utils.pick import picked_images, picked_models
-from ..utils.print import printer
+from sachmis.core.data import DataManager
+from sachmis.core.executor import prepare_for_fire
+from sachmis.core.models import Geminis, Groks, Models
+from sachmis.utils.pick import picked_images, picked_models
+from sachmis.utils.print import printer
+
+# REFACTOR: everything here below
+# - create args and annotations
 
 
 @logger_catch
