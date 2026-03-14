@@ -1,0 +1,38 @@
+[project]
+name = "sakhmat"
+version = "0.4.0a1"
+description = "Launch LLM calls, pipelines and handle local data management"
+readme = "README.md"
+authors = [{ name = "silvan", email = "silvasta3@gmail.com" }]
+requires-python = ">=3.13"
+dependencies = [
+  "boltons>=25.0.0",
+  "dotenv>=0.9.9",
+  "glom>=25.12.0",
+  "google-genai>=1.59.0",
+  "loguru>=0.7.3",
+  "pick>=2.4.0",
+  "pillow>=12.1.0",
+  "protobuf>=6.33.1",
+  "rich>=14.1.0",
+  "textual>=7.3.0",
+  "toml>=0.10.2",
+  "tqdm>=4.67.1",
+  "typer>=0.19.2",
+  "xai-sdk>=1.2.0",
+]
+
+[project.scripts]
+sakhmat = "sakhmat.cli.__main__:main"
+# TODO: handle monitor, by cli?
+log = "sakhmat.tools.tail_logs:main"
+
+[build-system]
+requires = ["uv_build>=0.9.11,<0.10.0"]
+build-backend = "uv_build"
+
+[tool.sakhmat.logging]
+level = "INFO"
+file_name = "sakhmat.log"
+rotation = "10 MB"
+retention = "1 week"
