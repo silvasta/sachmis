@@ -7,7 +7,7 @@
 ## Usage
 
 ```sh
-uv run sakhmat
+uv run sachmis
 ```
 
 - then follow the hints displayed in CLI

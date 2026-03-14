@@ -20,7 +20,7 @@ from ..utils.print import printer
 #
 # @app.callback()
 # def main_callback(ctx: typer.Context):
-#     """Global setup for sakhmat"""
+#     """Global setup for sachmis"""
 #     printer.title(f"Welcome to {__name__}!", style="sub-title")
 #
 #

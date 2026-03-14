@@ -35,7 +35,7 @@ class StartScreen(Screen):
 class ProjectApp(App):
     """project description"""
 
-    CSS_PATH = "sakhmat.tcss"
+    CSS_PATH = "sachmis.tcss"
     BINDINGS: list[Binding] = [
         Binding("ctrl+z", "suspend_process"),
     ]
@@ -46,7 +46,7 @@ class ProjectApp(App):
 
     def on_mount(self) -> None:
         """Run on app start."""
-        self.title: str = "sakhmat"
+        self.title: str = "sachmis"
         self.sub_title: str = "hello"
         # Push the start screen
         self.push_screen("start_screen")

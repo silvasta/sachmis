@@ -55,7 +55,7 @@ class ConfigManager:
         default_content="# Fill at least 1, delete others\nXAI_API_KEY=\nGEMINI_API_KEY="
     )
     def dotenv_path(self) -> Path:
-        return xdg_config_home / "sakhmat/.env"
+        return xdg_config_home / "sachmis/.env"
 
     @property
     @PathGuard.dir

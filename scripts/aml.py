@@ -1,14 +1,14 @@
 from loguru import logger
 from pathlib import Path
-from sakhmat.utils.log import setup_logging
-from sakhmat.core.model import Model
-from sakhmat.core.data import DataManager
-from sakhmat.core.executor import launch_models
-from sakhmat.core.grok import Grok
-from sakhmat.core.gemini import Gemini
-from sakhmat.core.models import Groks, Geminis
-from sakhmat.core.forest import File
-from sakhmat.utils.print import printer
+from sachmis.utils.log import setup_logging
+from sachmis.core.model import Model
+from sachmis.core.data import DataManager
+from sachmis.core.executor import launch_models
+from sachmis.core.grok import Grok
+from sachmis.core.gemini import Gemini
+from sachmis.core.models import Groks, Geminis
+from sachmis.core.forest import File
+from sachmis.utils.print import printer
 
 
 topics: list[str] = [

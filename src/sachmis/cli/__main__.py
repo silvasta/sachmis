@@ -18,12 +18,12 @@ from .files import app as files_app
 
 
 def main() -> None:
-    printer.title("Welcome to sakhmat!")
+    printer.title("Welcome to sachmis!")
     app()
 
 
 app = typer.Typer(
-    name="sakhmat",
+    name="sachmis",
     help="CLI for direct communication with LLMs",
     no_args_is_help=True,
 )

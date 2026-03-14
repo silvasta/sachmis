@@ -1,5 +1,5 @@
 [project]
-name = "sakhmat"
+name = "sachmis"
 version = "0.4.0a1"
 description = "Launch LLM calls, pipelines and handle local data management"
 readme = "README.md"
@@ -23,16 +23,16 @@ dependencies = [
 ]
 
 [project.scripts]
-sakhmat = "sakhmat.cli.__main__:main"
+sachmis = "sachmis.cli.__main__:main"
 # TODO: handle monitor, by cli?
-log = "sakhmat.tools.tail_logs:main"
+log = "sachmis.tools.tail_logs:main"
 
 [build-system]
 requires = ["uv_build>=0.9.11,<0.10.0"]
 build-backend = "uv_build"
 
-[tool.sakhmat.logging]
+[tool.sachmis.logging]
 level = "INFO"
-file_name = "sakhmat.log"
+file_name = "sachmis.log"
 rotation = "10 MB"
 retention = "1 week"

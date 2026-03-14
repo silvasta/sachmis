@@ -2,15 +2,15 @@ from pathlib import Path
 
 from loguru import logger
 
-from sakhmat.core.data import DataManager
-from sakhmat.core.executor import launch_models
-from sakhmat.core.forest import File
-from sakhmat.core.gemini import Gemini
-from sakhmat.core.grok import Grok
-from sakhmat.core.model import Model
-from sakhmat.core.models import Geminis, Groks
-from sakhmat.utils.log import setup_logging
-from sakhmat.utils.print import printer
+from sachmis.core.data import DataManager
+from sachmis.core.executor import launch_models
+from sachmis.core.forest import File
+from sachmis.core.gemini import Gemini
+from sachmis.core.grok import Grok
+from sachmis.core.model import Model
+from sachmis.core.models import Geminis, Groks
+from sachmis.utils.log import setup_logging
+from sachmis.utils.print import printer
 
 topics = [
     # "bonus-exercises",
