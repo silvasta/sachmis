@@ -5,6 +5,11 @@ from enum import Enum, EnumMeta
 
 # INFO: this is basically a Model param file for external fixed data
 
+# REFACTOR: Use csv instead of Enum?
+# - needs factory for Enum or Literal for typer
+
+# REFACTOR: params in config, calculations to data!
+
 
 class AbstractEnum(ABCMeta, EnumMeta):
     """This is enough to use ABC in Enum
@@ -13,7 +18,7 @@ class AbstractEnum(ABCMeta, EnumMeta):
     """
 
 
-class Models(Enum, metaclass=AbstractEnum):
+class ModelFamil(Enum, metaclass=AbstractEnum):
     """Define general properties for models of all companies"""
 
     @property
@@ -142,12 +147,14 @@ class Groks(Models):
             "cachedPromptTextTokens": "cached",
             "completionTokens": "output",
             "reasoningTokens": "output",
+            # TODO: Function calls
         }
         return assignment.get(token_name, "")
 
     def usage_cost(self, token_usage: dict[str, int]) -> tuple[float, int]:
         """Calculates usage from 1 response"""
         # TODO: check all token names and rewrite
+        # TODO: Function calls
         price_list: dict[str, float] = self.token_price
         total_cost = 0
         total_token = 0

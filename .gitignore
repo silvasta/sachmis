@@ -19,6 +19,6 @@ old*
 *.bak
 
 # project dir
-data
+/data
 logs
 plots

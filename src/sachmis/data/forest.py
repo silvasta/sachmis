@@ -1,12 +1,14 @@
 from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
-from typing import Literal
 
 from loguru import logger
 from pydantic import BaseModel, Field
 
 
+# REFACTOR: new file handling, group by chat and forest
+# - create database (can be json) at central location
+# - write to file system only on request
 class Tree(BaseModel):
     """Tree with id and file data for 1 prompt/answer pair
     evolves to nested folder root when selected to sprout"""
@@ -26,6 +28,8 @@ class Tree(BaseModel):
 class File(BaseModel):
     """Local file for upload and usage in prompt"""
 
+    # NEXT: base in silvasta, derive here for sachmis,
+    # derive further for xai,google?
     name: str
     category: str
     topic: str
@@ -43,6 +47,8 @@ class File(BaseModel):
 
 class Forest(BaseModel):
     """Top folder file with data of all trees and subtrees"""
+
+    # REFACTOR: new concept
 
     tree_file_path: Path  # the master tree file (stands and falls with the base)
     created_at: datetime = Field(default_factory=datetime.now)
@@ -223,6 +229,7 @@ class Forest(BaseModel):
 
 
 @contextmanager
+# NEXT: something like this!
 def loaded_forest(path: Path):
     logger.debug("loading forest")
     try:

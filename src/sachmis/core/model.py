@@ -69,3 +69,5 @@ class Model(ABC):
     @abstractmethod
     def process_response(self):
         pass
+
+    # TODO: new methods, e.g. image receive

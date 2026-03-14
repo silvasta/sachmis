@@ -1,8 +1,14 @@
 from pathlib import Path
 
-from pick import pick
 
-from ..core.models import Geminis, Groks, Models
+# TASK: use silvasta.utils.pick
+# - simplify functions here
+# - outsource shared logic
+
+from silvasta.utils.pick import (
+    pick_from_folder,
+    pick_multiple_from_folder,
+)
 
 
 def picked_models() -> list[Models]:
@@ -10,9 +16,9 @@ def picked_models() -> list[Models]:
     return []
 
 
-def picked_images() -> list[Path]:
+def picked_images(path: Path) -> list[Path]:
     """Prepare list of 'Models', send to pick, process result"""
-    return []
+    return pick_multiple_from_folder(path)
 
 
 def pick_role(path: Path, pattern: str = "*") -> Path:
@@ -23,20 +29,9 @@ def pick_role(path: Path, pattern: str = "*") -> Path:
     #     words = e.stem.split("-")
     #     return " ".join(w.capitalize() for w in words)
 
-    # add global
-    elements: list[Path] = sorted([x for x in path.glob(pattern)])
     title: str = f"Choose System Role: (defined in {path})"
-    stem, index = pick([e.stem for e in elements], title)
-    # TEXT: works the picker? path back not stem?
-    print(f"Role will be set to: {stem}")
-    return elements[index]
+    select: Path = pick_from_folder(path, title=title)
 
+    print(f"Role will be set to: {select}")
 
-def pick_from_folder(path: Path, pattern: str = "*") -> str:
-    """show all elements at path location and pick one"""
-
-    elements: list = [e.stem for e in path.glob(pattern)]
-    title: str = "Choose an element to be set:"
-    option, _ = pick(elements, title)
-    print(f"You chose {option}")
-    return option
+    return select
