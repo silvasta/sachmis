@@ -1,14 +1,16 @@
 from google.protobuf import json_format
-from .uploader import XaiUploader
 from loguru import logger
 from xai_sdk import Client
-from xai_sdk.chat import Response, image, system, user, file
+from xai_sdk.chat import Response, file, image, system, user
 from xai_sdk.sync.chat import Chat
 
-from ..utils.print import printer
-from .model import Model
-from .data import DataManager
-from .models import Groks
+from sachmis.config.manager import config
+from sachmis.config.model import Groks
+from sachmis.data import DataManager
+from sachmis.data.uploader import XaiUploader  # REMOVE: -> data
+from sachmis.utils.print import printer
+
+from .agent import Model
 
 
 class Grok(Model):
@@ -34,7 +36,7 @@ class Grok(Model):
 
     def load_client(self):
         self.client = Client(
-            api_key=self.data.config.from_env(key="XAI_API_KEY"),
+            api_key=config.from_env(key="XAI_API_KEY"),
             timeout=self.timeout,
         )
         logger.debug("Client loaded")
@@ -53,7 +55,6 @@ class Grok(Model):
                 f"{self.model.unique} is answering to previous response",
                 "bold black on yellow",
             )
-
         self.chat: Chat = self.client.chat.create(**param)
         logger.debug(f"{param=}")
 
@@ -62,25 +63,30 @@ class Grok(Model):
         self.chat.append(system(role))
 
     def attach_prompt(self):
+
         if self.data.prompt is None:
-            # TODO: raise at load_prompt or send message from here
             raise FileNotFoundError("Load proper prompt first!")
+
         prompt: str = self.data.prompt
         self.chat.append(user(prompt))
 
     def attach_images(self):
         for i in self.data.base64_images:
-            # NOTE: jpeg? worked with png but clarify somewhen
-            self.chat.append(user(image(image_url=f"data:image/jpeg;base64,{i}")))
+            # LATER: jpeg? worked with png but clarify somewhen
+            self.chat.append(
+                user(image(image_url=f"data:image/jpeg;base64,{i}"))
+            )
 
     def attach_files(self):
-        x = XaiUploader()
+        x = XaiUploader()  # MOVE: do this in data
         if len(self.data.files) > 0:
             if x.compare_with_list(self.data.files):
                 logger.success("Files confirmed online")
             else:
-                raise FileNotFoundError("Check uploads, at least 1 file not online!")
-        for local_file in self.data.files:
+                raise FileNotFoundError(
+                    "Check uploads, at least 1 file not online!"
+                )
+        for local_file in self.data.files:  # REMOVE: verification in data
             if local_file.x_id is None:
                 logger.warning(f"Ignoring {local_file.name}, no valid x_id!")
             else:
@@ -89,53 +95,53 @@ class Grok(Model):
                     f"loaded file: {local_file.topic=}, {local_file.name}, {local_file.x_id}"
                 )
 
-    def fire(self):
-        """Assemble prompt and release"""
-
-        logger.info("Fire")
+    def _get_response(self):
         self.response: Response = self.chat.sample()
 
-        logger.info("Got response, start processing...")
-        self.process_response()
-
-    def process_response(self):
+    def _extract_full_response(self):
         try:
-            full_response: str = str(self.response)
+            self.full_response: str = str(self.response)
+        except Exception as e:
+            logger.error(f"Error for response: {self.model.api_name}\n{e}")
 
-            printer.title(f"Response Content ({self.model.unique})", style="write")
-            content: str = self.response.content
-            printer.md(content)
+    def _extract_response_content(self):
+        try:
+            self.content: str = self.response.content
+
         except Exception as e:
             logger.error(f"Error for content: {self.model.api_name}\n{e}")
 
-        usage: dict[str, int] = {}
+    def _extract_response_id(self):
+        self.usage: dict[str, int] = {}
         try:
-            usage_response = json_format.MessageToDict(self.response.usage)
-            logger.debug(f"{self.model.unique} {usage_response=}")
-            printer.print(usage_response)
-            for key, value in usage_response.items():
-                if isinstance(value, int):
-                    usage[key] = value
-                else:
-                    logger.warning(f"Ignoring for usage: ({key=}, {value=})")
+            usage_from_response = json_format.MessageToDict(
+                self.response.usage
+            )
+            logger.debug(f"{self.model.unique} {usage_from_response=}")
+
+            self.usage = usage_from_response
+            printer(self.usage)
+
         except Exception as e:
-            logger.error(f"Usage {self.model.unique}: {e}")
+            logger.error(f"Usage {self.model.unique}:\n{e}")
+
+    def _calculate_usage_cost(self):
         try:
-            # usage calculation (still bugs... and not so important to let usage crash)
-            self.model.usage_cost(token_usage=usage)  # prints by itself
+            self.model.usage_cost(token_usage=self.usage)
+            # prints by itself
+
         except Exception as e:
             logger.error(f"Usage calculcation {self.model.unique}: {e}")
 
+    def _setup_response_data(self):
         try:
             self.data.process_response(
                 id=self.response.id,
                 model=self.model,
-                usage=usage,
-                content=content,
-                full_response=full_response,
+                usage=self.usage,
+                content=self.content,
+                full_response=self.full_response,
                 topic=self.topic,
             )
         except Exception as e:
             logger.error(f"Error for tree {self.model.api_name}\n{e}")
-            # WARN: write here content, etc directly?
-        logger.info(f"End of {self.model}")

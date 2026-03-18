@@ -1,12 +1,12 @@
 import time
+
 from loguru import logger
 
-from ..utils.print import printer
-from .model import Model
-from .data import DataManager
-from .gemini import Gemini
-from .grok import Grok
-from .models import Geminis, Groks, Models
+from sachmis.config.model import Geminis, Groks, ModelFamily
+from sachmis.data import DataManager
+from sachmis.utils.print import printer
+
+from .model import Gemini, Grok, Model
 
 
 # INFO: main function
@@ -32,8 +32,9 @@ def launch_models(
 
 # TEST: async behavior and error handling
 def launch_async(models: list[Model], DRYRUN=False):
-    from tqdm.asyncio import tqdm
     import asyncio
+
+    from tqdm.asyncio import tqdm
 
     logger.info("Start of async pipeline")
 
@@ -49,7 +50,9 @@ def launch_async(models: list[Model], DRYRUN=False):
             results = await tqdm.gather(*tasks, return_exceptions=True)
             for model, result in zip(models, results):
                 if isinstance(result, Exception):
-                    logger.error(f"Problem with model {model.model.unique}: {result}")
+                    logger.error(
+                        f"Problem with model {model.model.unique}: {result}"
+                    )
                 else:
                     logger.success(f"Model {model.model.unique} successful")
 
@@ -124,7 +127,9 @@ def confirm_fire(data: DataManager, models: list[Model]) -> bool:
         for file in data.files:
             printer.print(file.name)
 
-        printer.title("Last check before deployment", style="bold white on red")
+        printer.title(
+            "Last check before deployment", style="bold white on red"
+        )
 
         match command := input("type 'ok' to launch, 'r' to reload: "):
             case "ok":

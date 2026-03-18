@@ -62,24 +62,6 @@ class Groks(ModelFamily):
             case Groks.G420M | Groks.G420N | Groks.G420R:
                 return g420
 
-    @staticmethod
-    def match_token(token_name: str) -> str:
-        """Match from response token name to price list token name"""
-        assignment: dict[str, str] = {
-            # TODO: grok token
-            # - total token and other token summary
-            # - image token
-            # - problem with repeated conversations, check logfiles
-            # "totalTokens" =None,
-            # "promptTokens"=None,
-            "promptTextTokens": "input",
-            "cachedPromptTextTokens": "cached",
-            "completionTokens": "output",
-            "reasoningTokens": "output",
-            # TODO: Function calls
-        }
-        return assignment.get(token_name, "")
-
     def usage_cost(self, token_usage: dict[str, int]) -> float:
         """Calculates usage from 1 response"""
 

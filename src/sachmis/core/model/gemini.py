@@ -2,10 +2,13 @@ from google.genai import Client, types
 from google.genai.types import GenerateContentResponse
 from loguru import logger
 
-from ..utils.print import printer
-from .model import Model
-from .data import DataManager
-from .models import Geminis
+from sachmis.config.model import Geminis
+from sachmis.data import DataManager
+
+from sachmis.data.uploader import GoogleUploader
+from sachmis.utils.print import printer
+
+from .agent import Model
 
 
 class Gemini(Model):
@@ -22,12 +25,14 @@ class Gemini(Model):
     ):
         super().__init__(data, model, topic)
 
-        self.thinking_budget = thinking_budget
+        self.thinking_budget: int | None = thinking_budget
 
         self._boot()
 
     def load_client(self):
-        self.client = Client(api_key=self.data.config.from_env(key="GEMINI_API_KEY"))
+        self.client = Client(
+            api_key=self.data.config.from_env(key="GEMINI_API_KEY")
+        )
         logger.debug("Client loaded")
 
     def prepare_chat(self):
@@ -40,29 +45,34 @@ class Gemini(Model):
                 ),
             }
         if self.previous_response_id:
-            logger.info("Answer to Gemini here but, prepare file structure first!")
+            logger.info(
+                "Answer to Gemini here but, prepare file structure first!"
+            )
 
     def attach_role(self):
         role: str = self.data.system_role
         self.content_config |= {"system_instruction": role}
 
     def attach_prompt(self):
+
         if self.data.prompt is None:
-            # TODO: raise at load_prompt or send message from here
             raise FileNotFoundError("Load proper prompt first!")
+
         prompt: str = self.data.prompt
         self.contents.append(prompt)
 
     def attach_images(self):
         for i in self.data.bytes_images:
-            mime: str = "image/png" if i.startswith(b"\x89PNG") else "image/jpeg"
+            mime: str = (
+                "image/png" if i.startswith(b"\x89PNG") else "image/jpeg"
+            )
             self.contents.append(
                 types.Part.from_bytes(data=i, mime_type=mime),
             )
 
     def attach_files(self):
         for local_file in self.data.files:
-            if local_file.g_uri is None:
+            if local_file.g_uri is None:  # REMOVE: verification in data
                 logger.warning(f"Ignoring {local_file.name}, no valid g_id!")
             else:
                 logger.debug(
@@ -75,67 +85,63 @@ class Gemini(Model):
                     )
                 )
 
-    def fire(self):
-        """Assemble prompt and release"""
-
-        logger.info("Fire")
-        self.response: GenerateContentResponse = self.client.models.generate_content(
-            model=self.model.api_name,
-            contents=self.contents,
-            config=types.GenerateContentConfig(**self.content_config),
+    def _get_response(self):
+        self.response: GenerateContentResponse = (
+            self.client.models.generate_content(
+                model=self.model.api_name,
+                contents=self.contents,
+                config=types.GenerateContentConfig(**self.content_config),
+            )
         )
-        logger.info("Got response, start processing...")
-        self.process_response()
 
-    def process_response(self):
+    def _extract_full_response(self):
         try:
-            full_response: str = str(self.response)
-
-            printer.title(f"Response Content ({self.model.unique})", style="write")
-            content: str = self.response.text or ""
-            printer.md(content)
+            self.full_response: str = str(self.response)
         except Exception as e:
             logger.error(f"Error for content: {self.model.api_name}\n{e}")
 
-        if self.response.response_id is None:
-            logger.error(f"Fail with response_id! {self.model=}")
-            id = "FAIL"
-        else:
-            id: str = self.response.response_id
+    def _extract_response_content(self):
+        try:
+            self.content: str = self.response.text or ""
+            printer.md(self.content)
+        except Exception as e:
+            logger.error(f"Error for content: {self.model.api_name}\n{e}")
 
-        usage: dict[str, int] = {}
+    def _extract_response_id(self):
+        if self.response.response_id is None:
+            logger.error(f"Fail for response_id! {self.model=}")
+            self.id = "FAIL"
+        else:
+            self.id: str = self.response.response_id
+
+    def _extract_usage(self):
+        self.usage: dict[str, int] = {}
         try:
             if self.response.usage_metadata is None:
                 logger.error(f"Fail with usage_metadata! {self.model=}")
             else:
-                for key, value in self.response.usage_metadata:
-                    if isinstance(value, int):
-                        usage[key] = value
-                    else:
-                        logger.warning(f"Ignoring for usage: ({key=}, {value=})")
+                usage_from_response = self.response.usage_metadata
+                logger.debug(f"{self.model.unique} {usage_from_response=}")
 
-            #      NOTE: form response := {
-            #     'candidates_token_count': 64,
-            #     'prompt_token_count': 35,
-            #     'prompt_tokens_details': [{'modality': 'TEXT', 'token_count': 35}],
-            #     'thoughts_token_count': 501,
-            #     'total_token_count': 600 }
+            # TODO: improve this!
+            self.usage = usage_from_response
+            printer(self.usage)
 
         except Exception as e:
-            logger.error(f"Error for usage: {self.model.api_name}\n{e}")
+            logger.error(f"Usage {self.model.unique}:\n{e}")
 
-            printer.print(usage)
+    def _calculate_usage_cost(self):
+        printer("Implement usage calculation for Gemini!")
 
+    def _setup_response_data(self):
         try:
             self.data.process_response(
-                id=id,
+                id=self.id,
                 model=self.model,
-                usage=usage,
-                content=content,
-                full_response=full_response,
+                usage=self.usage,
+                content=self.content,
+                full_response=self.full_response,
                 topic=self.topic,
             )
         except Exception as e:
             logger.error(f"Error for tree {self.model.api_name}\n{e}")
-            # WARN: write here content, etc directly?
-        logger.info(f"End of {self.model}")
