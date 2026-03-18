@@ -1,7 +1,7 @@
 from abc import ABCMeta, abstractmethod
-from ..utils.print import printer
 from enum import Enum, EnumMeta
 
+from ..utils.print import printer
 
 # INFO: this is basically a Model param file for external fixed data
 
@@ -30,13 +30,17 @@ class ModelFamil(Enum, metaclass=AbstractEnum):
     @abstractmethod
     def api_name(self) -> str:
         """Full name that is used for API call"""
-        raise NotImplementedError(f"Missing state transission validation for: {self}")
+        raise NotImplementedError(
+            f"Missing state transission validation for: {self}"
+        )
 
     @property
     @abstractmethod
     def category_unique(self) -> str:
         """Unique bidirectional identifier for model category (company)"""
-        raise NotImplementedError(f"Missing category_unique for class: {type[self]}")
+        raise NotImplementedError(
+            f"Missing category_unique for class: {type[self]}"
+        )
 
     @property
     def unique(self) -> str:

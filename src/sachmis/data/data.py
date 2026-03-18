@@ -1,7 +1,6 @@
 from pathlib import Path
-from typing import Literal, Any
+from typing import Any, Literal
 
-from .uploader import GoogleUploader, XaiUploader, FileUploader
 from boltons.strutils import slugify
 from loguru import logger
 from rich.table import Table
@@ -11,8 +10,9 @@ from ..utils.image import load_b64_and_encode, load_bytes_image
 from ..utils.path import PathGuard
 from ..utils.pick import pick_role
 from ..utils.print import printer
-from .forest import Forest, Tree, File
+from .forest import File, Forest, Tree
 from .models import Models
+from .uploader import FileUploader, GoogleUploader, XaiUploader
 
 
 class DataManager:
@@ -61,7 +61,9 @@ class DataManager:
         prompt.touch()
 
         printer.success("Paths and files reads, creating Forest now")
-        forest = Forest(tree_file_path=base_path / self.config.forest_file_name)
+        forest = Forest(
+            tree_file_path=base_path / self.config.forest_file_name
+        )
         forest.save_state()
 
         printer.success(f"New base created! {base_path=}")
@@ -128,7 +130,9 @@ class DataManager:
         """Load forest to class atribute If inside tree environment"""
         if self.config.forest_file is None:
             logger.error(f"No forest or tree to show at: {Path.cwd()}")
-            raise FileNotFoundError("Not in forest environment, no tree around!")
+            raise FileNotFoundError(
+                "Not in forest environment, no tree around!"
+            )
         else:
             logger.info(f"Loading tree from: {self.config.forest_file}")
             # HACK: use somehow contextmanager and close/save automatically at the end
@@ -138,7 +142,9 @@ class DataManager:
                 self.local_root_tree = None
             else:
                 logger.debug("start finding root tree")
-                self.local_root_tree: Tree | None = self.forest.find_local_root_tree()
+                self.local_root_tree: Tree | None = (
+                    self.forest.find_local_root_tree()
+                )
 
     def load_files_to_forest(self, from_empty_status=False, sort="section"):
         self.load_forest()
@@ -171,7 +177,9 @@ class DataManager:
                 case "push":
                     for file in self.forest.files:
                         # NOTE: use this during runtime, e.g. in Fire or Script
-                        uploader.upload_local_file(file, base_path=self.config.file_dir)
+                        uploader.upload_local_file(
+                            file, base_path=self.config.file_dir
+                        )
                 case "show":
                     uploader.show_all_files()
                 case "delete":
@@ -218,7 +226,9 @@ class DataManager:
 
         lines: list[str] = prompt.splitlines()
         try:
-            first_non_empty: str = next(line.strip() for line in lines if line.strip())
+            first_non_empty: str = next(
+                line.strip() for line in lines if line.strip()
+            )
             self.topic: str = slugify(first_non_empty, delim="-")
             self.prompt: str = prompt
             logger.info(f"Prompt loaded, topic is: {self.topic}")
@@ -268,13 +278,19 @@ class DataManager:
         self.files.extend(selected_files)
 
         if n_selected == n_input_files:
-            logger.info(f"Attached all {n_input_files} files from registry to data")
+            logger.info(
+                f"Attached all {n_input_files} files from registry to data"
+            )
         else:
-            logger.warning(f"Attached Only {n_selected} out of {n_input_files} files!")
+            logger.warning(
+                f"Attached Only {n_selected} out of {n_input_files} files!"
+            )
 
     def load_system_role(self, role_path: Path | None = None) -> None:
         """Role text overrides paths if provided"""
-        self.role_path: Path = role_path or pick_role(path=self.config.role_dir)
+        self.role_path: Path = role_path or pick_role(
+            path=self.config.role_dir
+        )
         self.system_role: str = self.role_path.read_text()
 
     def get_previous_id(self, model: Models) -> str | None:
@@ -312,7 +328,9 @@ class DataManager:
             characteristic=model.unique,
         )
 
-        full_response_path: Path = self.write_full_response(full_response, stem)
+        full_response_path: Path = self.write_full_response(
+            full_response, stem
+        )
         logger.debug(f"Full response written to: {full_response_path=}")
 
         answer_path: Path = self.write_content(content, stem=stem)
@@ -350,7 +368,9 @@ class DataManager:
         return full_response_path
 
     def write_content(self, content: str, stem: str) -> Path:
-        answer_path: Path = PathGuard.unique(self.config.answer_file_path(stem=stem))
+        answer_path: Path = PathGuard.unique(
+            self.config.answer_file_path(stem=stem)
+        )
         answer_path.write_text(content)
         return answer_path
 

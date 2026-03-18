@@ -33,9 +33,26 @@ build-backend = "uv_build"
 [tool.sachmis.logging]
 level = "INFO"
 file_name = "sachmis.log"
+log_dir = "logs"
 rotation = "10 MB"
 retention = "1 week"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 79
+
+[tool.ruff.lint]
+select = [
+  "E",  # E: pycodestyle errors
+  "F",  # F: Pyflakes
+  "I",  # I: isort (import sorting)
+  "UP", # UP: pyupgrade (modernize syntax)
+  "B",  # B: flake8-bugbear (finds likely bugs) 
+  "N",  # N: pep8-naming
+]
+ignore = [
+  "E501", # Ignore long lines: only format, not error on them
+]
