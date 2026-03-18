@@ -9,6 +9,11 @@ from sachmis.utils.print import printer
 from .model import Gemini, Grok, Model
 
 
+def test_data():
+    with DataManager() as data:
+        print(data)
+
+
 # INFO: main function
 def launch_models(
     data: DataManager,
