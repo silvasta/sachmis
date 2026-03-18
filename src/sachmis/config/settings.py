@@ -36,7 +36,7 @@ class ProjectSettings(Settings):
 
 def tree_stem(topic: str = "", characteristic: str = "") -> str:
     """Assemble file (or folder) name"""
-    # MOVE: either Names or create Config(ConfigManager)
+    # MOVE: either to Names or create: class Config(ConfigManager)
     topic: str = slugify(topic, delim="-")
     return "_".join(
         [
@@ -49,6 +49,9 @@ def tree_stem(topic: str = "", characteristic: str = "") -> str:
 
 class Paths(BasePaths):
     """Assemble paths for project"""
+
+    _names: Names
+    _defaults: Defaults
 
     @property
     def forest_dir(self) -> Path | None:

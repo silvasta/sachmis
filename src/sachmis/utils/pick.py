@@ -3,7 +3,9 @@ from pathlib import Path
 
 # TASK: use silvasta.utils.pick
 # - simplify functions here
-# - outsource shared logic
+# - DONE: outsource shared logic
+# - But: check questionary library as improvement to pick for more advanced setups
+#
 
 from silvasta.utils.pick import (
     pick_from_folder,
@@ -11,9 +13,9 @@ from silvasta.utils.pick import (
 )
 
 
-def picked_models() -> list[Models]:
-    """Prepare list of 'Models', send to pick, process result"""
-    return []
+# def picked_models() -> list[Models]:
+#     """Prepare list of 'Models', send to pick, process result"""
+#     return []
 
 
 def picked_images(path: Path) -> list[Path]:

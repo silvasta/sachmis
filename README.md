@@ -1,4 +1,4 @@
-# Sakhmat - The LLM API Tool
+# Sachmis - The LLM API Tool
 
 - Grok
 - Gemini

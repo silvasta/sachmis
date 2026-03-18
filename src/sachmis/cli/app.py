@@ -6,17 +6,19 @@ from silvasta.cli.setup import attach_callback, logger_catch
 
 from ..utils.print import printer
 
-# TODO: create __init__ and load from there
-from .command.fire import fire
-from .command.loop import loop
-from .command.thunder import thunder
-from .command.tree import tree
+from .command import (
+    fire,
+    loop,
+    thunder,
+    tree,
+)
 
-# TODO: create __init__ and load from there
-from .subapp.bases import app as bases_app
-from .subapp.files import app as files_app
-from .subapp.forest import app as forest_app
-from .subapp.show import app as show_app
+from .subapp import (
+    bases_app,
+    files_app,
+    forest_app,
+    show_app,
+)
 
 
 def main() -> None:
@@ -72,6 +74,13 @@ def launch_monitor(file: Path | None = None):
 #     setup_logging(log_level_override=level, quiet=quiet)
 #
 # TODO: check together with .log.setup how and where to load data
+# - why not just in conductor at execution?
+#   - specific setup per task
+#   - overview of setup at 1 location
+#   - no additional typer complexity, loss of type checks
+#   - Minus: conductor forced to use it like that
+#     - issue for later on TUI?
+#     - issue for later on autonomous setup on Pi?
 #
 #     # Single object for file system data and config
 #     ctx.obj: dict[str, DataManager] = {"data": DataManager()}
