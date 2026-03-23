@@ -5,14 +5,11 @@ import typer
 from loguru import logger
 from silvasta.cli.setup import logger_catch
 
-from sachmis.core.data import DataManager
-from sachmis.core.executor import launch_models
-from sachmis.core.gemini import Gemini
-from sachmis.core.grok import Grok
-from sachmis.core.model import Model
-from sachmis.core.models import Geminis, Groks, Models
+from sachmis.config.model import Geminis, Groks, ModelFamily
+from sachmis.core import capstone as cap
+from sachmis.core.model import Gemini, Grok, Model
+from sachmis.data import DataManager
 from sachmis.utils.print import printer
-
 
 # REFACTOR: everything here below
 
@@ -39,13 +36,12 @@ def thunder(
     ] = False,
 ):
     """Release specific assembled task script"""
-    printer.thunder("Executing strategic script!")
+    printer("Executing strategic script!")
 
     data: DataManager = ctx.obj["data"]
     data.load_forest()
 
-    raw_models: list[Models] = [
-        Groks.G41FR,
+    raw_models: list[ModelFamily] = [
         Geminis.G3F,
     ]
     logger.debug(f"Using: {raw_models=}")
@@ -92,7 +88,9 @@ def thunder(
     data.load_system_role(role_text=overview_reader)
     logger.info(f"{overview_reader=}")
 
-    data.xai_files: list[str] = [id for id in file_group for file_group in xai_files]
+    data.xai_files: list[str] = [
+        id for id in file_group for file_group in xai_files
+    ]
     models += [
         Grok(
             data,

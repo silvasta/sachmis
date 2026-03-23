@@ -1,20 +1,12 @@
 from pathlib import Path
 
+from loguru import logger
+from silvasta.utils.path import PathGuard
+
 from sachmis.config.manager import config
+from sachmis.utils.print import printer
 
 from .arboreal import Biome, Forest, Sprout, Tree
-
-# class AppSettings(BaseModel):
-#     # TODO: forest tree for local,global
-#     theme: str = "dark"
-#     volume: int = 80
-#
-#
-# class UserProfile(BaseModel):
-#     # TODO: forest tree for local,global
-#     username: str = "guest"
-#     level: int = 1
-
 
 # NEXT: bring in the new arboreal
 
@@ -22,70 +14,131 @@ from .arboreal import Biome, Forest, Sprout, Tree
 class DataManager:
     """Loads Pydantic models on entry, saves them on clean exit."""
 
-    def __init__(
-        self,  # TODO: proper args
-    ):
+    def __init__(self, save_at_exit=True):  # TODO: assign task
 
-        self.settings_file = self.config_dir / "settings.json"
-        self.profile_file = self.config_dir / "profile.json"
+        self.save_at_exit: bool = save_at_exit
 
-        # Placeholders for the Pydantic instances
-        self.settings: AppSettings | None = None
-        self.profile: UserProfile | None = None
+        if config.paths.biome_file.exists():
+            logger.info("Biome file exists")
+        else:
+            logger.warning("Biome file not found, create new?")
+            # TODO: create biome here? wait for task!
+
+        if config.paths.in_base:
+            logger.info("Current location in base")
+
+            if config.paths.forest_file.exists():
+                logger.info("Forest file exists")
+            else:
+                logger.warning(f"Not found:{config.paths.forest_file=}")
+
+            self.in_forest = True
+        else:
+            self.in_forest = False
 
     def __enter__(self):
-        """Triggered automatically by 'with'. Loads the JSON files."""
-        print("--> [DataManager] Loading JSON data...")
+        logger.info("DataManager: Load data in context")
 
-        # Load or create Settings
-        if self.settings_file.exists():
-            self.settings = AppSettings.model_validate_json(
-                self.settings_file.read_text()
-            )
-        else:
-            self.settings = AppSettings()
+        self.biome: Biome = Biome.load_state()
 
-        # Load or create Profile
-        if self.profile_file.exists():
-            self.profile = UserProfile.model_validate_json(
-                self.profile_file.read_text()
-            )
-        else:
-            self.profile = UserProfile()
+        self.check_health_biome()  # INFO: so far: pass
 
-        # Yields this class instance to the 'as data' variable
+        if self.in_forest:
+            # LATER: open multiple forest
+            self.forest: Forest = Forest.load_state()
+
         return self
 
     def __exit__(
-        self,
-        exception_type,  # LATER: decide how to handle which error
+        self,  # LATER: decide how to handle which error
+        exception_type,
         exception_value,
         exception_trace_back,
     ):
-        """Triggered automatically when leaving the 'with' block."""
-        if exc_type is None:
-            # If no errors happened inside the 'with' block, save to disk
-            print("<-- [DataManager] Clean exit: Saving data to JSON...")
-            self.settings_file.write_text(
-                self.settings.model_dump_json(indent=4)
-            )
-            self.profile_file.write_text(
-                self.profile.model_dump_json(indent=4)
-            )
-        else:
-            # If an error happened (e.g. crash in UI), abort save
-            print(
-                f"<-- [DataManager] Error ({exception_type.__name__}) detected: Aborting save."
-            )
+        if not self.save_at_exit:
+            logger.info("DataManager: Close intended without saving")
+            return
 
-        # INFO: example error handling
-        if issubclass(exception_type, ValueError):
-            # We catch the error, log the message (exc_val), and skip the save
-            print(
-                f"<-- Harmless UI Error caught: '{exception_value}'. Skipping save."
-            )
+        logger.info("DataManager: Close data from context")
 
-            # Returning True tells Python: "I handled this, DO NOT crash the app."
-            return True
-        # Returning False allows any exception to propagate up to the caller
+        if exception_type is not None:
+            logger.error(f"DataManager - Error: ({exception_type.__name__})")
+            logger.warning("State not saved!")
+
+            if issubclass(exception_type, ValueError):
+                # INFO: example error handling
+                logger.info(f"Harmless UI Error: {exception_value=}")
+                logger.warning("State not saved!")
+
+                # Surpress exception (after handling it here)
+                return True
+
+        if self.in_forest:
+            # LATER: close multiple forest
+            self.forest.save_state()
+
+        self.biome.save_state()
+
+        logger.info("DataManager: Clean Exit")
+
+        # Propagate exception to caller
         return False
+
+    def check_health_biome(self):
+        # TODO: handle dublicates, more tests?
+        DataManager._check_dublicated_biome_files()
+        self.biome._prune_dublicated_forest_paths()
+        self.biome._check_active_forest_paths()
+
+    @staticmethod  # LATER: cls or self? how to handle multiple biomes?
+    def _check_dublicated_biome_files():
+        biome_files: list[Path] = PathGuard.find_sequence(
+            config.paths.biome_file
+        )
+        num_biome_files: int = len(biome_files)
+        logger.info(f"For current biome path: {num_biome_files=}")
+
+        logger.debug(f"current status: {biome_files=}")
+        if num_biome_files > 1:
+            for file in biome_files:
+                printer(file)
+
+    @classmethod
+    def create_new_biome(cls, name: str | None = None):
+        logger.info("Create new Biome")
+        Biome().save_state(
+            biome_file=PathGuard.unique(config.paths.biome_file)
+        )  # PathGuard.unique or not allow new Biome() if file exists
+        DataManager._check_dublicated_biome_files()
+
+    @classmethod
+    def create_new_base(cls, base_name: str | None = None):
+        logger.info("Create new Base with Forest")
+
+        with cls() as data:
+            if data.in_forest:
+                logger.error("Already in Base! No new Forest will be created.")
+                return
+
+            if base_name is None:
+                base_name: str = config.names.base_dir
+            # WARN: what if dir already exists?
+            base_dir: Path = PathGuard.dir(Path.cwd() / base_name)
+
+            promp_path: Path = base_dir / config.names.prompt
+            PathGuard.file(promp_path, default_content="", raise_error=False)
+
+            camp_name: str = config.names.camp_dir
+            camp_dir: Path = PathGuard.dir(base_dir / camp_name)
+
+            forest_file: Path = camp_dir / config.names.forest_file
+            # TODO: local config file(s)? roles? etc..
+
+            printer.success("Files and dirs ready: creating Forest now!")
+
+            forest = Forest()
+            forest.save_state(forest_file)
+
+            data.biome.forests.append(forest_file)
+
+        logger.info(f"New base created at:\n{base_dir}")

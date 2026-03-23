@@ -1,7 +1,8 @@
 from loguru import logger
 from silvasta.config.manager import ConfigManager
 
-from .settings import Defaults, Names, Paths, ProjectSettings
+from .paths import Paths
+from .settings import Defaults, Names, ProjectSettings
 
 # TODO: similar config setup as in log
 # - create singleton or return already created singleton

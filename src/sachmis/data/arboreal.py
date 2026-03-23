@@ -4,6 +4,8 @@ from pathlib import Path
 from loguru import logger
 from pydantic import BaseModel, Field
 
+from sachmis.config.manager import config
+
 from .files import Prompt, Response
 
 
@@ -20,76 +22,49 @@ class Tree(BaseModel):
     """Top element inside Forest: entry point for every conversation"""
 
     tree_stem: str
-    sprouts: list["Sprout"] = Field(default_factory=list)
+    sprouts: list[Sprout] = Field(default_factory=list)
 
 
 class Forest(BaseModel):
     """Master tree file: Data of all Trees and Sprouts in base"""
 
-    forest_file: Path
     created_at: datetime = Field(default_factory=datetime.now)
     last_updated: datetime | None = None
     trees: list[Tree] = Field(default_factory=list)
 
     files: list[Path] = Field(default_factory=list)  # TODO: file management
-    # TASK: file status, outdated etc, store history
     images: list[Path] = Field(default_factory=list)  # TODO: file management
 
-    # @property
-    # def file_categories(self) -> list[str]:
-    #     return list(set(file.category for file in self.files))
-    #
-    # TODO: new concept of files, together with shmoodle
-    #
-    # @property
-    # def file_topics(self) -> list[str]:
-    #     return list(set(file.topic for file in self.files))
-
-    # def file_selection(
-    #     self,
-    #     categories: list[str] | None = None,
-    #     topics: list[str] | None = None,
-    # ) -> list[File]:
-    #     """Select subset of both (or all files) and intersect the selections"""
-    #
-    #     if not categories:  # catch None and [], fail if categories = 0
-    #         categories: list[str] = self.file_categories
-    #     if not topics:
-    #         topics: list[str] = self.file_topics
-    #
-    #     selection: list[File] = [
-    #         file
-    #         for file in self.files
-    #         # TODO: and | or for selection params
-    #         if file.category in categories and file.topic in topics
-    #     ]
-    #
-    # logger.info(f"Total {len(selection)=}")
-    # return selection
-
-    def save_state(self):
-        """Save everything to json"""
-        self.last_updated: datetime = datetime.now()
-        self.forest_file.write_text(
-            self.model_dump_json(indent=4, by_alias=True),
-        )
-        logger.info(f"Forest saved with {len(self.trees)} Trees")
-
+    # TASK: file status, outdated etc, store history
+    # - maybe path? easier for biome or creation or context
     # TODO: properties like: n_trees, n_sprouts etc
 
     @classmethod
-    def load_state(cls, forest_file: Path) -> "Forest":
-        """Reconstruct the Trees and build the Forest"""
+    def load_state(cls, forest_file: Path | None = None) -> "Forest":
         logger.info("Load Forest from json")
 
+        if forest_file is None:
+            forest_file: Path = config.paths.forest_file
+
         if not forest_file.exists():
-            logger.error("No tree file at given path!")
-            raise AttributeError(f"Invalid {forest_file=}")
+            logger.error(f"No forest at target location: {forest_file=}")
+            raise AttributeError("Invalid path for Forest!")
 
         forest: Forest = cls.model_validate_json(forest_file.read_text())
-        logger.info(f"Forest loaded with {len(forest.trees)} Trees")
 
+        logger.info(f"Forest loaded with {len(forest.trees)} Trees")
         return forest
+
+    def save_state(self, forest_file: Path | None = None):
+        logger.info("Save Forest to json")
+
+        if forest_file is None:
+            forest_file: Path = config.paths.biome_file
+
+        self.last_updated: datetime = datetime.now()
+
+        forest_file.write_text(self.model_dump_json())
+        logger.info(f"Forest saved with {len(self.trees)} Trees")
 
     # TASK: file handling, Biome/Forest/Sprout
     # def update_files(
@@ -217,37 +192,71 @@ class Forest(BaseModel):
 class Biome(BaseModel):
     """Global Master Forest, registry for entire content"""
 
-    biome_file: Path  # TODO: handle this by config.paths
-    forests: list[Forest] = Field(default_factory=list)
+    forests: list[Path] = Field(default_factory=list)
+
+    # LATER: find better way for tracking moved forests
+    outdated_forests: list[Path] = Field(default_factory=list)
+
     created_at: datetime = Field(default_factory=datetime.now)
     last_updated: datetime | None = None
+
     # TASK: save and load global files!
     # - full response
     # - roles
-    # - images/files?
 
-    def save_state(self):
-        """Save everything to json"""
-        self.last_updated: datetime = datetime.now()
-        self.biome_file.write_text(
-            self.model_dump_json(indent=4, by_alias=True),
-        )
-        logger.info(f"Forest saved with {len(self.forests)} Trees")
-
-    # TODO: properties like: n_forest, n_trees, n_sprouts etc
+    @property
+    def n_forest(self) -> int:
+        return len(self.forests)
 
     @classmethod
-    def load_state(cls, forest_file: Path) -> "Biome":
-        """Reconstruct the Trees and build the Forest"""
-        logger.info("Load Forest from json")
+    def load_state(cls, biome_file: Path | None = None) -> "Biome":
+        logger.info("Load Biome from json")
 
-        if not forest_file.exists():
-            logger.error("No tree file at given path!")
-            raise AttributeError(f"Invalid {forest_file=}")
+        if biome_file is None:
+            biome_file: Path = config.paths.biome_file
 
-        biome: Biome = cls.model_validate_json(
-            cls.biome_file.read_text(),
-        )
-        logger.info(f"Forest loaded with {len(biome.forests)} Trees")
+        if not biome_file.exists():
+            logger.error(f"No biome at target location: {biome_file=}")
+            raise AttributeError("Invalid path for Biome!")
+
+        biome: Biome = cls.model_validate_json(biome_file.read_text())
+        logger.info(f"Biome loaded with {biome.n_forest} Forests")
 
         return biome
+
+    def save_state(self, biome_file: Path | None = None):
+        logger.info("Save Biome to json")
+
+        if biome_file is None:
+            biome_file: Path = config.paths.biome_file
+
+        self.last_updated: datetime = datetime.now()
+
+        biome_file.write_text(self.model_dump_json())
+        logger.info(f"Biome saved with {self.n_forest} Forests")
+
+    def _prune_dublicated_forest_paths(self):
+
+        if len(set(self.forests)) == self.n_forest:
+            logger.debug(f"No dublicated forest paths found {self.n_forest=}")
+            return
+
+        logger.warning("Found doublicated forest paths!")
+        logger.info(f"Before prune: {self.n_forest=}")
+
+        unique_forests: set[Path] = set()
+        for path in self.forests:
+            if path in unique_forests:
+                logger.warning(f"Remove doublicated forest: {path=}")
+            else:
+                unique_forests.add(path)
+
+        self.forests: list[Path] = list(unique_forests)
+        logger.info(f"After prune: {self.n_forest=}")
+
+    def _check_active_forest_paths(self):
+        for path in self.forests:
+            if not path.exists():
+                logger.warning(f"Missing forest: {path=}")
+                self.outdated_forests.append(path)
+                self.forests.remove(path)

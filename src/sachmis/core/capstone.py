@@ -2,7 +2,7 @@ import time
 
 from loguru import logger
 
-from sachmis.config.model import Geminis, Groks, ModelFamily
+from sachmis.config.model import Geminis, Groks
 from sachmis.data import DataManager
 from sachmis.utils.print import printer
 

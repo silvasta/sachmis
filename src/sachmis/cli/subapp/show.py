@@ -1,11 +1,9 @@
-from pathlib import Path
-
 import typer
 from silvasta.cli.setup import attach_callback, logger_catch
 
-from sachmis.core.data import DataManager
-from sachmis.core.models import Geminis, Groks
-from sachmis.utils.config import ConfigManager
+from sachmis.config.manager import config
+from sachmis.config.model import Geminis, Groks
+from sachmis.data import DataManager
 from sachmis.utils.print import printer
 
 
@@ -22,22 +20,37 @@ app = typer.Typer(
 attach_callback(app)
 
 
-@app.callback()
-def main_callback(ctx: typer.Context):
-    printer.title(f"Welcome to {__name__}!", style="sub-title")
+@app.command()
+@logger_catch
+def biome():
+    """Show all Bases with Forest in Biome"""
+    with DataManager(save_at_exit=False) as data:
+        printer(data.biome)
+
+
+@app.command()
+@logger_catch
+def bases():
+    """Show all Bases with Forest in Biome"""
+    with DataManager(save_at_exit=False) as data:
+        printer.path_exists_table(
+            paths=data.biome.forests + data.biome.outdated_forests,
+            header="Biome: Active and Outdated Forests",
+        )
 
 
 @app.command()
 @logger_catch
 def models():
     """Show all models of all providers"""
-    # TODO: rich table, statistics
-    printer.title(f"{Groks}")
+    printer.title("Groks")
     for model in Groks:
         printer.md(
             f"-x {model.value:<6} {model:<14} **{model.api_name}**",
             style="blue",
         )
+    # TODO: rich table, statistics
+    printer.title("Geminis")
     for model in Geminis:
         printer.md(
             f"-g {model.value:<6} {model:<14} **{model.api_name}**",
@@ -45,31 +58,18 @@ def models():
         )
 
 
-@app.command()
+@app.command("config")
 @logger_catch
-def usage(path: Path = Path.cwd(), all: bool = False):
-    """Calculate usage of single conversatioon, {local|global} folder"""
-    # TODO: CLI: show usage
-    printer.fail("not avaliable")
-
-
-@app.command()
-@logger_catch
-def config(ctx: typer.Context):
+def config_details():
     """Print config to Console, so far just dotenv_path"""
-    # TODO: show config:
-    # - set some configs to show, pick or all?
-    # - future, modify configs here or generate config files to modify
-    data: DataManager = ctx.obj["data"]
-    config: ConfigManager = data.config
-    printer.print(f"{config.dotenv_path=}")
+    printer(config.defaults)
+    printer(config.names)
 
 
 @app.command()
 @logger_catch
-def role(conversation_name):
-    """Show and reate roles, stored {local|global}"""
-    # TODO: create "new role" function
+def roles():
+    # TODO: create "new role" function (somewhere else)
     printer.fail("not avaliable")
 
 

@@ -4,9 +4,9 @@ from typing import Any
 
 from loguru import logger
 
-from ..utils.config import ConfigManager
+from ..config.manager import config
 from ..utils.print import printer
-from .forest import File
+from .files import File
 
 
 class FileUploader(ABC):
@@ -29,7 +29,9 @@ class GoogleUploader(FileUploader):
     def __init__(self):
         from google.genai import Client
 
-        self.client = Client(api_key=ConfigManager.from_env(key="GEMINI_API_KEY"))
+        self.client = Client(
+            api_key=ConfigManager.from_env(key="GEMINI_API_KEY")
+        )
         logger.info("Google Client loaded")
 
     def upload_local_file(self, file: File, base_path: Path):
@@ -47,7 +49,9 @@ class GoogleUploader(FileUploader):
         )
         file.g_uri = online_file.uri
         file.g_mime_type = online_file.mime_type
-        logger.success(f"File uploaded to Google: {file.name} as {file.g_mime_type}")
+        logger.success(
+            f"File uploaded to Google: {file.name} as {file.g_mime_type}"
+        )
 
     def show_all_files(self):
         files: Any = self.client.files.list()
@@ -96,7 +100,9 @@ class XaiUploader(FileUploader):
 
         in_list = []
         not_in_list = []
-        local_ids = set(file.x_id for file in local_files if file.x_id is not None)
+        local_ids = set(
+            file.x_id for file in local_files if file.x_id is not None
+        )
         for online_file in online_files.data:
             if online_file.id in local_ids:
                 in_list.append(online_file)
@@ -142,7 +148,9 @@ class XaiUploader(FileUploader):
 
     def delete_not_in_list(self, local_files: list[File]):
         online_files: Any = self.client.files.list()
-        local_ids = set(file.x_id for file in local_files if file.x_id is not None)
+        local_ids = set(
+            file.x_id for file in local_files if file.x_id is not None
+        )
         for online_file in online_files.data:
             if online_file.id in local_ids:
                 logger.success(f"file confirmed: {online_file.filename}")

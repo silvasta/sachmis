@@ -5,10 +5,9 @@ import typer
 from loguru import logger
 from silvasta.cli.setup import logger_catch
 
-from sachmis.core.data import DataManager
-from sachmis.core.executor import prepare_for_fire
-from sachmis.core.models import Geminis, Groks, Models
-from sachmis.utils.pick import picked_images, picked_models
+from sachmis.config.model import Geminis, Groks, ModelFamily
+from sachmis.core import capstone as cap
+from sachmis.data import DataManager
 from sachmis.utils.print import printer
 
 # REFACTOR: everything here below
@@ -117,10 +116,10 @@ def fire(
     data.load_prompt()
 
     printer.title("Preparing Models...", style="Title")
-    models: list[Models] = [
+    models: list[ModelFamily] = [
         *(xai_models or []),
         *(google_models or []),
-        *(picked_models() if pick_model else []),
+        # *(picked_models() if pick_model else []),
     ]
     logger.debug(f"loading {len(models)=}")
     printer.md(f"...{len(models)=} selected for pipeline")
@@ -134,7 +133,7 @@ def fire(
     printer.title("Preparing Images...", style="Title")
     images: list[Path] = [
         *(images or []),
-        *(picked_images() if pick_model else []),
+        # *(picked_images() if pick_model else []),
     ]
     data.prepare_images(images)
     logger.debug(f"appending {len(images)=}")
@@ -150,7 +149,7 @@ def fire(
 
     data.load_system_role()
 
-    prepare_for_fire(
+    cap.prepare_for_fire(
         data,
         models,
         fire,

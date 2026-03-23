@@ -1,7 +1,7 @@
 import typer
 from silvasta.cli.setup import attach_callback, logger_catch
 
-from sachmis.core.data import DataManager
+from sachmis.data import DataManager
 from sachmis.utils.print import printer
 
 

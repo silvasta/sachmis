@@ -3,7 +3,7 @@ from pathlib import Path
 import typer
 from silvasta.cli.setup import logger_catch
 
-from sachmis.core.data import DataManager
+from sachmis.data import DataManager
 from sachmis.utils.print import printer
 
 

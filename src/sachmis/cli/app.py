@@ -4,6 +4,8 @@ import typer
 from silvasta.cli import monitor
 from silvasta.cli.setup import attach_callback, logger_catch
 
+import sachmis.core.capstone as cap
+
 from ..utils.print import printer
 from .command import (
     fire,
@@ -12,9 +14,9 @@ from .command import (
     tree,
 )
 from .subapp import (
-    bases_app,
     files_app,
     forest_app,
+    init_app,
     show_app,
 )
 
@@ -39,8 +41,15 @@ app.command()(thunder)
 
 app.add_typer(files_app)
 app.add_typer(forest_app)
-app.add_typer(bases_app)
+app.add_typer(init_app)
 app.add_typer(show_app)
+
+
+@app.command()
+@logger_catch
+def data():
+    """Print prompt, answer or any Markdown file"""
+    cap.test_data()
 
 
 @app.command("print")

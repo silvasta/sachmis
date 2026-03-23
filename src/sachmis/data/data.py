@@ -1,17 +1,13 @@
 from pathlib import Path
-from typing import Any, Literal
+from typing import Literal
 
 from boltons.strutils import slugify
 from loguru import logger
 from rich.table import Table
 
-from ..utils.config import ConfigManager
 from ..utils.image import load_b64_and_encode, load_bytes_image
-from ..utils.path import PathGuard
 from ..utils.pick import pick_role
 from ..utils.print import printer
-from .forest import File, Forest, Tree
-from .models import Models
 from .uploader import FileUploader, GoogleUploader, XaiUploader
 
 
@@ -19,8 +15,6 @@ class DataManager:
     """Handles data of {1 or multiple} {task|model}{s} and file system"""
 
     chat_topic: str | None = None
-    config: ConfigManager  # loaded at init
-    forest: Forest  # loaded before model preparation
     prompt: str | None = None  # readed once for all models
     topic: str | None = None  # calculated from prompt
 
@@ -37,64 +31,11 @@ class DataManager:
         self.config: ConfigManager = config or ConfigManager()
         logger.info("DataManager setup completed")
 
-    def create_new_base(
-        self,
-        base_name: str | None = None,
-        prompt_name: str | None = None,
-        camp_name: str | None = None,
-    ):
-        """Setup local folder for conversations, loops and trees"""
-        logger.info("Creating new base")
-
-        # NOTE: avoid creating base in base?
-
-        base_name: str = base_name or self.config.base_name
-        base_path: Path = PathGuard.dir(Path.cwd() / base_name)
-
-        camp_name: str = camp_name or self.config.camp_name
-        camp_path: Path = PathGuard.dir(base_path / camp_name)
-        # TODO: camp installation
-        # - create folders for image, but from config, probably move cwd
-        # - local config and roles
-
-        prompt: Path = base_path / self.config.default_prompt_name
-        prompt.touch()
-
-        printer.success("Paths and files reads, creating Forest now")
-        forest = Forest(
-            tree_file_path=base_path / self.config.forest_file_name
-        )
-        forest.save_state()
-
-        printer.success(f"New base created! {base_path=}")
-        self.append_new_base_to_list(camp_path)
-
     def append_new_base_to_list(self, camp_path: Path):
         """Log base- and camp name, so far to regular log file"""
         logger.info(f"{self.config.new_base_tag}: {camp_path}")
 
     # NOTE: base list: process log file or save better
-
-    def show_all_bases(self):
-        """load base paths from file, check existance, print result"""
-        file_path: Path = self.config.log_file_path
-
-        if not file_path.is_file():
-            logger.error(f"No file found at: {file_path}")
-            printer.fail("Base List file is missing...")
-        else:
-            table = Table(title="Distributed Bases")
-            table.add_column("Status", justify="center")
-            table.add_column("Base", style="cyan")
-            with open(file_path, "r") as f:
-                tag: str = self.config.new_base_tag
-                while line := f.readline():
-                    if tag in line:
-                        raw_path: str = line.split(f"{tag}:")[-1].strip()
-                        base_path = Path(raw_path)
-                        status: str = "✅" if base_path.is_dir() else ""
-                        table.add_row(status, str(base_path))
-            printer.print(table)
 
     def show_forest(
         self,

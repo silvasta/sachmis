@@ -4,8 +4,8 @@ import typer
 from loguru import logger
 from silvasta.cli.setup import attach_callback, logger_catch
 
-from sachmis.core.data import DataManager
-from sachmis.core.uploader import XaiUploader
+from sachmis.data import DataManager
+from sachmis.data.uploader import XaiUploader
 from sachmis.utils.print import printer
 
 
@@ -141,7 +141,9 @@ def clear(
     ] = False,
 ):
     """Delete files from online registry"""
-    printer.title("All online files will be deleted", style="bold white on red")
+    printer.title(
+        "All online files will be deleted", style="bold white on red"
+    )
 
     if input("Are you sure? (type 'yes' to confirm): ") == "yes":
         data: DataManager = ctx.obj["data"]
