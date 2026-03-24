@@ -1,3 +1,4 @@
+from boltons.iterutils import unique
 from pathlib import Path
 
 from loguru import logger
@@ -49,12 +50,9 @@ class DataManager:
 
         return self
 
-    def __exit__(
-        self,  # LATER: decide how to handle which error
-        exception_type,
-        exception_value,
-        exception_trace_back,
-    ):
+    def __exit__(self, exception_type, exception_value, exception_trace_back):
+        # LATER: decide how to handle which error
+
         if not self.save_at_exit:
             logger.info("DataManager: Close intended without saving")
             return
@@ -85,7 +83,7 @@ class DataManager:
         return False
 
     def check_health_biome(self):
-        # TODO: handle dublicates, more tests?
+        # TODO: handle dublicates, other health tests?
         DataManager._check_dublicated_biome_files()
         self.biome._prune_dublicated_forest_paths()
         self.biome._check_active_forest_paths()
@@ -122,8 +120,17 @@ class DataManager:
 
             if base_name is None:
                 base_name: str = config.names.base_dir
-            # WARN: what if dir already exists?
-            base_dir: Path = PathGuard.dir(Path.cwd() / base_name)
+
+            base_dir_unconfirmed = Path.cwd() / base_name
+            base_dir_unique: Path = PathGuard.unique(base_dir_unconfirmed)
+            base_dir: Path = PathGuard.dir(base_dir_unique)
+            # MOVE: that somehow into PathGuard?
+            # pros: - 1 single step for multiple actions
+            # cons: - maybe to specified for a general class
+            # - warnings need to be done anyway here (or CLI)
+            if base_dir_unconfirmed != base_dir:
+                printer.warn(f"Detected Folder with new {base_name=}!")
+                logger.warning(f"Using: {base_dir_unique=}")
 
             promp_path: Path = base_dir / config.names.prompt
             PathGuard.file(promp_path, default_content="", raise_error=False)
@@ -132,7 +139,11 @@ class DataManager:
             camp_dir: Path = PathGuard.dir(base_dir / camp_name)
 
             forest_file: Path = camp_dir / config.names.forest_file
-            # TODO: local config file(s)? roles? etc..
+
+            # TODO: local structure in camp
+            # - config file(s)?
+            # - roles?
+            # - etc..
 
             printer.success("Files and dirs ready: creating Forest now!")
 
@@ -144,5 +155,9 @@ class DataManager:
         logger.info(f"New base created at:\n{base_dir}")
 
     def load_local_files_to_forest(self, clear_current_files=False):
-        # LATER: sort! by folder/section? check with shmoodle
-        self.forest.load_local_files(from_empty_status=clear_current_files)
+        """Browse local files folder in camp and attach files to Forest"""
+
+        self.forest.load_local_files(
+            # LATER: sort! by folder/section? check with shmoodle
+            from_empty_status=clear_current_files,
+        )

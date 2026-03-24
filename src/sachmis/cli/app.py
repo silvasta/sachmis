@@ -5,8 +5,8 @@ from silvasta.cli import monitor
 from silvasta.cli.setup import attach_callback, logger_catch
 
 import sachmis.core.capstone as cap
+from sachmis.utils.print import printer
 
-from ..utils.print import printer
 from .command import (
     fire,
     loop,

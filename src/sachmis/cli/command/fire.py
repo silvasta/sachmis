@@ -1,11 +1,20 @@
 from pathlib import Path
-from typing import Annotated
 
-import typer
 from loguru import logger
 from silvasta.cli.setup import logger_catch
 
-from sachmis.config.model import Geminis, Groks, ModelFamily
+from sachmis.cli.args import (
+    Async,
+    DryRun,
+    Files,
+    Fire,
+    Images,
+    Models,
+    PickFiles,
+    PickImage,
+    PickRole,
+)
+from sachmis.config.model import ModelFamily
 from sachmis.core import capstone as cap
 from sachmis.data import DataManager
 from sachmis.utils.print import printer
@@ -16,101 +25,26 @@ from sachmis.utils.print import printer
 
 @logger_catch
 def fire(
-    ctx: typer.Context,
-    # - - - Direct Release - - - #
-    fire: Annotated[
-        bool,
-        typer.Option(
-            "--fire",
-            help="Avoid confirmation step before API call",
-        ),
-    ] = False,
-    # - - - xAI Grok Models - - - #
-    xai_models: Annotated[
-        list[Groks] | None,
-        typer.Option(
-            "--xai",
-            "-x",
-            help="Grok model(s)",
-        ),
-    ] = None,
-    # - - - File paths - - - #
-    files: Annotated[
-        # HACK: pick from list of uploaded files!
-        # TODO: update local and online file registry with new file path
-        list[str] | None,
-        typer.Option(
-            "--file",
-            "-f",
-            # WARN: possibly non unique
-            help="file names of file in local file registry",
-        ),
-    ] = None,
-    # - - - Google Gemini Models - - - #
-    google_models: Annotated[
-        list[Geminis] | None,
-        typer.Option(
-            "--google",
-            "-g",
-            help="Gemini model(s)",
-        ),
-    ] = None,
-    # - - - Model Picker - - - #
-    pick_model: Annotated[
-        bool,
-        typer.Option(
-            "--pick-model",
-            "-m",  # NOTE: picker for model
-            help="Pick model(s) Overrides other model selections!",
-        ),
-    ] = False,
-    # - - - Image Paths - - - #
-    images: Annotated[
-        list[Path] | None,
-        typer.Option(
-            "--images",
-            "-i",
-            help="Add image(s) to prompt",
-        ),
-    ] = None,
-    # - - - Image Picker - - - #
-    pick_image: Annotated[
-        bool,
-        typer.Option(
-            "--pick-image",
-            "-I",  # NOTE: picker for image
-            help="Pick image(s) from cwd",
-        ),
-    ] = False,
-    # - - - Role Picker - - - #
-    role: Annotated[
-        bool,
-        typer.Option(
-            "--pick-role",
-            "-r",  # NOTE: picker for role
-            help="Avoid confirmation step before API call",
-        ),
-    ] = False,
-    # - - - Async - - - #
-    use_async: Annotated[
-        bool,
-        typer.Option(
-            "--use-async",
-            "-a",
-            help="Send all models together with async",
-        ),
-    ] = False,
-    # - - - DRYRUN - - - #
-    DRYRUN: Annotated[
-        bool,
-        typer.Option(
-            "--dry",
-            help="Just simulate pipeline without online requests",
-        ),
-    ] = False,
+    # Arguments
+    models: Models = None,
+    # Options for task selection
+    pick_role: PickRole = True,
+    files: Files = None,
+    pick_files: PickFiles = False,
+    images: Images = None,
+    pick_image: PickImage = False,
+    # General Options
+    dry_run: DryRun = False,
+    use_async: Async = False,
+    direct_fire: Fire = False,  # WARN: test shortcut -fire (collision??)
 ):
     """Load models and data, assemble prompt and fire a battery"""
 
+    print(f"{models=}")
+    print(f"{direct_fire=}")
+    print(f"{pick_image=}")
+
+    1 / 0
     data: DataManager = ctx.obj["data"]
     data.load_forest()
     data.load_prompt()
