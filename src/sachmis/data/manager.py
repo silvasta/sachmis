@@ -36,7 +36,7 @@ class DataManager:
         else:
             self.in_forest = False
 
-    def __enter__(self):
+    def __enter__(self) -> "DataManager":
         logger.info("DataManager: Load data in context")
 
         self.biome: Biome = Biome.load_state()
@@ -142,3 +142,7 @@ class DataManager:
             data.biome.forests.append(forest_file)
 
         logger.info(f"New base created at:\n{base_dir}")
+
+    def load_local_files_to_forest(self, clear_current_files=False):
+        # LATER: sort! by folder/section? check with shmoodle
+        self.forest.load_local_files(from_empty_status=clear_current_files)

@@ -21,17 +21,12 @@ app = typer.Typer(
 attach_callback(app)
 
 
-@app.callback()
-def main_callback(ctx: typer.Context):
-    printer.title(f"Welcome to {__name__}!", style="sub-title")
-
-
 @app.command()
 @logger_catch
-def load(ctx: typer.Context, fresh: bool = False, sort="simple"):
+def load(clear: bool = False, sort="NotImplemented"):
     """Load files from camp folder into file registry"""
-    data: DataManager = ctx.obj["data"]
-    data.load_files_to_forest(fresh, sort)
+    with DataManager() as data:
+        data.load_local_files_to_forest(clear_current_files=clear)
 
 
 @app.command()
@@ -40,25 +35,6 @@ def order(ctx: typer.Context):
     """Show files and status inside file registry"""
     data: DataManager = ctx.obj["data"]
     data.show_forest("order")
-
-
-@app.command()
-@logger_catch
-def show(
-    ctx: typer.Context,
-    cat: list[str] | None = None,
-    topic: list[str] | None = None,
-):
-    """Show files and status inside file registry"""
-    data: DataManager = ctx.obj["data"]
-    select: dict[str, list[str]] = {}
-
-    if cat is not None:
-        select["category"] = cat
-    if topic is not None:
-        select["topic"] = topic
-
-    data.show_forest("files", select)
 
 
 @app.command()

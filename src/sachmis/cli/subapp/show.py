@@ -26,6 +26,11 @@ def biome():
     """Show all Bases with Forest in Biome"""
     with DataManager(save_at_exit=False) as data:
         printer(data.biome)
+        printer(f"{data.biome.n_forest=}")
+        printer(f"{data.biome.n_responses=}")
+        printer(f"{data.biome.roles=}")
+        printer(f"{data.biome.n_roles=}")
+        # LATER: create proper selection, maybe attach to printer
 
 
 @app.command()
@@ -41,6 +46,42 @@ def bases():
 
 @app.command()
 @logger_catch
+def trees():
+    """Show all Trees in Forest"""
+    with DataManager(save_at_exit=False) as data:
+        if not data.in_forest:
+            printer.fail("No Forest no Trees")
+        else:
+            # LATER: adapt this to new setup
+            printer.forest(data.forest)
+
+
+@app.command()
+@logger_catch
+def files(
+    cat: list[str] | None = None,
+    # TODO: adapt to new setup
+    topic: list[str] | None = None,
+):
+    """Show files and status inside file registry"""
+
+    select: dict[str, list[str]] = {}
+    # LATER: adapt this to new setup
+    # MOVE: selection anyway needed in Forest
+    if cat is not None:
+        select["category"] = cat
+    if topic is not None:
+        select["topic"] = topic
+
+    with DataManager(save_at_exit=False) as data:
+        if not data.in_forest:
+            printer.fail("No Forest no Files")
+        else:
+            raise NotImplementedError("create: printer.NEW(selection)")
+
+
+@app.command()
+@logger_catch
 def models():
     """Show all models of all providers"""
     printer.title("Groks")
@@ -50,6 +91,7 @@ def models():
             style="blue",
         )
     # TODO: rich table, statistics
+    # MOVE: to printer
     printer.title("Geminis")
     for model in Geminis:
         printer.md(

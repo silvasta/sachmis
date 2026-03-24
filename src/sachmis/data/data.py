@@ -3,7 +3,6 @@ from typing import Literal
 
 from boltons.strutils import slugify
 from loguru import logger
-from rich.table import Table
 
 from ..utils.image import load_b64_and_encode, load_bytes_image
 from ..utils.pick import pick_role
@@ -26,107 +25,6 @@ class DataManager:
     bytes_images: list[bytes] = []  # base64 strings of images used for Grok
 
     files: list[File] = []
-
-    def __init__(self, config: ConfigManager | None = None):
-        self.config: ConfigManager = config or ConfigManager()
-        logger.info("DataManager setup completed")
-
-    def append_new_base_to_list(self, camp_path: Path):
-        """Log base- and camp name, so far to regular log file"""
-        logger.info(f"{self.config.new_base_tag}: {camp_path}")
-
-    # NOTE: base list: process log file or save better
-
-    def show_forest(
-        self,
-        mode: Literal["tree", "loaded", "files"],
-        select: dict[str, list[str]] | None = None,
-    ):
-        """Save load forest, print as tree or json file"""
-        try:
-            self.load_forest()
-        except Exception as e:
-            printer.title("There is no forest around...\nnot even a tree")
-            logger.error(e)
-        match mode:
-            case "tree":
-                printer.forest(self.forest)
-            case "loaded":
-                printer.print(self.forest)
-            case "order":
-                printer.title("File Category")
-                printer.print(self.forest.file_categories)
-                printer.title("File Topic")
-                printer.print(self.forest.file_topics)
-            case "files":
-                files: list[File] = self.forest.file_selection(
-                    categories=select.get("category") if select else None,
-                    topics=select.get("topic") if select else None,
-                )
-                printer.title(f"File Selection ({len(files)} files)")
-                for file in files:
-                    printer.print(file.description)
-
-    def load_forest(self):
-        """Load forest to class atribute If inside tree environment"""
-        if self.config.forest_file is None:
-            logger.error(f"No forest or tree to show at: {Path.cwd()}")
-            raise FileNotFoundError(
-                "Not in forest environment, no tree around!"
-            )
-        else:
-            logger.info(f"Loading tree from: {self.config.forest_file}")
-            # HACK: use somehow contextmanager and close/save automatically at the end
-            self.forest: Forest = Forest.load_state(self.config.forest_file)
-            if self.config.in_camp:
-                logger.debug("in_camp -> no root tree")
-                self.local_root_tree = None
-            else:
-                logger.debug("start finding root tree")
-                self.local_root_tree: Tree | None = (
-                    self.forest.find_local_root_tree()
-                )
-
-    def load_files_to_forest(self, from_empty_status=False, sort="section"):
-        self.load_forest()
-        logger.info(f"Forest has {len(self.forest.files)} files before")
-
-        self.forest.update_files(
-            self.config.file_dir,
-            sort,
-            from_empty_status,
-        )
-        logger.info(f"Forest has now {len(self.forest.files)} files")
-        self.forest.save_state()
-
-    def manage_online_forest_files(
-        self,
-        xai=False,
-        google=False,
-        task: Literal["push", "show", "delete"] = "show",
-    ):
-        self.load_forest()
-
-        uploaders: list[FileUploader] = []
-        if xai:
-            uploaders.append(XaiUploader())
-        if google:
-            uploaders.append(GoogleUploader())
-
-        for uploader in uploaders:
-            match task:
-                case "push":
-                    for file in self.forest.files:
-                        # NOTE: use this during runtime, e.g. in Fire or Script
-                        uploader.upload_local_file(
-                            file, base_path=self.config.file_dir
-                        )
-                case "show":
-                    uploader.show_all_files()
-                case "delete":
-                    uploader.delete_all_uploaded_files()
-
-        self.forest.save_state()
 
     def tree(self, sprout_path: Path):
         """Create new sprout, transform local tree into root of new subfolder"""

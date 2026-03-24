@@ -21,9 +21,10 @@ class UploadFile(File):
     """Local file for upload and usage in prompt"""
 
     name: str
-    category: str
-    topic: str
-    local_path: Path  # REMOVE: relative from local filedir (.camp/files)
+    category: str = ""
+    topic: str = ""
+    # LATER: relative from local filedir (.camp/files)??
+    # local_path: Path
 
     @property
     def description(self):
@@ -35,7 +36,32 @@ class XaiUploadFile(UploadFile):
     x_id: str | None = None
 
 
+# TASK: how to save this again into 1 UploadFile???
+
+
 class GoogleUploadFile(UploadFile):
     # from Goole upload, needed for prompt attach
     g_uri: str | None = None
     g_mime_type: str | None = None
+
+    # TASK: manage online files
+    # - do upload at first usage from file
+    # ...manual upload possibility probably still needed?
+    # def manage_online_forest_files( self, xai=False, google=False, task: Literal["push", "show", "delete"] = "show",):
+    #     uploaders: list[FileUploader] = []
+    #     if xai:
+    #         uploaders.append(XaiUploader())
+    #     if google:
+    #         uploaders.append(GoogleUploader())
+    #     for uploader in uploaders:
+    #         match task:
+    #             case "push":
+    #                 for file in self.forest.files:
+    # IMPORTANT: use this during runtime, e.g. in Fire or Script
+    #                     uploader.upload_local_file(
+    #                         file, base_path=self.config.file_dir
+    #                     )
+    #             case "show":
+    #                 uploader.show_all_files()
+    #             case "delete":
+    #                 uploader.delete_all_uploaded_files()

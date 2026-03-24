@@ -1,7 +1,6 @@
 import typer
 from silvasta.cli.setup import attach_callback, logger_catch
 
-from sachmis.data import DataManager
 from sachmis.utils.print import printer
 
 
@@ -17,30 +16,11 @@ app = typer.Typer(
 attach_callback(app)
 
 
-@app.callback()
-def main_callback(ctx: typer.Context):
-    printer.title(f"Welcome to {__name__}!", style="sub-title")
-
-
-# TODO: sub-commands for forest:
-# - compare master tree file with local nodes and edges
-# - repair structure: recover, remove, replace.. or warn
-
-
 @app.command()
 @logger_catch
-def tree(ctx: typer.Context):
-    """Show forest structure as tree"""
-    data: DataManager = ctx.obj["data"]
-    data.show_forest(mode="tree")
-
-
-@app.command()
-@logger_catch
-def file(ctx: typer.Context):
-    """Show forest as print of master tree file"""
-    data: DataManager = ctx.obj["data"]
-    data.show_forest(mode="loaded")
+def maybe_roll_out(ctx: typer.Context):
+    """Expand condensed Forest data to file system"""
+    printer.fail("Implement!")
 
 
 if __name__ == "__main__":
