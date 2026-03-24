@@ -1,11 +1,11 @@
 from google.genai import Client, types
 from google.genai.types import GenerateContentResponse
 from loguru import logger
+from tenacity import retry, stop_after_attempt, wait_exponential
 
+from sachmis.config.manager import config
 from sachmis.config.model import Geminis
 from sachmis.data import DataManager
-
-from sachmis.data.uploader import GoogleUploader
 from sachmis.utils.print import printer
 
 from .agent import Model
@@ -85,6 +85,11 @@ class Gemini(Model):
                     )
                 )
 
+    @retry(
+        stop=stop_after_attempt(config.defaults.tenacity.max_attempts),
+        wait=wait_exponential(**config.defaults.tenacity.wait_exponential),
+        # TODO: before_sleep=before_sleep_log(logger, logging.WARNING)
+    )
     def _get_response(self):
         self.response: GenerateContentResponse = (
             self.client.models.generate_content(

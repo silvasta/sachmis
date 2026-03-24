@@ -1,5 +1,6 @@
 from google.protobuf import json_format
 from loguru import logger
+from tenacity import retry, stop_after_attempt, wait_exponential
 from xai_sdk import Client
 from xai_sdk.chat import Response, file, image, system, user
 from xai_sdk.sync.chat import Chat
@@ -95,6 +96,11 @@ class Grok(Model):
                     f"loaded file: {local_file.topic=}, {local_file.name}, {local_file.x_id}"
                 )
 
+    @retry(
+        stop=stop_after_attempt(config.defaults.tenacity.max_attempts),
+        wait=wait_exponential(**config.defaults.tenacity.wait_exponential),
+        # TODO: before_sleep=before_sleep_log(logger, logging.WARNING)
+    )
     def _get_response(self):
         self.response: Response = self.chat.sample()
 

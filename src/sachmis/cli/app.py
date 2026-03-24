@@ -1,24 +1,8 @@
-from pathlib import Path
-
 import typer
-from silvasta.cli import monitor
-from silvasta.cli.setup import attach_callback, logger_catch
+from silvasta.cli.setup import attach_callback
 
-import sachmis.core.capstone as cap
+from sachmis.cli import command, subapp
 from sachmis.utils.print import printer
-
-from .command import (
-    fire,
-    loop,
-    thunder,
-    tree,
-)
-from .subapp import (
-    files_app,
-    forest_app,
-    init_app,
-    show_app,
-)
 
 
 def main() -> None:
@@ -26,6 +10,7 @@ def main() -> None:
     app()
 
 
+# main
 app = typer.Typer(
     name="sachmis",
     help="CLI for direct communication with LLMs",
@@ -33,39 +18,22 @@ app = typer.Typer(
 )
 attach_callback(app)
 
+# core
+app.command()(command.fire)
+app.command()(command.tree)
+app.command()(command.loop)
+app.command()(command.thunder)
 
-app.command()(fire)
-app.command()(tree)
-app.command()(loop)
-app.command()(thunder)
+# utils
+app.command("monitor")(command.launch_monitor)
+app.command()(command.data)
+app.command("print")(command.print_file)
 
-app.add_typer(files_app)
-app.add_typer(forest_app)
-app.add_typer(init_app)
-app.add_typer(show_app)
-
-
-@app.command()
-@logger_catch
-def data():
-    """Print prompt, answer or any Markdown file"""
-    cap.test_data()
-
-
-@app.command("print")
-@logger_catch
-# MOVE: to command, some collector file
-def print_file(path: Path):
-    """Print prompt, answer or any Markdown file"""
-    printer.md(path.read_text())
-
-
-@app.command("monitor")
-@logger_catch
-# MOVE: to command, some collector file
-def launch_monitor(file: Path | None = None):
-    """Launch Log Console Monitor to display new arriving entries in log file"""
-    monitor(log_path=file)
+# nested
+app.add_typer(subapp.files)
+app.add_typer(subapp.forest)
+app.add_typer(subapp.init)
+app.add_typer(subapp.show)
 
 
 if __name__ == "__main__":

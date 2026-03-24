@@ -20,7 +20,7 @@ class Model(ABC):
         model: ModelFamily,
         topic: str | None = None,
     ):
-        self.data: DataManager = data
+        # self.data: DataManager = data
         self.model: ModelFamily = model
         self.topic: str | None = topic
 
@@ -80,7 +80,6 @@ class Model(ABC):
         self.process_response()
 
     @abstractmethod
-    # TASK: @tenacity: retry here or in conductor?
     def _get_response(self):
         pass
 

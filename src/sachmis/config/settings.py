@@ -1,4 +1,3 @@
-from boltons.strutils import slugify
 from pydantic import Field
 from silvasta.config.settings import (
     BaseDefaults,
@@ -19,12 +18,25 @@ class Names(BaseNames):
     forest_file: str = "forest.json"
     camp_dir: str = ".camp"
     file_dir: str = "files"
+    image_dir: str = "images"
 
     # File system - files
     prompt: str = "prompt.md"
 
 
+class TenacityDefaults(BaseDefaults):
+    max_attempts: int = 3
+    wait_exponential: dict[str, int] = {
+        "multiplier": 1,
+        "min": 2,
+        "max": 10,
+    }
+    # TODO: log retries
+    # sleep_log(logger, logging.WARNING)
+
+
 class Defaults(BaseDefaults):
+    tenacity: TenacityDefaults = Field(default_factory=TenacityDefaults)
     dot_env_content: str = """# Fill at least 1, delete others
 XAI_API_KEY=
 GEMINI_API_KEY=

@@ -60,10 +60,16 @@ class Paths(BasePaths[Names, Defaults]):
     @property
     @PathGuard.dir
     def file_dir(self):
+        return self.camp_dir / self._names.file_dir
+
         # TODO: local file storage:
         # - check if location base/.camp/files actually make sense
         # - if so, create as well image_dir
-        return self.camp_dir / self._names.file_dir
+
+    @property
+    @PathGuard.dir
+    def image_dir(self):
+        return self.camp_dir / self._names.image_dir
 
     @property
     @PathGuard.dir

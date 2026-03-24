@@ -1,15 +1,15 @@
 from collections import defaultdict
 from pathlib import Path
 
+from rich.markdown import Markdown
 from rich.table import Table
 from rich.tree import Tree
 from silvasta.utils.print import Printer
 
-from sachmis.config.manager import config
-
 custom_theme: dict[str, str] = {
     # TODO: modify/delete after adapting code
     "write": "bold white on green",
+    "aware": "bold white on red",
 }
 
 
@@ -18,6 +18,9 @@ class SachmisPrinter(Printer):
         """Visualizes a Forest model as a nested Rich Tree"""
 
         # LATER: adapt this to new setup
+
+        # IMPORTANT: style counter!
+        # - count which default/not default used and improve
 
         # Create the visual root (the Forest itself)
         root_label = f"[bold green]Forest:[/bold green] {forest_data.tree_file_path.name}"
@@ -43,6 +46,12 @@ class SachmisPrinter(Printer):
 
         self(visual_tree)
 
+    def yellow(self, text: str, *args, **kwargs):
+        printer(text, *args, style="yellow", **kwargs)
+
+    def aware(self, text: str, *args, **kwargs):
+        printer.panel(text, *args, style="aware", title="Check!", **kwargs)
+
     def path_exists_table(self, paths: list[Path], title=None, header="Path"):
         """load base paths from file, check existance, print result"""
 
@@ -58,5 +67,23 @@ class SachmisPrinter(Printer):
 
         self(table)
 
+    def preview(self, title: str, lines: list):
+        """Print header followed by items per line in panel"""
+        printer.title(title)
+        self.panel(text="\n".join(lines), title=title)
+
 
 printer = SachmisPrinter(custom_theme)
+
+if __name__ == "__main__":
+    title = "# Models"
+    printer.console.print(Markdown(title))
+    models = [
+        # "sss",
+        # "sss",
+        # "sss",
+        # "sss",
+        # "sss",
+    ]
+    printer.panel(text="\n".join(models), title=title)
+    printer.aware("Last check before deployment")

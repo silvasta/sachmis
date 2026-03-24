@@ -80,10 +80,10 @@ Files = Annotated[
     ),
 ]
 # LATER: check if Files/Models collapse
-PickFiles = Annotated[
+PickFile = Annotated[
     bool,
     typer.Option(
-        "--pick-files",
+        "--pick-file",
         "-F",
         help="Pick files from registry",
     ),
@@ -99,7 +99,7 @@ Images = Annotated[
 PickImage = Annotated[
     bool,
     typer.Option(
-        "--pick-images",
+        "--pick-image",
         "-I",
         help="Pick images from EXISTING FOLDER?",
     ),

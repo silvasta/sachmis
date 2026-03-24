@@ -1,13 +1,13 @@
 from typer import Typer
 
-from .init import app as init_app
-from .files import app as files_app
-from .forest import app as forest_app
-from .show import app as show_app
+from .files import app as files
+from .forest import app as forest
+from .init import app as init
+from .show import app as show
 
 __all__: list[Typer] = [
-    init_app,
-    files_app,
-    forest_app,
-    show_app,
+    init,
+    files,
+    forest,
+    show,
 ]
