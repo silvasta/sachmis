@@ -62,10 +62,6 @@ class Paths(BasePaths[Names, Defaults]):
     def file_dir(self):
         return self.camp_dir / self._names.file_dir
 
-        # TODO: local file storage:
-        # - check if location base/.camp/files actually make sense
-        # - if so, create as well image_dir
-
     @property
     @PathGuard.dir
     def image_dir(self):
@@ -82,38 +78,39 @@ class Paths(BasePaths[Names, Defaults]):
         return self.state_home / "full_respone"
 
     @PathGuard.unique
-    def full_response_path(
-        self, topic="", model="", stem=None, suffix="md", prompt_root=None
+    def full_response_path(  # LATER: ensure suffix, .txt==txt
+        self, topic="", model="", stem=None, suffix=".txt"
     ) -> Path:
-        stem: str = stem or tree_stem(topic=topic, characteristic=model)
-        return self.full_response_dir / f"{stem}.{suffix}"
+        stem: str = stem or self._names.tree_stem(
+            topic=topic, characteristic=model
+        )
+        return self.full_response_dir / f"{stem}{suffix}"
 
-    def prompt_file(
-        self,
-        topic: str = "",
-        stem: str | None = None,
-        suffix: str = ".md",  # LATER: PathGuard.ensure_suffix({.}md) == .md
-        prompt_dir: Path | None = None,  # TODO: is this used somewhen?
+    @PathGuard.unique
+    def prompt_file(  # LATER: PathGuard.ensure_suffix({.}md) == .md
+        self, topic: str = "", stem: str | None = None, suffix: str = ".md"
     ) -> Path:
         """New prompt file name after usage"""
-        if prompt_dir is None:
-            prompt_dir: Path = Path.cwd()
-        if stem is None:  # TASK: name factory! in names!
-            stem: str = tree_stem(  # FIX:
+
+        # TASK: name factory! in names!
+        # ResponseNames?o
+        # - 1 input: topic,models
+        # - output for all models, (full)response etc
+        # finally paths just provides with proper path
+
+        if stem is None:
+            stem: str = stem or self._names.tree_stem(
                 topic=topic,
                 characteristic="prompt",
             )
-        # TODO: PathGuard!
-        return prompt_dir / f"{stem}.{suffix}"
+        return Path.cwd() / f"{stem}{suffix}"
 
     def answer_file_path(
-        self, topic="", model="", stem=None, suffix="md", answer_dir=None
+        self, topic="", model="", stem=None, suffix=".md"
     ) -> Path:
-        # TASK: make similar to prompt_file
-        answer_dir: Path = answer_dir or Path.cwd()
-        stem: str = stem or tree_stem(  # FIX:
+        stem: str = stem or self._names.tree_stem(
             topic=topic,
             characteristic=model,
         )
         # TODO: PathGuard!
-        return answer_dir / f"{stem}.{suffix}"
+        return Path.cwd() / f"{stem}{suffix}"

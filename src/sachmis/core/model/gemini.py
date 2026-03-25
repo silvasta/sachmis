@@ -10,6 +10,8 @@ from sachmis.utils.print import printer
 
 from .agent import Model
 
+# NEXT: adapt function names! _xxx()
+
 
 class Gemini(Model):
     model: Geminis
@@ -23,17 +25,19 @@ class Gemini(Model):
         topic: str | None = None,
         thinking_budget: int | None = -1,  # -1 = dynamic, 0 = off, 1024 = high
     ):
-        super().__init__(data, model, topic)
 
+        # TODO: gemini default config to config.defaults
         self.thinking_budget: int | None = thinking_budget
 
-        self._boot()
+        # INFO: super() after storing variables for:
+        # - self._load_client()
+        # - data.attach()
+        super().__init__(data, model, topic)
 
-    def load_client(self):
+    def _load_client(self):
         self.client = Client(
-            api_key=self.data.config.from_env(key="GEMINI_API_KEY")
+            api_key=config.from_env(key="GEMINI_API_KEY"),
         )
-        logger.debug("Client loaded")
 
     def prepare_chat(self):
         self.contents: list = []  # INFO: this is where all files,images, role and prompt get collected
@@ -44,10 +48,11 @@ class Gemini(Model):
                     thinking_budget=self.thinking_budget
                 ),
             }
-        if self.previous_response_id:
-            logger.info(
-                "Answer to Gemini here but, prepare file structure first!"
-            )
+        # FIX:
+        # if self.previous_response_id:
+        #     logger.info(
+        #         "Answer to Gemini here but, prepare file structure first!"
+        #     )
 
     def attach_role(self):
         role: str = self.data.system_role
@@ -108,7 +113,6 @@ class Gemini(Model):
     def _extract_response_content(self):
         try:
             self.content: str = self.response.text or ""
-            printer.md(self.content)
         except Exception as e:
             logger.error(f"Error for content: {self.model.api_name}\n{e}")
 

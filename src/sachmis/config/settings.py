@@ -1,4 +1,6 @@
+from boltons.strutils import slugify
 from pydantic import Field
+from pydantic_settings import BaseSettings
 from silvasta.config.settings import (
     BaseDefaults,
     BaseNames,
@@ -23,8 +25,19 @@ class Names(BaseNames):
     # File system - files
     prompt: str = "prompt.md"
 
+    @staticmethod
+    def tree_stem(topic: str = "", characteristic: str = "") -> str:
+        """Assemble file (or folder) name"""
 
-class TenacityDefaults(BaseDefaults):
+        name_parts: list[str] = [
+            str(day_count()),
+            slugify(topic, delim="-"),
+            characteristic,
+        ]
+        return "_".join([part for part in name_parts if part])
+
+
+class TenacityDefaults(BaseSettings):
     max_attempts: int = 3
     wait_exponential: dict[str, int] = {
         "multiplier": 1,
@@ -37,6 +50,7 @@ class TenacityDefaults(BaseDefaults):
 
 class Defaults(BaseDefaults):
     tenacity: TenacityDefaults = Field(default_factory=TenacityDefaults)
+    topic: str = "Default Topic"
     dot_env_content: str = """# Fill at least 1, delete others
 XAI_API_KEY=
 GEMINI_API_KEY=
@@ -46,20 +60,3 @@ GEMINI_API_KEY=
 class ProjectSettings(Settings):
     names: Names = Field(default_factory=Names)
     defaults: Defaults = Field(default_factory=Defaults)
-
-
-def tree_stem(topic: str = "", characteristic: str = "") -> str:
-    """Assemble file (or folder) name"""
-    # MOVE: attach to Names or create: class Config(ConfigManager)
-    topic: str = slugify(topic, delim="-")
-    return "_".join(
-        [
-            name_part
-            for name_part in [
-                str(day_count()),
-                topic,
-                characteristic,
-            ]
-            if name_part != ""
-        ]
-    )

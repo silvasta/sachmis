@@ -1,4 +1,3 @@
-from sachmis.core.model.agent import Model
 from pathlib import Path
 
 from loguru import logger
@@ -15,13 +14,20 @@ from sachmis.cli.args import (
     PickImage,
     PickRole,
 )
+from sachmis.config.manager import config
 from sachmis.config.model import ModelFamily
 from sachmis.core import capstone as cap
+from sachmis.core.model.agent import Model
 from sachmis.data import DataManager
 from sachmis.utils.parse import (
     reversed_name_from_unique,
 )
-from sachmis.utils.picker import pick_files, pick_images, pick_models
+from sachmis.utils.picker import (
+    pick_files,
+    pick_images,
+    pick_models,
+    pick_role_from_dir,
+)
 from sachmis.utils.print import printer
 
 
@@ -46,19 +52,22 @@ def fire(
     # - loading models and prompt before picking files and images
     # - model/prompt failures should not cause unnecessary picks
 
-    with DataManager() as data:
+    with DataManager(forest_required=True) as data:
         data.load_prompt()
 
         models: list[ModelFamily] = _prepare_model_args(models)
         agents: list[Model] = cap.load_models(data, models)
 
         files: list[Path] = _prepare_file_args(files, pick_file)
+        data.load_files(files)
+
         images: list[Path] = _prepare_image_args(images, pick_image)
+        data.load_images(images)
 
         role: Path | None = _prepare_role(pick_role)
-        data.load_system_role()
+        data.load_role(role)
 
-        if not fire and not confirm_fire(data, agents):
+        if not direct_fire and not confirm_fire(data, agents):
             printer.yellow("see you when prompt and command chain is ready!")
             return
 
@@ -77,44 +86,43 @@ def confirm_fire(data: DataManager, models: list[Model], fire=False) -> bool:
 
     # TASK: style concept for entire printer story
 
-    while not fire:
-        # TODO: show this once for input arg fire=True?
-
-        printer.title(
+    while not fire:  # LATER: show this once if input arg fire=True?
+        printer.success(
             "Summary of Release",
-            style="bold green on white",
         )
-        printer.md(data.prompt)  # TODO:
+
+        printer.title(f"Prompt - {data._prompt.topic}")
+        printer.md(data._prompt.text)
 
         printer.preview(
             title="Models",
-            lines=[model.model for model in models],
+            lines=[model.model.api_name for model in models],
         )
 
         printer.preview(
-            title="Role",
-            lines=[data.role_path],
+            title=f"Role {data._role_path.stem if data._role_path else ''}",
+            lines=[data._role or "no role selected"],
         )
-        printer.md(f"Role: {data.system_role}", style="yellow")  # TODO:
 
         printer.preview(
             title="Files",
-            lines=[file.name for file in data.files],
+            lines=[file.name for file in data._files],
         )
 
         printer.preview(
             title="Images",
-            lines=[image.name for image in data.img],
+            lines=[image.name for image in data._images],
         )
 
-        printer.aware("Last check before deployment")
+        printer.danger("Last check before deployment")
 
         match input("type 'ok' to launch, 'r' to reload: "):
             case "ok":
                 fire = True
                 printer.title("send API request now!", style="green")
             case "r":
-                # TODO: case to adapt role,image,model? probably not! either remove r
+                # TODO: case to adapt role,image,model?
+                # probably not! either remove r
                 data.load_prompt()
             case _:
                 break
@@ -124,7 +132,7 @@ def confirm_fire(data: DataManager, models: list[Model], fire=False) -> bool:
 
 def _prepare_model_args(models: list[str] | None) -> list[ModelFamily]:
 
-    printer.title("Preparing Models...", style="Title")
+    printer.title("Preparing Models...")
 
     models: list[ModelFamily] = (
         [
@@ -150,7 +158,7 @@ def _prepare_file_args(
     files: list[Path] | None, pick_file: bool
 ) -> list[Path]:
 
-    printer.title("Preparing Files...", style="Title")
+    printer.title("Preparing Files...")
 
     files: list[Path] = [
         *(files or []),
@@ -171,7 +179,7 @@ def _prepare_image_args(
     images: list[Path] | None, pick_image: bool
 ) -> list[Path]:
 
-    printer.title("Preparing Images...", style="Title")
+    printer.title("Preparing Images...")
 
     images: list[Path] = [
         *(images or []),
@@ -190,4 +198,14 @@ def _prepare_image_args(
 
 def _prepare_role(pick_role: bool) -> Path | None:
 
-    raise NotImplementedError
+    printer.title("Preparing Role...")
+
+    role: Path | None = (
+        pick_role_from_dir(config.paths.role_dir) if pick_role else None
+    )
+    if role:
+        logger.info(f"Selected Role: {role.stem}")
+    else:
+        logger.info("no role selected")
+
+    return role

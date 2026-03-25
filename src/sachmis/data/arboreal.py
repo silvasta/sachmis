@@ -1,3 +1,4 @@
+import shutil
 from datetime import datetime
 from pathlib import Path
 
@@ -8,13 +9,23 @@ from sachmis.config.manager import config
 
 from .files import Prompt, Response, UploadFile
 
+# NEXT: Global ID strucutre
+# - Biome, no id
+# - Forest, id from ...
+#   - movable inside Biome
+# - Tree, id from 1 (probably)
+#   - movable inside Biome
+# - Sprout, id needed?
+#   - Tree -> [Sprout]
+#   - Sprout -> [Sprout]
+
 
 class Sprout(BaseModel):
     """Successor of Tree, can have own successors"""
 
-    model: str  # model.unique # MOVE: to Tree?
+    id: int  # starting at 1
     prompt: Prompt
-    response: Response
+    response: Response | None
     sprouts: list["Sprout"] = Field(default_factory=list)
 
     @property
@@ -25,12 +36,30 @@ class Sprout(BaseModel):
 class Tree(BaseModel):
     """Top element inside Forest: entry point for every conversation"""
 
+    id: int  # starting at 1
+    model: str  # model.unique
     tree_stem: str
     sprouts: list[Sprout] = Field(default_factory=list)
 
     @property
     def n_sprouts(self) -> int:
         return sum(sprout.n_sprouts for sprout in self.sprouts)
+
+    def attach_fresh_sprout(self, prompt: Prompt) -> Sprout:
+        """Attach new sprout without response"""
+
+        id: int = self._find_unique_id()
+        new_sprout: Sprout = Sprout(id=id, prompt=prompt, response=None)
+
+        self.sprouts.append(new_sprout)
+        logger.debug(f"Attached to Tree: {new_sprout=}")
+
+        return new_sprout
+
+    def _find_unique_id(self) -> int:
+        # LATER: proper id handling, check ids|new concept
+        # e.g. Tree gets pruned or so
+        return len(self.sprouts) + 1
 
 
 class Forest(BaseModel):
@@ -63,6 +92,19 @@ class Forest(BaseModel):
     def n_images(self) -> int:
         return len(self.images)
 
+    @property
+    def file_names(self) -> set[str]:
+        return set(file.name for file in self.files)
+
+    @property
+    def files_in_folder(self) -> list[str]:
+        # TASK: file providing and filtering
+        return [
+            file.name
+            for file in config.paths.file_dir.glob("*")
+            if file.is_file()
+        ]
+
     @classmethod
     def load_state(cls, forest_file: Path | None = None) -> "Forest":
         logger.info("Load Forest from json")
@@ -90,54 +132,86 @@ class Forest(BaseModel):
         forest_file.write_text(self.model_dump_json())
         logger.info(f"Forest saved with {len(self.trees)} Trees")
 
-    def load_local_files(
-        self,
-        file_dir: Path | None = None,
-        from_empty_status=False,
-    ):
+    def new_tree(self, model: str, tree_stem: str) -> Tree:
+        """Attach new Tree to forest"""
+
+        id: int = self._find_unique_id()
+        new_tree: Tree = Tree(id=id, model=model, tree_stem=tree_stem)
+
+        self.trees.append(new_tree)
+        logger.debug(f"Attached to Forest: {new_tree=}")
+
+        return new_tree
+
+    def _find_unique_id(self) -> int:
+        # LATER: proper id handling, check ids|new concept
+        # e.g. Tree gets pruned or so
+        return len(self.trees) + 1
+
+    def load_local_files(self, from_empty_status=False):
         """Update file registry with new files placed in folder"""
 
-        if file_dir is None:
-            file_dir: Path = config.paths.file_dir
-
-        # Used in confirming local files
-        self._local_folder_files: list[str] = [
-            # TODO: make this own function, grab folders
-            file.name  # INFO: assuming flat file structure in .camp/files/*
-            for file in file_dir.glob("*")
-            if file.is_file()
-        ]
-
-        if from_empty_status:
-            logger.info("Dropping local files")
-            logger.debug(self.files)
-            self.files: list[UploadFile] = []
-        else:
-            logger.info("Confirming local files")
-            self._prune_local_files()
-            # TODO: check online status as well?
-            # -> as function of Derived(UploadFile)
+        self._prepare_file_registry()
 
         logger.info(f"Start loading files: {self.n_files=}")
-        forest_files: set[str] = set(file.name for file in self.files)
 
         # LATER: sort! by folder/section? check with shmoodle
 
-        for filename in self._local_folder_files:
-            if filename in forest_files:
+        logger.info("Confirming local files")
+        for filename in self.files_in_folder:
+            if filename in self.file_names:  # PERF: set init?
                 continue
             self.files.append(UploadFile(name=filename))
             logger.info(f"Added new file: {filename}")
 
+    def file_by_name(self, name: str) -> UploadFile:
+        for file in self.files:
+            if file.name == name:
+                return file
+        else:
+            raise ValueError(f"File with {name=} not in registry")
+
+    def load_files_from_path(self, files: list[Path]) -> list[UploadFile]:
+        confirmed_files: list[UploadFile] = []
+        new_loaded_files: list[UploadFile] = []
+
+        for file in files:
+            if file.name in self.file_names:
+                confirmed_files.append(self.file_by_name(file.name))
+                logger.debug(f"Already loaded: {file.name=}")
+            else:
+                camp_file: Path = config.paths.file_dir / file.name
+                shutil.copy(file, camp_file)
+                forest_file = UploadFile(name=camp_file.name)
+                self.files.append(forest_file)
+                new_loaded_files.append(forest_file)
+                logger.info(f"Attached to Forest: {file.name=}")
+
+        logger.info(f"Prepared: {new_loaded_files=}")
+        confirmed_files += new_loaded_files
+
+        logger.info(f"Total: {confirmed_files=}")
+        return confirmed_files
+
+    def _prepare_file_registry(self, from_empty_status=False):
+        if from_empty_status:
+            logger.info("Dropping local files")
+            logger.debug(self.files)
+            self.files: list[UploadFile] = []
+            return
+
+        # TODO: check online status as well? -> as function of Derived(UploadFile)
+        self._prune_local_files()
+
     def _prune_local_files(self):
-        """Assuming flat file structure/no dublicates in .camp/files/*"""
+        """Drop files in registry if not in local folder"""
 
         logger.info(f"Start pruning files: {self.n_files=}")
 
         self.files: list[UploadFile] = [
-            file
+            file  # Assuming flat file structure
             for file in self.files
-            if file.name in self._local_folder_files
+            if file.name in self.files_in_folder
         ]
 
 
@@ -148,7 +222,6 @@ class Biome(BaseModel):
     # LATER: find better way for tracking moved forests
     outdated_forests: list[Path] = Field(default_factory=list)
 
-    # TODO: link forest and responses
     responses: list[Path] = Field(default_factory=list)
 
     created_at: datetime = Field(default_factory=datetime.now)
@@ -234,3 +307,8 @@ class Biome(BaseModel):
                 logger.warning(f"Missing forest: {path=}")
                 self.outdated_forests.append(path)
                 self.forests.remove(path)
+
+    def attach_new_full_response(self, text: str, path: Path):
+        # LATER: somehow processing something?
+        path.write_text(text)
+        self.responses.append(path)

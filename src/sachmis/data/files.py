@@ -1,19 +1,21 @@
 from pathlib import Path
 
-from pydantic import Field
+from pydantic import BaseModel, Field
 from silvasta.data.files import File
 
 
-class Prompt(File):
-    text: Path
-    files: list[Path] = Field(default_factory=list)  # TODO: file management
-    images: list[Path] = Field(default_factory=list)  # TODO: file management
+class Prompt(BaseModel):
+    topic: str
+    text: str
+    # LATER: files: Path or UploadFile? or just str
+    files: list["UploadFile"] = Field(default_factory=list)
+    images: list[Path] = Field(default_factory=list)
 
 
-class Response(File):
-    full_response: Path  # TODO: file management
+class Response(BaseModel):
+    full_response: Path
     id: str
-    content: str
+    content: str = ""
     usage: dict = Field(default_factory=dict)
 
 
@@ -23,8 +25,7 @@ class UploadFile(File):
     name: str
     category: str = ""
     topic: str = ""
-    # LATER: relative from local filedir (.camp/files)??
-    # local_path: Path
+    # local_path: Path LATER: relative from local filedir (.camp/files)??
 
     @property
     def description(self):

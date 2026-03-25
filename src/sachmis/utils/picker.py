@@ -9,6 +9,7 @@ from silvasta.utils.pick import (
 
 from sachmis.config.manager import config
 from sachmis.config.model import Geminis, Groks, ModelFamily
+from sachmis.utils.print import printer
 
 # TASK: Check questionary library:
 # - improvement to pick for more advanced setups
@@ -20,6 +21,9 @@ def pick_models() -> list[ModelFamily]:
 
     for grok in Groks:
         models_to_pick.append(grok)
+
+    # HACK: General Collector for all (active) models?
+    # (check picker,show-app,others)
 
     for gemini in Geminis:
         models_to_pick.append(gemini)
@@ -53,7 +57,7 @@ def pick_images(path: Path | None = None) -> list[Path]:
     return pick_multiple_from_folder(path)
 
 
-def pick_role(path: Path, pattern: str = "*") -> Path:
+def pick_role_from_dir(path: Path, pattern: str = "*") -> Path:
     """show all elements at path location and pick one"""
 
     # NOTE: format role display in pick
@@ -61,10 +65,10 @@ def pick_role(path: Path, pattern: str = "*") -> Path:
     #     words = e.stem.split("-")
     #     return " ".join(w.capitalize() for w in words)
 
-    title: str = f"Choose System Role: (defined in {path})"
+    title: str = f"Choose System Role, defined in:\n{path}"
     select: Path = pick_from_folder(path, title=title)
 
-    print(f"Role will be set to: {select}")
+    printer(f"Role will be set to:\n{select}")
 
     return select
 

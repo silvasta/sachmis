@@ -23,23 +23,15 @@ attach_callback(app)
 
 @app.command()
 @logger_catch
-def load(clear: bool = False, sort="NotImplemented"):
+def load(fresh: bool = False, sort="NotImplemented"):
     """Load files from camp folder into file registry"""
     with DataManager() as data:
-        data.load_local_files_to_forest(clear_current_files=clear)
+        data.load_local_files_to_forest(clear_current_files=fresh)
 
 
 @app.command()
 @logger_catch
-def order(ctx: typer.Context):
-    """Show files and status inside file registry"""
-    data: DataManager = ctx.obj["data"]
-    data.show_forest("order")
-
-
-@app.command()
-@logger_catch
-def push(
+def push(  # TODO: new concept
     ctx: typer.Context,
     xai: Annotated[
         bool,
@@ -57,13 +49,11 @@ def push(
     ] = False,
 ):
     """Push files to online registry, needed for prompt!"""
-    data: DataManager = ctx.obj["data"]
-    data.manage_online_forest_files(xai, google, task="push")
 
 
 @app.command()
 @logger_catch
-def online(
+def online(  # TODO: new concept
     ctx: typer.Context,
     xai: Annotated[
         bool,
@@ -81,13 +71,11 @@ def online(
     ] = False,
 ):
     """files overview from online registry"""
-    data: DataManager = ctx.obj["data"]
-    data.manage_online_forest_files(xai, google, task="show")
 
 
 @app.command()
 @logger_catch
-def xf(ctx: typer.Context, delete: bool = False):
+def xf(ctx: typer.Context, delete: bool = False):  # TODO: new concept
     """Compare local file status with status on xAI"""
     data: DataManager = ctx.obj["data"]
     data.load_forest()
@@ -99,7 +87,7 @@ def xf(ctx: typer.Context, delete: bool = False):
 
 @app.command()
 @logger_catch
-def clear(
+def clear(  # TODO: new concept
     ctx: typer.Context,
     xai: Annotated[
         bool,

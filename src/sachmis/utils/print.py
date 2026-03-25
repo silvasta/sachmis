@@ -7,17 +7,15 @@ from rich.tree import Tree
 from silvasta.utils.print import Printer
 
 custom_theme: dict[str, str] = {
-    # TODO: modify/delete after adapting code
-    "write": "bold white on green",
-    "aware": "bold white on red",
+    # "write": "bold white on green",
+    # LATER: now everything gone...
+    # store for future use?
 }
 
 
 class SachmisPrinter(Printer):
     def forest(self, forest_data) -> None:
         """Visualizes a Forest model as a nested Rich Tree"""
-
-        # LATER: adapt this to new setup
 
         # IMPORTANT: style counter!
         # - count which default/not default used and improve
@@ -48,9 +46,6 @@ class SachmisPrinter(Printer):
 
     def yellow(self, text: str, *args, **kwargs):
         printer(text, *args, style="yellow", **kwargs)
-
-    def aware(self, text: str, *args, **kwargs):
-        printer.panel(text, *args, style="aware", title="Check!", **kwargs)
 
     def path_exists_table(self, paths: list[Path], title=None, header="Path"):
         """load base paths from file, check existance, print result"""
@@ -86,4 +81,4 @@ if __name__ == "__main__":
         # "sss",
     ]
     printer.panel(text="\n".join(models), title=title)
-    printer.aware("Last check before deployment")
+    printer.danger("Last check before deployment")

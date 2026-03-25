@@ -1,10 +1,12 @@
 from abc import ABCMeta, abstractmethod
 from enum import Enum, EnumMeta
 
-# INFO: this is a Model param schema for fixed external data
+# INFO: this is the Model Param Schema for fixed external data
 
-# REFACTOR: Use csv instead of Enum?
-# - needs factory for Enum or Literal for typer
+# REFACTOR: Use csv/pyandtic instead of Enum?
+# - needs factory for Enum or Literal for typer XXX already changed!
+# - still nice with Enum, match and validatoin
+# - maybe basemodel just for usage?
 
 
 class AbstractEnum(ABCMeta, EnumMeta):

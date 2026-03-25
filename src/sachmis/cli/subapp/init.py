@@ -3,11 +3,9 @@ from silvasta.cli.setup import attach_callback, logger_catch
 
 from sachmis.cli.args import Name
 from sachmis.data import DataManager
-from sachmis.utils.print import printer
 
 
 def main() -> None:
-    printer.title(f"Welcome to {__name__}!", style="sub-title")
     app()
 
 

@@ -1,5 +1,5 @@
-from collections.abc import Callable
 import time
+from collections.abc import Callable
 
 from loguru import logger
 
@@ -19,7 +19,9 @@ def test_data_in_context():
         printer(dir(data))
 
 
-def match_family(data: DataManager, model: ModelFamily, *args, **kwargs):
+def match_family_and_init(
+    data: DataManager, model: ModelFamily, *args, **kwargs
+):
     """Create instance of execution model from Enum family model"""
 
     if isinstance(model, Groks):
@@ -33,7 +35,7 @@ def load_models(
     data: DataManager, models: list[ModelFamily], *args, **kwargs
 ) -> list[Model]:
     return [
-        match_family(data, model, *args, **kwargs)  #
+        match_family_and_init(data, model, *args, **kwargs)  #
         for model in models
     ]
 
@@ -41,28 +43,13 @@ def load_models(
 def launch_models(agents: list[Model], use_async=False, dry_run=False):
 
     launch_methods: dict[tuple[bool, bool], Callable] = {
-        (True, True): launch_dry_run_async,
-        (True, False): launch_dry_run_sequential,
-        (False, True): launch_async,
+        # WARN: model.assemble_prompt() needed
         (False, False): launch_sequential,
+        (False, True): launch_async,
+        (True, False): launch_dry_run_sequential,
+        (True, True): launch_dry_run_async,
     }
     launch_methods[(dry_run, use_async)](agents)
-
-    match (use_async, dry_run):
-        case (False, False):
-            launch_sequential(agents)
-
-        case (True, False):
-            launch_async(agents)
-
-        case (False, True):
-            launch_dry_run_sequential(agents)
-
-        case (True, True):
-            launch_dry_run_async(agents)
-
-
-# IMPORTANT: tenacity! where to place=??
 
 
 def launch_sequential(models: list[Model]):
@@ -72,6 +59,7 @@ def launch_sequential(models: list[Model]):
 
     for model in tqdm(models):
         try:
+            model.assemble_prompt()
             model.fire()
         except Exception as e:
             logger.error(f"Problem with model: {model.model.unique}\n{e}")

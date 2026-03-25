@@ -1,7 +1,6 @@
 from pathlib import Path
 from typing import Literal
 
-from boltons.strutils import slugify
 from loguru import logger
 
 from ..utils.image import load_b64_and_encode, load_bytes_image
@@ -23,8 +22,6 @@ class DataManager:
     input_image_paths: list[Path] = []  # path to regular image files
     base64_images: list[str] = []  # base64 strings of images used for Grok
     bytes_images: list[bytes] = []  # base64 strings of images used for Grok
-
-    files: list[File] = []
 
     def tree(self, sprout_path: Path):
         """Create new sprout, transform local tree into root of new subfolder"""
@@ -49,43 +46,6 @@ class DataManager:
             reset=False,
         )  # NOTE: no changes at Tree or Forest object itself, only file system location changed
 
-    def load_prompt(self, prompt_path=None, prompt_text: str | None = None):
-        """Load prompt in storage, Priority: text > path > read from file"""
-        if prompt_text is not None:
-            prompt: str = prompt_text
-            logger.debug("using prompt from prompt_text")
-        else:
-            self.input_prompt_path: Path = (
-                Path.cwd() / self.config.default_prompt_name
-                if prompt_path is None
-                else prompt_path
-            )
-            prompt: str = self.input_prompt_path.read_text()
-            logger.debug(f"using prompt from {self.input_prompt_path=}")
-
-        lines: list[str] = prompt.splitlines()
-        try:
-            first_non_empty: str = next(
-                line.strip() for line in lines if line.strip()
-            )
-            self.topic: str = slugify(first_non_empty, delim="-")
-            self.prompt: str = prompt
-            logger.info(f"Prompt loaded, topic is: {self.topic}")
-        except StopIteration:
-            self.topic = None
-            self.prompt = None
-            logger.error("Prompt is empty, fix that before model release!")
-
-    def prepare_images(self, images: list[Path]):
-        """Assume forest and prompt loaded, extend data with image,..."""
-        for image in images:
-            if not image.is_file():
-                logger.warning(f"Invalid image path: {image}")
-                continue
-            self.load_input_image(image)
-        # if len(images) > 0:
-        #     logger.info(f"Use {len(self.input_images)} out of {len(images)} images")
-
     def load_input_image(self, image_path: Path) -> None:
         """So far, encoding image to base64 string"""
 
@@ -102,35 +62,6 @@ class DataManager:
             logger.warning(f"Bytes image loading failed: {image_path}")
 
         self.input_image_paths.append(image_path)
-
-    def prepare_files(self, file_names: list[str]):
-        n_input_files: int = len(file_names)
-
-        selected_files: list[File] = [
-            file for file in self.forest.files if file.name in file_names
-        ]
-        # TODO: print this somewhere (as function, not here)
-        # for file in self.forest.files:
-        #     printer.print(file)
-
-        n_selected: int = len(selected_files)
-        self.files.extend(selected_files)
-
-        if n_selected == n_input_files:
-            logger.info(
-                f"Attached all {n_input_files} files from registry to data"
-            )
-        else:
-            logger.warning(
-                f"Attached Only {n_selected} out of {n_input_files} files!"
-            )
-
-    def load_system_role(self, role_path: Path | None = None) -> None:
-        """Role text overrides paths if provided"""
-        self.role_path: Path = role_path or pick_role(
-            path=self.config.role_dir
-        )
-        self.system_role: str = self.role_path.read_text()
 
     def get_previous_id(self, model: Models) -> str | None:
         """Return previous ID only for same class of Models"""
@@ -179,7 +110,6 @@ class DataManager:
         printer.md("Content written to:", H=3, style="write")
         printer.print(answer_path.name)
 
-        # NEXT: save response in Forest in Tree
         save_content = None
 
         if self.local_root_tree is None:  # root folder

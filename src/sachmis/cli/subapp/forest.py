@@ -20,7 +20,7 @@ attach_callback(app)
 @logger_catch
 def maybe_roll_out(ctx: typer.Context):
     """Expand condensed Forest data to file system"""
-    printer.fail("Implement!")
+    printer.danger("Implement!")
 
 
 if __name__ == "__main__":

@@ -1,16 +1,20 @@
 from abc import ABC, abstractmethod
+from pathlib import Path
 
 from loguru import logger
 
+from sachmis.config.manager import config
 from sachmis.config.model import ModelFamily
 from sachmis.data import DataManager
+from sachmis.data.arboreal import Sprout
+from sachmis.data.files import Prompt, Response
 from sachmis.utils.print import printer
 
 
 class Model(ABC):
     """Framework + every execution will be done from method here"""
 
-    # TASK: handle this otherwise
+    # NEXT: ID: handle this otherwise
     # - consider: subclass works already with this
     previous_response_id: str | None = None
 
@@ -20,24 +24,30 @@ class Model(ABC):
         model: ModelFamily,
         topic: str | None = None,
     ):
-        # self.data: DataManager = data
+        logger.debug(f"Loading {model.api_name}")
+
+        self.data: DataManager = data
         self.model: ModelFamily = model
         self.topic: str | None = topic
 
-    def _boot(self):
-        """Shared startup logic After base and subclass init"""
+        self.sprout: Sprout = self.data.attach(model, topic=topic)
+        logger.debug("Model connected with Data")
+
         self._load_client()
-
-        # TODO: provide this in subclass? remove _boot?
-        self.previous_response_id: str = self.data.get_previous_id(self.model)
-
         self._prepare_chat()
-        self.assemble_prompt()
+        logger.debug("Client loaded, Chat prepared")
 
     @abstractmethod
     def _load_client(self, *args, **kwargs):
         """Complete authentification and create Client object"""
-        pass
+
+    @property
+    def prompt(self) -> Prompt:
+        return self.sprout.prompt
+
+    @property
+    def response(self) -> Response | None:
+        return self.sprout.response
 
     @abstractmethod
     def _prepare_chat(self, *args, **kwargs):
@@ -46,7 +56,7 @@ class Model(ABC):
     def assemble_prompt(self):
         logger.info("Start assembling prompt")
         self._attach_role()
-        self._attach_prompt()  # TODO: global verify prompt is avaliable?
+        self._attach_prompt()
         self._attach_images()
         self._attach_files()
 
@@ -69,12 +79,11 @@ class Model(ABC):
     def _attach_files(self):
         pass
 
-    @abstractmethod
     def fire(self):
         """Release prompt and process response"""
 
         logger.info("Fire")
-        self._get_response()
+        self._response = self._get_response()
 
         logger.info("Got response, start processing...")
         self.process_response()
@@ -84,37 +93,61 @@ class Model(ABC):
         pass
 
     def process_response(self):
-        self._extract_full_response()
-        printer.title(f"Response Content ({self.model.unique})", style="write")
-        self._extract_response_content()
-        # TODO: check how to move printer(XXX) here makes sense
-        self._extract_usage()
-        self._calculate_usage_cost()
-        self._setup_response_data()
-        logger.info(f"End of {self.model}")
+        # raise
+        full_response: str = self._extract_full_response()
+
+        full_response_path: Path = config.paths.full_response_path(
+            topic=self.prompt.topic, model=self.model.unique
+        )
+        self.data.biome.attach_new_full_response(
+            text=full_response, path=full_response_path
+        )
+
+        # maybe raise
+        response_id: str = self._extract_response_id()
+        content: str = self._extract_response_content()
+
+        printer.success(f"Response Content ({self.model.unique})")
+        printer.md(content)
+
+        # no raise
+        usage: dict = self._extract_usage() or {}
+
+        if not self._calculate_usage_cost(usage):
+            printer(usage)
+
+        response = Response(
+            full_response=full_response_path,
+            id=response_id,
+            content=content,
+            usage=usage,
+        )
+        # IMPORTANT: check if sprout actually attached to tree
+        self.sprout.response: Response = response
+        # IMPORTANT: check if save forest here needed / desired
+        printer(self.data.forest)  # REMOVE: after debug
+
+        logger.info(f"End of response processing: {self.model}")
 
     @abstractmethod
-    def _extract_full_response(self):
+    def _extract_full_response(self) -> str:
         pass
 
     @abstractmethod
-    def _extract_response_content(self):
+    def _extract_response_content(self) -> str:
         pass
 
     @abstractmethod
-    def _extract_response_id(self):
+    def _extract_response_id(self) -> str:
         pass
 
     @abstractmethod
-    def _extract_usage(self):
+    def _extract_usage(self) -> dict | None:
         pass
 
     @abstractmethod
-    def _calculate_usage_cost(self):
-        pass
-
-    @abstractmethod
-    def _setup_response_data(self):
+    def _calculate_usage_cost(self, usage) -> bool:
+        # TODO: ensure this prints calculate usage
         pass
 
     # LATER: new methods, e.g.

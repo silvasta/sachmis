@@ -7,34 +7,40 @@ def reversed_name_from_unique(model_unique: str) -> ModelFamily | None:
     """Transform model unique str back to ModelFamily Enum"""
 
     try:
-        family, model_name = model_unique.split("-")
+        if len(parts := model_unique.split("-")) != 2:
+            logger.error(f"'{model_unique=}' must be 'prefix-name'")
+            return None
 
-        match family:
-            case "x":
-                model = Groks(model_name)
-            case "g":
-                model = Geminis(model_name)
-            case _:
-                raise AttributeError("ModelFamily can't be identified")
-
-        return model
+        family, model_name = parts
 
     except Exception as e:
-        logger.warning(f"Unable to parse: {model_unique=}")
-        logger.error(e)
+        logger.error(f"String operation failure for {model_unique=}:\n{e}")
+        return None
 
-    return None
+    match family:  # PLUG: new model(family) for parser
+        case "x":
+            target_enum: type[ModelFamily] = Groks
+        case "g":
+            target_enum: type[ModelFamily] = Geminis
+        case _:
+            logger.error("ModelFamily can't be identified by input {family=}")
+            return None
+
+    try:
+        model: ModelFamily = target_enum(model_name)
+
+    except ValueError:
+        logger.error(f"{model_name=} is no member of {target_enum.__name__}")
+        return None
+
+    return model
 
 
 if __name__ == "__main__":
+    """Just to play around"""
     tests = [
-        "x-g2",
         "x-g420",
-        "xx-ff",
-        "c-44-44",
-        "c",
         "g-g3",
-        "g-gg",
     ]
     for test in tests:
         result: ModelFamily | None = reversed_name_from_unique(test)
