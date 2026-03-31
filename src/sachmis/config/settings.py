@@ -2,16 +2,14 @@ from boltons.strutils import slugify
 from pydantic import Field
 from pydantic_settings import BaseSettings
 from silvasta.config.settings import (
-    BaseDefaults,
-    BaseNames,
-    Settings,
+    SstDefaults,
+    SstNames,
+    SstSettings,
 )
 from silvasta.utils import day_count
 
 
-class Names(BaseNames):
-    new_base_tag: str = "NEW BASE"  # used for log write ans search
-
+class Names(SstNames):
     # Global file system - Home / Biome
     biome_file: str = "biome.json"
 
@@ -26,13 +24,18 @@ class Names(BaseNames):
     prompt: str = "prompt.md"
 
     @staticmethod
-    def tree_stem(topic: str = "", characteristic: str = "") -> str:
-        """Assemble file (or folder) name"""
+    def sprout_stem(
+        topic: str = "", tree_locator: str = "", spec: str = ""
+    ) -> str:
 
+        # INFO: still under development
+
+        # TODO: handle together with backward parsing
         name_parts: list[str] = [
             str(day_count()),
+            spec,
+            tree_locator,
             slugify(topic, delim="-"),
-            characteristic,
         ]
         return "_".join([part for part in name_parts if part])
 
@@ -41,14 +44,13 @@ class TenacityDefaults(BaseSettings):
     max_attempts: int = 3
     wait_exponential: dict[str, int] = {
         "multiplier": 1,
+        # NEXT: check gemini chat, this few seconds are ridicoulous!
         "min": 2,
         "max": 10,
     }
-    # TODO: log retries
-    # sleep_log(logger, logging.WARNING)
 
 
-class Defaults(BaseDefaults):
+class Defaults(SstDefaults):
     tenacity: TenacityDefaults = Field(default_factory=TenacityDefaults)
     topic: str = "Default Topic"
     dot_env_content: str = """# Fill at least 1, delete others
@@ -57,6 +59,6 @@ GEMINI_API_KEY=
 """
 
 
-class ProjectSettings(Settings):
+class Settings(SstSettings):
     names: Names = Field(default_factory=Names)
     defaults: Defaults = Field(default_factory=Defaults)

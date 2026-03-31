@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from silvasta.config.paths import BasePaths
+from silvasta.config.paths import SstPaths
 from silvasta.utils import PathGuard
 from silvasta.utils.path import (
     find_project_root,
@@ -11,11 +11,10 @@ from silvasta.utils.path import (
 from .settings import Defaults, Names
 
 
-class Paths(BasePaths[Names, Defaults]):
+class Paths(SstPaths[Names, Defaults]):
     """Assemble paths for project"""
 
     @property
-    @PathGuard.file(raise_error=False)
     def biome_file(self) -> Path:
         return self.data_home / self._names.biome_file
 
@@ -23,10 +22,7 @@ class Paths(BasePaths[Names, Defaults]):
     # LATER: check here but store value in data?
     def in_base(self) -> bool:
         return (
-            recursive_root(
-                path=Path.cwd(),
-                indicator=self._names.camp_dir,
-            )
+            recursive_root(path=Path.cwd(), indicator=self._names.camp_dir)
             is not None
         )
 
@@ -35,8 +31,7 @@ class Paths(BasePaths[Names, Defaults]):
     def in_camp(self) -> bool:
         return (
             recursive_parent(
-                path=Path.cwd(),
-                indicator=self._names.camp_dir,
+                path=Path.cwd(), parent_dir_name=self._names.camp_dir
             )
             is not None
         )
@@ -74,43 +69,32 @@ class Paths(BasePaths[Names, Defaults]):
 
     @property
     @PathGuard.dir
+    def inactive_role_dir(self) -> Path:
+        # TODO: move roles function
+        # TODO: new role function
+        return self.data_home / "inactive-roles"
+
+    @property
+    @PathGuard.dir
     def full_response_dir(self) -> Path:
         return self.state_home / "full_respone"
 
     @PathGuard.unique
-    def full_response_path(  # LATER: ensure suffix, .txt==txt
-        self, topic="", model="", stem=None, suffix=".txt"
-    ) -> Path:
-        stem: str = stem or self._names.tree_stem(
-            topic=topic, characteristic=model
-        )
+    def full_response(self, topic="", model="", suffix=".txt") -> Path:
+        stem: str = self._names.sprout_stem(topic=topic, spec=model)
         return self.full_response_dir / f"{stem}{suffix}"
 
     @PathGuard.unique
-    def prompt_file(  # LATER: PathGuard.ensure_suffix({.}md) == .md
-        self, topic: str = "", stem: str | None = None, suffix: str = ".md"
-    ) -> Path:
+    def prompt_file(self, topic: str, suffix: str = ".md") -> Path:
         """New prompt file name after usage"""
+        prompt_stem: str = self._names.sprout_stem(topic=topic, spec="prompt")
+        return Path.cwd() / f"{prompt_stem}{suffix}"
 
-        # TASK: name factory! in names!
-        # ResponseNames?o
-        # - 1 input: topic,models
-        # - output for all models, (full)response etc
-        # finally paths just provides with proper path
-
-        if stem is None:
-            stem: str = stem or self._names.tree_stem(
-                topic=topic,
-                characteristic="prompt",
-            )
-        return Path.cwd() / f"{stem}{suffix}"
-
-    def answer_file_path(
-        self, topic="", model="", stem=None, suffix=".md"
+    @PathGuard.unique
+    def answer_file(
+        self, topic: str, tree_locator: str, model: str, suffix=".md"
     ) -> Path:
-        stem: str = stem or self._names.tree_stem(
-            topic=topic,
-            characteristic=model,
+        answer_stem: str = self._names.sprout_stem(
+            topic=topic, tree_locator=tree_locator, spec=model
         )
-        # TODO: PathGuard!
-        return Path.cwd() / f"{stem}{suffix}"
+        return Path.cwd() / f"{answer_stem}{suffix}"
