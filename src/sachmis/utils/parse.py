@@ -1,7 +1,7 @@
 from loguru import logger
 
 from sachmis.config.model import Geminis, Groks, ModelFamily
-from sachmis.config.model.dummy import Dummy
+from sachmis.config.model.dummy import DummyFamily
 
 
 def reversed_name_from_unique(model_unique: str) -> ModelFamily | None:
@@ -25,7 +25,7 @@ def reversed_name_from_unique(model_unique: str) -> ModelFamily | None:
             target_enum: type[ModelFamily] = Geminis
         case "d":
             # REMOVE:
-            target_enum: type[ModelFamily] = Dummy
+            target_enum: type[ModelFamily] = DummyFamily
         case _:
             logger.error("ModelFamily can't be identified by input {family=}")
             return None

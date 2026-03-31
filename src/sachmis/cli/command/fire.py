@@ -53,6 +53,7 @@ def fire(
     # - model/prompt failures should not cause unnecessary picks
 
     with DataManager(forest_required=True) as data:
+        data._write_to_cwd = True
         data.load_prompt()
 
         models: list[ModelFamily] = _prepare_model_args(models)
@@ -68,16 +69,18 @@ def fire(
         data.load_role(role)
 
         if not direct_fire and not confirm_fire(data, agents):
-            printer.yellow("see you when prompt and command chain is ready!")
             return
 
         logger.info("Ready to fire")
 
         cap.launch_models(agents, use_async, dry_run)
 
-        # TODO: ensure data is save
-
         printer.title("Models finished to run, storing data, au revoir!")
+
+        printer.preview(
+            title="Paths of generated Files",
+            lines=[answer for answer in data._answer_file_paths],
+        )
 
     logger.info("All processes finished")
 
@@ -125,6 +128,9 @@ def confirm_fire(data: DataManager, models: list[Model], fire=False) -> bool:
                 # probably not! either remove r
                 data.load_prompt()
             case _:
+                printer.yellow(
+                    "see you when prompt and command chain is ready!"
+                )
                 break
 
     return fire

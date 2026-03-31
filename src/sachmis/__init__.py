@@ -1,8 +1,6 @@
-# NEXT:
+# TASK:
 # - Data
-#   - Forest, Tree, Sprout
 #   - Check structured response
-#   - File Roleout
 # - Thunder and Fire structure
 
 

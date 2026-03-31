@@ -45,10 +45,11 @@ def bases():
 
 @app.command()
 @logger_catch
-def trees():  # NEXT: repair: printer.tree
+def trees():
     """Show all Trees in Forest"""
     with DataManager(save_at_exit=False, forest_required=True) as data:
-        printer.forest(data.forest)
+        # printer.forest(data.forest)  # TODO: repair: printer.tree
+        printer(data.forest)
 
 
 @app.command()

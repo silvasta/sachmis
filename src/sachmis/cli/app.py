@@ -18,8 +18,8 @@ app = typer.Typer(
 attach_callback(app, config.paths.setting_file)
 
 # core
-app.command()(command.fire)  # NEXT:
-# app.command()(command.tree)
+app.command()(command.fire)
+app.command()(command.tree)  # NEXT:
 # app.command()(command.loop)
 # app.command()(command.thunder)
 

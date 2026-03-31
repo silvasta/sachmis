@@ -11,6 +11,8 @@ from sachmis.utils.print import printer
 def tree(ctx: typer.Context, sprout: Path):
     """Create new sprout from existing response in new folder"""
 
+    # NEXT: how to branch?
+
     data: DataManager = ctx.obj["data"]
     data.load_forest()
     printer.title("Forest loaded, start creating new sprout")
