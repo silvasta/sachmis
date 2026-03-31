@@ -4,10 +4,12 @@ from collections.abc import Callable
 from loguru import logger
 
 from sachmis.config.model import Geminis, Groks, ModelFamily
+from sachmis.config.model.dummy import Dummy
 from sachmis.data import DataManager
 from sachmis.utils.print import printer
 
 from .model import Gemini, Grok, Model
+from .model.dummy import DummyModel
 
 
 def test_data_in_context():
@@ -30,6 +32,9 @@ def match_family_and_init(
     if isinstance(model, Geminis):
         return Gemini(data, model, *args, **kwargs)
 
+    if isinstance(model, DummyModel):
+        return Dummy(data, model, *args, **kwargs)
+
 
 def load_models(
     data: DataManager, models: list[ModelFamily], *args, **kwargs
@@ -42,8 +47,9 @@ def load_models(
 
 def launch_models(agents: list[Model], use_async=False, dry_run=False):
 
+    # WARN: model.assemble_prompt() needed
+
     launch_methods: dict[tuple[bool, bool], Callable] = {
-        # WARN: model.assemble_prompt() needed
         (False, False): launch_sequential,
         (False, True): launch_async,
         (True, False): launch_dry_run_sequential,
