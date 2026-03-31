@@ -9,21 +9,12 @@ from sachmis.config.manager import config
 
 from .files import Prompt, Response, UploadFile
 
-# NEXT: Global ID strucutre
-# - Biome, no id
-# - Forest, id from ...
-#   - movable inside Biome
-# - Tree, id from 1 (probably)
-#   - movable inside Biome
-# - Sprout, id needed?
-#   - Tree -> [Sprout]
-#   - Sprout -> [Sprout]
-
 
 class Sprout(BaseModel):
     """Successor of Tree, can have own successors"""
 
-    id: int  # starting at 1
+    tree_locator: str  # LATER: why include tree id?
+    model: str  # LATER: redundant, but fine?
     prompt: Prompt
     response: Response | None
     sprouts: list["Sprout"] = Field(default_factory=list)
@@ -32,6 +23,20 @@ class Sprout(BaseModel):
     def n_sprouts(self) -> int:
         return 1 + sum(sprout.n_sprouts for sprout in self.sprouts)
 
+    @property
+    def answer_path(self) -> Path:
+        """Calculated from CWD, used to save response"""
+        return config.paths.answer_file(
+            self.prompt.topic, tree_locator=self.tree_locator, model=self.model
+        )
+
+    @property
+    def write_answer_get_path(self) -> Path:
+        if self.response is None:
+            raise AttributeError(f"Can't process empty response of {self=}")
+        self.answer_path.write_text(self.response.content)
+        return self.answer_path
+
 
 class Tree(BaseModel):
     """Top element inside Forest: entry point for every conversation"""
@@ -39,27 +44,50 @@ class Tree(BaseModel):
     id: int  # starting at 1
     model: str  # model.unique
     tree_stem: str
-    sprouts: list[Sprout] = Field(default_factory=list)
+    sprout: Sprout
 
     @property
     def n_sprouts(self) -> int:
-        return sum(sprout.n_sprouts for sprout in self.sprouts)
+        return self.sprout.n_sprouts
 
-    def attach_fresh_sprout(self, prompt: Prompt) -> Sprout:
-        """Attach new sprout without response"""
+    @classmethod
+    def create_with_fresh_sprout(
+        cls, id: int, model: str, prompt: Prompt
+    ) -> "Tree":
+        sprout: Sprout = Sprout(
+            tree_locator=f"{id}-1", model=model, prompt=prompt, response=None
+        )
+        return Tree(id=id, model=model, tree_stem=prompt.topic, sprout=sprout)
 
-        id: int = self._find_unique_id()
-        new_sprout: Sprout = Sprout(id=id, prompt=prompt, response=None)
+    def generate_locator(self, old_tree_locator: str) -> str:
 
-        self.sprouts.append(new_sprout)
-        logger.debug(f"Attached to Tree: {new_sprout=}")
+        tree_id, *sprout_locations = old_tree_locator.split("-")
+        if int(tree_id) != self.id:
+            raise AttributeError(f"Got {old_tree_locator=} for {self.id=}")
 
+        # Start iteration at root sprout, then follow the sprouts
+        current_sprout: Sprout = self.sprout
+
+        for next_sprout in sprout_locations:
+            next_index: int = int(next_sprout) - 1
+            current_sprout: Sprout = current_sprout.sprouts[next_index]
+
+        new_locator_end: int = len(current_sprout.sprouts) + 1
+
+        return f"{old_tree_locator}-{new_locator_end}"
+
+    def attach_fresh_sprout(
+        self, old_tree_locator: str, model: str, prompt: Prompt
+    ) -> Sprout:
+        new_tee_locator: str = self.generate_locator(old_tree_locator)
+        new_sprout: Sprout = Sprout(
+            tree_locator=new_tee_locator,
+            model=model,
+            prompt=prompt,
+            response=None,
+        )
+        logger.debug(f"Attached to Sprout: {new_sprout=}")
         return new_sprout
-
-    def _find_unique_id(self) -> int:
-        # LATER: proper id handling, check ids|new concept
-        # e.g. Tree gets pruned or so
-        return len(self.sprouts) + 1
 
 
 class Forest(BaseModel):
@@ -72,6 +100,7 @@ class Forest(BaseModel):
     files: list[UploadFile] = Field(default_factory=list)
     images: list[Path] = Field(default_factory=list)
 
+    # NEXT:
     # TASK: file handling
     # - Biome/Forest/Sprout
     # - UploadFile -> xAI/Google-File -> how to save again as 1 file??
@@ -98,7 +127,7 @@ class Forest(BaseModel):
 
     @property
     def files_in_folder(self) -> list[str]:
-        # TASK: file providing and filtering
+        # TASK: provide file with filtering
         return [
             file.name
             for file in config.paths.file_dir.glob("*")
@@ -125,33 +154,63 @@ class Forest(BaseModel):
         logger.info("Save Forest to json")
 
         if forest_file is None:
-            forest_file: Path = config.paths.biome_file
+            forest_file: Path = config.paths.forest_file
+        logger.debug(f"saved to: {forest_file=}")
 
         self.last_updated: datetime = datetime.now()
 
         forest_file.write_text(self.model_dump_json())
         logger.info(f"Forest saved with {len(self.trees)} Trees")
 
-    def new_tree(self, model: str, tree_stem: str) -> Tree:
-        """Attach new Tree to forest"""
+    @property
+    def tree_ids(self) -> set[int]:
+        return set(tree.id for tree in self.trees)
 
-        id: int = self._find_unique_id()
-        new_tree: Tree = Tree(id=id, model=model, tree_stem=tree_stem)
-
-        self.trees.append(new_tree)
-        logger.debug(f"Attached to Forest: {new_tree=}")
-
-        return new_tree
+    def has_tree_with_id(self, id: int):
+        return True if id in self.tree_ids else False
 
     def _find_unique_id(self) -> int:
-        # LATER: proper id handling, check ids|new concept
-        # e.g. Tree gets pruned or so
-        return len(self.trees) + 1
+        id: int = max(1, len(self.trees))
+        while self.has_tree_with_id(id):
+            id += 1
+        return id
+
+    def attach_new_tree(self, model: str, prompt: Prompt) -> Tree:
+        id: int = self._find_unique_id()
+        tree: Tree = Tree.create_with_fresh_sprout(
+            id=id, model=model, prompt=prompt
+        )
+        self.trees.append(tree)
+        logger.debug(f"Attached to Forest: {tree=}")
+
+        return tree
+
+    def attach_sprout_in_tree(
+        self, tree_locator: str, model: str, prompt: Prompt
+    ):
+        tree_id, _ = tree_locator.split("-")
+        tree: Tree = self.find_tree_by_id(int(tree_id))
+
+        if tree.model != model:
+            msg = f"Invalid match! {id=} but {model=} must match: {tree=} "
+            raise ValueError(msg)
+
+        return tree.attach_fresh_sprout(
+            old_tree_locator=tree_locator, model=model, prompt=prompt
+        )
+
+    def find_tree_by_id(self, tree_id: int) -> Tree:
+        for tree in self.trees:
+            if tree.id == tree_id:
+                logger.debug(f"Found tree with {id=}")
+                return tree
+        else:
+            raise ValueError(f"{tree_id=} not found, use 0 for new tree")
 
     def load_local_files(self, from_empty_status=False):
         """Update file registry with new files placed in folder"""
 
-        self._prepare_file_registry()
+        self._prepare_file_registry(from_empty_status)
 
         logger.info(f"Start loading files: {self.n_files=}")
 
@@ -218,10 +277,12 @@ class Forest(BaseModel):
 class Biome(BaseModel):
     """Global Master Forest, registry for entire content"""
 
+    # LATER: id for forest?
     forests: list[Path] = Field(default_factory=list)
     # LATER: find better way for tracking moved forests
     outdated_forests: list[Path] = Field(default_factory=list)
 
+    # LATER: use list[SstFile] for that?
     responses: list[Path] = Field(default_factory=list)
 
     created_at: datetime = Field(default_factory=datetime.now)
@@ -238,6 +299,8 @@ class Biome(BaseModel):
     @property
     def role_paths(self) -> list[Path]:
         return list(config.paths.role_dir.glob("*"))
+
+    # TODO: inactive roles + move function
 
     @property
     def roles(self) -> list[str]:
@@ -310,5 +373,17 @@ class Biome(BaseModel):
 
     def attach_new_full_response(self, text: str, path: Path):
         # LATER: somehow processing something?
+        # - link full response to response, Path to Sprout.response?
         path.write_text(text)
         self.responses.append(path)
+
+    def attach_new_forest(self, forest_file: Path) -> Forest:
+
+        # LATER: ? id: int = self._find_unique_id()
+        new_forest = Forest()
+        new_forest.save_state(forest_file)
+
+        self.forests.append(forest_file)
+        logger.debug(f"Attached to Biome: {new_forest=}")
+
+        return new_forest

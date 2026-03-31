@@ -4,9 +4,10 @@ from typing import Any
 
 from loguru import logger
 
-from ..config.manager import config
 from ..utils.print import printer
 from .files import File
+
+# NEXT: file uploader
 
 
 class FileUploader(ABC):

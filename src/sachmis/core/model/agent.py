@@ -14,23 +14,25 @@ from sachmis.utils.print import printer
 class Model(ABC):
     """Framework + every execution will be done from method here"""
 
-    # NEXT: ID: handle this otherwise
-    # - consider: subclass works already with this
     previous_response_id: str | None = None
 
     def __init__(
         self,
         data: DataManager,
         model: ModelFamily,
-        topic: str | None = None,
     ):
         logger.debug(f"Loading {model.api_name}")
 
         self.data: DataManager = data
         self.model: ModelFamily = model
-        self.topic: str | None = topic
 
-        self.sprout: Sprout = self.data.attach(model, topic=topic)
+        # NOTE: use Tree here?
+        self.sprout: Sprout = self.data.attach(
+            # NEXT: handover the tree_locator here?
+            # - where to get it form?
+            model,
+        )
+        # TODO:attach previous response id
         logger.debug("Model connected with Data")
 
         self._load_client()
@@ -96,7 +98,7 @@ class Model(ABC):
         # raise
         full_response: str = self._extract_full_response()
 
-        full_response_path: Path = config.paths.full_response_path(
+        full_response_path: Path = config.paths.full_response(
             topic=self.prompt.topic, model=self.model.unique
         )
         self.data.biome.attach_new_full_response(
@@ -122,12 +124,10 @@ class Model(ABC):
             content=content,
             usage=usage,
         )
-        # IMPORTANT: check if sprout actually attached to tree
         self.sprout.response: Response = response
-        # IMPORTANT: check if save forest here needed / desired
-        printer(self.data.forest)  # REMOVE: after debug
+        logger.info(f"Response processed: {self.model}")
 
-        logger.info(f"End of response processing: {self.model}")
+        self.data.handle_response(self.sprout)
 
     @abstractmethod
     def _extract_full_response(self) -> str:

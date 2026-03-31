@@ -2,14 +2,14 @@ from pathlib import Path
 
 from boltons.strutils import slugify
 from loguru import logger
-from silvasta.utils.path import PathGuard
+from silvasta.utils import PathGuard
 
 from sachmis.config.manager import config
 from sachmis.config.model.family import ModelFamily
 from sachmis.data.files import Prompt, UploadFile
 from sachmis.utils.print import printer
 
-from .arboreal import Biome, Forest, Sprout, Tree
+from .arboreal import Biome, Forest, Sprout
 
 
 class DataManager:
@@ -18,6 +18,9 @@ class DataManager:
     def __init__(self, save_at_exit=True, forest_required=False):
 
         self.save_at_exit: bool = save_at_exit
+        # LATER: this to __init__(...)?
+        self._write_to_cwd: bool = False
+        self._answer_file_paths: list[Path] = []
 
         if config.paths.biome_file.exists():
             logger.info("Biome file exists")
@@ -32,7 +35,6 @@ class DataManager:
                 logger.info("Forest file exists")
             else:
                 logger.warning(f"Not found:{config.paths.forest_file=}")
-
             self.in_forest = True
         else:
             self.in_forest = False
@@ -45,9 +47,8 @@ class DataManager:
         logger.info("DataManager: Load data in context")
 
         self.biome: Biome = Biome.load_state()
-
         self.check_health_biome()
-
+        # TODO: check forest/biome connection
         if self.in_forest:
             self.forest: Forest = Forest.load_state()
             # LATER: open multiple forest
@@ -129,10 +130,7 @@ class DataManager:
             base_dir_unconfirmed = Path.cwd() / base_name
             base_dir_unique: Path = PathGuard.unique(base_dir_unconfirmed)
             base_dir: Path = PathGuard.dir(base_dir_unique)
-            # MOVE: that somehow into PathGuard?
-            # pros: - 1 single step for multiple actions
-            # cons: - maybe to specified for a general class
-            # - warnings need to be done anyway here (or CLI)
+            # MOVE: somehow into PathGuard?
             if base_dir_unconfirmed != base_dir:
                 printer.warn(f"Detected Folder with new {base_name=}!")
                 logger.warning(f"Using: {base_dir_unique=}")
@@ -143,30 +141,21 @@ class DataManager:
             camp_name: str = config.names.camp_dir
             camp_dir: Path = PathGuard.dir(base_dir / camp_name)
 
-            forest_file: Path = camp_dir / config.names.forest_file
-
-            # TODO: local structure in camp
+            # LATER: local structure in camp
             # - config file(s)?
             # - roles?
             # - etc..
 
             printer.success("Files and dirs ready: creating Forest now!")
 
-            # MOVE: to biome,
-            # - biome creates forest
-            # - forest creates tree
-            # - tree creates sprout
-            # - data executes everything
-            forest = Forest()
-            forest.save_state(forest_file)
-            data.biome.forests.append(forest_file)
+            forest_file: Path = camp_dir / config.names.forest_file
+            data.biome.attach_new_forest(forest_file)
 
         logger.info(f"New base created at:\n{base_dir}")
 
     def load_local_files_to_forest(self, clear_current_files=False):
         """Browse local files folder in camp and attach files to Forest"""
 
-        # LATER: sort! by folder/section? check with shmoodle
         self.forest.load_local_files(
             from_empty_status=clear_current_files,
         )
@@ -187,9 +176,37 @@ class DataManager:
             or self._extract_topic_from_prompt(prompt)
             or config.defaults.topic
         )
-        logger.info(f"Prompt loaded with: {topic=}")
 
         self._prompt = Prompt(topic=topic, text=prompt)
+        logger.info(f"Prompt loaded with: {topic=}")
+
+        # Wait for first response, in case something fails
+        self._prompt_written = False
+
+    def _move_or_write_prompt(self):
+        new_prompt_path: Path = config.paths.prompt_file(self._prompt.topic)
+
+        if self._input_prompt_path is None:
+            new_prompt_path.write_text(self._prompt.text)
+        else:
+            PathGuard.rotate(
+                source=self._input_prompt_path,
+                target=new_prompt_path,
+                reset=True,
+            )
+        self._answer_file_paths.append(new_prompt_path)
+
+    def handle_response(self, sprout: Sprout):
+        """So far: write when desired, later handle filetree | other.."""
+        if not self._write_to_cwd:
+            return
+        if not self._prompt_written:
+            self._move_or_write_prompt()
+
+        if sprout.response is None:
+            logger.error(f"Can't process empty response of {sprout=}")
+        else:
+            self._answer_file_paths.append(sprout.write_answer_get_path)
 
     @staticmethod
     def _extract_topic_from_prompt(prompt: str) -> str:
@@ -205,9 +222,8 @@ class DataManager:
         logger.error("Prompt is empty, fix that before model release!")
         raise AttributeError("Empty Prompt!")
 
-    @staticmethod
     def _match_prompt_input_and_load(
-        prompt_path: Path | None = None, prompt_text: str | None = None
+        self, prompt_path: Path | None = None, prompt_text: str | None = None
     ) -> str:
         match (prompt_path, prompt_text):
             case (None, None):
@@ -222,6 +238,7 @@ class DataManager:
             case (None, str() as text):
                 logger.info("Using prompt text from string input")
                 prompt: str = text
+                path = None
 
             case (_, _):
                 logger.error(f"Input sources:\n{prompt_path=}\n{prompt_text=}")
@@ -231,41 +248,27 @@ class DataManager:
             logger.error("Prompt is empty, fix that before model release!")
             raise AttributeError("Empty Prompt!")
 
+        self._input_prompt_path: Path | None = path
         return prompt
 
-    def attach(
-        self, model: ModelFamily, tree_id: int = 0, topic: str | None = None
-    ) -> Sprout:
+    def attach(self, model: ModelFamily, tree_locator: str = "") -> Sprout:
 
-        # NEXT: function of forest?
-        # - here just preparation and decisions
-        tree: Tree = self._find_or_create_tree(model, tree_id, topic)
-        sprout: Sprout = tree.attach_fresh_sprout(self._prompt)
-
-        return sprout
-
-    def _find_or_create_tree(
-        self, model: ModelFamily, tree_id: int, topic: str | None = None
-    ) -> Tree:
-        # MOVE: to forest?
         if not self.in_forest:
             raise FileNotFoundError("Not in Forest!")
 
-        if tree_id == 0:
-            tree_stem: str = topic or self._prompt.topic
-            return self.forest.new_tree(
-                model=model.unique, tree_stem=tree_stem
+        if tree_locator:
+            # TODO: maybe check from here if tree valid and handle error
+            sprout: Sprout = self.forest.attach_sprout_in_tree(
+                tree_locator=tree_locator,
+                model=model.unique,
+                prompt=self._prompt,
             )
-
-        for existing_tree in self.forest.trees:
-            if existing_tree.id == tree_id:
-                if existing_tree.model != model.unique:
-                    raise ValueError(
-                        f"Invalid id! {model.unique=} must match: {existing_tree=} "
-                    )
-                return existing_tree
         else:
-            raise ValueError(f"{tree_id=} < 0, use 0 for new tree")
+            sprout: Sprout = self.forest.attach_new_tree(
+                model=model.unique, prompt=self._prompt
+            ).sprout
+
+        return sprout  # NOTE: save forest here? (or somewhen before release?)
 
     def load_files(self, files: list[Path], ensure_file_loaded=False):
 
@@ -274,7 +277,6 @@ class DataManager:
         files_in_forest: list[UploadFile] = self.forest.load_files_from_path(
             [file for file in files if file.exists()]
         )
-
         n_confirmed_files: int = len(files_in_forest)
 
         if n_confirmed_files != n_input_files:
@@ -292,7 +294,6 @@ class DataManager:
         confirmed_images: list[Path] = [
             image for image in images if image.exists()
         ]
-
         n_confirmed_images: int = len(confirmed_images)
 
         if n_confirmed_images != n_input_images:
@@ -312,3 +313,7 @@ class DataManager:
         else:
             self._role_path: Path | None = None
             self._role: str | None = role_path.read_text()
+
+    # TASK: file roleout
+    # - so far flat in 1 folder
+    # - group by tree?

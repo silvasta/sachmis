@@ -22,7 +22,6 @@ class Grok(Model):
         self,
         data: DataManager,
         model: Groks,
-        topic: str | None = None,
         timeout: int = 3600,
         store_messages: bool = True,
     ):
@@ -34,7 +33,7 @@ class Grok(Model):
         # INFO: super() after storing variables for:
         # - self._load_client()
         # - data.attach()
-        super().__init__(data, model, topic)
+        super().__init__(data, model)
 
     def _load_client(self):
         self.client = Client(
@@ -47,6 +46,7 @@ class Grok(Model):
             "model": self.model.api_name,
             "store_messages": self.store_messages,
         }
+        # NEXT: check in model.agent
         # FIX:
         # if self.previous_response_id:
         #     param |= {
@@ -80,6 +80,15 @@ class Grok(Model):
                 user(image(image_url=f"data:image/jpeg;base64,{i}"))
                 # LATER: jpeg? worked with png but clarify somewhen
             )
+
+    # def load_input_image(self, image_path: Path) -> None:
+    #     """So far, encoding image to base64 string"""
+    #
+    #     # b64 string images loading for grok
+    #     if image := load_b64_and_encode(image_path):
+    #         self.base64_images.append(image)
+    #     else:
+    #         logger.warning(f"Base 64 image loading failed: {image_path}")
 
     def _attach_files(self):
         # FIX:

@@ -74,6 +74,16 @@ class Gemini(Model):
             self.contents.append(
                 types.Part.from_bytes(data=i, mime_type=mime),
             )
+        # TODO: images loading
+        # def load_input_image(self, image_path: Path) -> None:
+        #     """So far, encoding image to base64 string"""
+        #
+        #     # bytes image loading for gemini
+        #     if image := load_bytes_image(image_path):
+        #         self.bytes_images.append(image)
+        #     else:
+        #         logger.warning(f"Bytes image loading failed: {image_path}")
+        #     self.input_image_paths.append(image_path)
 
     def attach_files(self):
         for local_file in self.data.files:

@@ -1,7 +1,6 @@
 # TASK:
-# - Data
-#   - Check structured response
 # - Thunder and Fire structure
+# - Check structured response
 
 
 from importlib.metadata import PackageNotFoundError, version

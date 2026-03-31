@@ -4,7 +4,7 @@ from collections.abc import Callable
 from loguru import logger
 
 from sachmis.config.model import Geminis, Groks, ModelFamily
-from sachmis.config.model.dummy import Dummy
+from sachmis.config.model.dummy import DummyFamily
 from sachmis.data import DataManager
 from sachmis.utils.print import printer
 
@@ -32,13 +32,14 @@ def match_family_and_init(
     if isinstance(model, Geminis):
         return Gemini(data, model, *args, **kwargs)
 
-    if isinstance(model, DummyModel):
-        return Dummy(data, model, *args, **kwargs)
+    if isinstance(model, DummyFamily):
+        return DummyModel(data, model, *args, **kwargs)
 
 
 def load_models(
     data: DataManager, models: list[ModelFamily], *args, **kwargs
 ) -> list[Model]:
+    logger.warning(models)
     return [
         match_family_and_init(data, model, *args, **kwargs)  #
         for model in models
