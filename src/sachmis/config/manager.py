@@ -4,9 +4,11 @@ from silvasta.config.manager import ConfigManager
 from .paths import Paths
 from .settings import Defaults, Names, Settings
 
-# TODO: similar config setup as in log
+# TASK: similar config setup as in log
 # - create singleton or return already created singleton
 # - save configs from CLI input! as in fily-analyzer
+
+# NOTE: global 'config' is fine but some cli apps don't need it
 
 config: ConfigManager[
     Settings,

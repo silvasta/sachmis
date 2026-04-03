@@ -66,6 +66,7 @@ def fire(
         data.load_images(images)
 
         role: Path | None = _prepare_role(pick_role)
+        logger.debug("at role")
         data.load_role(role)
 
         if not direct_fire and not confirm_fire(data, agents):
@@ -75,11 +76,12 @@ def fire(
 
         cap.launch_models(agents, use_async, dry_run)
 
+        # TODO: print green
         printer.title("Models finished to run, storing data, au revoir!")
 
         printer.preview(
             title="Paths of generated Files",
-            lines=[answer for answer in data._answer_file_paths],
+            lines=[str(answer) for answer in data._answer_file_paths],
         )
 
     logger.info("All processes finished")
@@ -117,6 +119,12 @@ def confirm_fire(data: DataManager, models: list[Model], fire=False) -> bool:
             lines=[image.name for image in data._images],
         )
 
+        for model in models:  # REFACTOR:
+            if model.old_tree_locator:
+                printer.title(
+                    f"{model.model.unique} is answering to previous response",
+                    style="bold black on yellow",
+                )
         printer.danger("Last check before deployment")
 
         match input("type 'ok' to launch, 'r' to reload: "):

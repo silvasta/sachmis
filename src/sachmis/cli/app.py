@@ -2,7 +2,6 @@ import typer
 from silvasta.cli.setup import attach_callback
 
 from sachmis.cli import command, subapp
-from sachmis.config.manager import config
 
 
 def main() -> None:
@@ -15,7 +14,7 @@ app = typer.Typer(
     help="CLI for direct communication with LLMs",
     no_args_is_help=True,
 )
-attach_callback(app, config.paths.setting_file)
+attach_callback(app)
 
 # core
 app.command()(command.fire)

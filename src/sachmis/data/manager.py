@@ -1,3 +1,4 @@
+import sys
 from pathlib import Path
 
 from boltons.strutils import slugify
@@ -27,28 +28,41 @@ class DataManager:
         else:
             logger.warning("Biome file not found, create new?")
             # TODO: create biome here? wait for task!
+            # - or raise here?
 
         if config.paths.in_base:
-            logger.info("Current location in base")
+            logger.debug("Current location in base")
 
             if config.paths.forest_file.exists():
-                logger.info("Forest file exists")
+                logger.debug("Forest file exists")
             else:
                 logger.warning(f"Not found:{config.paths.forest_file=}")
             self.in_forest = True
         else:
             self.in_forest = False
 
+        logger.info(f"DataManager: {self.in_forest=}")
+
         if forest_required and not self.in_forest:
             # LATER: personalized exception, NotInForestError?
             raise FileNotFoundError("Not in Forest!")
 
     def __enter__(self) -> "DataManager":
-        logger.info("DataManager: Load data in context")
+        logger.info("DataManager: Load data in Context")
 
-        self.biome: Biome = Biome.load_state()
+        try:
+            self.biome: Biome = Biome.load_state()
+            # TASK: hande missing biome
+            # - check if biome_required in init make sense
+            # - check in self._with_biome makes sense
+            # - check for personalized exception
+            # so far: check in init, check in load raise exception, catch exception here...
+        except AttributeError as e:
+            logger.error(f"Problem with loading biome! {e}")
+            sys.exit(1)
+
         self.check_health_biome()
-        # TODO: check forest/biome connection
+
         if self.in_forest:
             self.forest: Forest = Forest.load_state()
             # LATER: open multiple forest
@@ -76,6 +90,15 @@ class DataManager:
                 # Surpress exception (after handling it here)
                 return True
 
+            if issubclass(exception_type, AttributeError):
+                # TEST: used for biome not found, where else?
+                # - personalized Exceptions! coming soon...
+                logger.error(f"Context: {exception_value=}")
+                logger.warning("State not saved!")
+
+                # Surpress exception (after handling it here)
+                return True
+
         if self.in_forest:
             self.forest.save_state()
             # LATER: close multiple forest
@@ -92,6 +115,7 @@ class DataManager:
         self.biome._prune_dublicated_forest_paths()
         self.biome._check_active_forest_paths()
         # LATER: other health tests?
+        logger.debug("biome healthcheck completed")
 
     @staticmethod
     def _check_dublicated_biome_files():
@@ -99,13 +123,11 @@ class DataManager:
         biome_files: list[Path] = PathGuard.find_sequence(
             config.paths.biome_file
         )
-        num_biome_files: int = len(biome_files)
-        logger.info(f"For current biome path: {num_biome_files=}")
-
-        logger.debug(f"current status: {biome_files=}")
-        if num_biome_files > 1:
+        if num_biome_files := len(biome_files) > 1:
+            logger.warning(f"For current biome path: {num_biome_files=}")
             for file in biome_files:
                 printer(file)
+            logger.debug(f"current status: {biome_files=}")
 
     @classmethod
     def create_new_biome(cls, name: str | None = None):
@@ -199,14 +221,19 @@ class DataManager:
     def handle_response(self, sprout: Sprout):
         """So far: write when desired, later handle filetree | other.."""
         if not self._write_to_cwd:
+            logger.debug("No response handling")
             return
         if not self._prompt_written:
             self._move_or_write_prompt()
+            self._prompt_written = True
+            logger.debug(f"{self._prompt_written}")
 
         if sprout.response is None:
             logger.error(f"Can't process empty response of {sprout=}")
         else:
-            self._answer_file_paths.append(sprout.write_answer_get_path)
+            answer_path: Path = sprout.write_answer_get_path
+            self._answer_file_paths.append(answer_path)
+            logger.debug(f"written to: {answer_path=}")
 
     @staticmethod
     def _extract_topic_from_prompt(prompt: str) -> str:
@@ -258,6 +285,7 @@ class DataManager:
 
         if tree_locator:
             # TODO: maybe check from here if tree valid and handle error
+            logger.debug(f"{tree_locator=}")
             sprout: Sprout = self.forest.attach_sprout_in_tree(
                 tree_locator=tree_locator,
                 model=model.unique,
@@ -269,6 +297,13 @@ class DataManager:
             ).sprout
 
         return sprout  # NOTE: save forest here? (or somewhen before release?)
+
+    def find_previous_id(self, tree_locator) -> str:
+        sprout: Sprout = self.forest.find_sprout_in_tree(tree_locator)
+        logger.debug("found sprout")
+        if sprout.response:
+            return sprout.response.id
+        raise ValueError(f"no response for {tree_locator=}")
 
     def load_files(self, files: list[Path], ensure_file_loaded=False):
 
@@ -284,7 +319,7 @@ class DataManager:
             if ensure_file_loaded:
                 raise FileNotFoundError("Not all files confirmed!")
         else:
-            logger.info(f"Attached all {n_input_files=} to data")
+            logger.info(f"Attach all {n_input_files=} to data")
 
         self._files: list[UploadFile] = files_in_forest
 
@@ -301,7 +336,7 @@ class DataManager:
             if ensure_image_loaded:
                 raise FileNotFoundError("Not all images confirmed!")
         else:
-            logger.info(f"Attached all {n_input_images=} to data")
+            logger.info(f"Attach all {n_input_images=} to data")
 
         self._images: list[Path] = confirmed_images
 

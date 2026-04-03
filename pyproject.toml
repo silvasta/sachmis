@@ -1,6 +1,6 @@
 [project]
 name = "sachmis"
-version = "0.4.0a4"
+version = "0.4.0a5"
 description = "Launch LLM calls, pipelines and handle local data management"
 readme = "README.md"
 authors = [{ name = "silvan", email = "silvasta3@gmail.com" }]

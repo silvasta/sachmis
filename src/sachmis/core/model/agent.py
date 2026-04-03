@@ -20,19 +20,21 @@ class Model(ABC):
         self,
         data: DataManager,
         model: ModelFamily,
+        tree_locator: str = "",
     ):
         logger.debug(f"Loading {model.api_name}")
 
         self.data: DataManager = data
         self.model: ModelFamily = model
+        self.old_tree_locator = tree_locator
 
         # NOTE: use Tree here?
         self.sprout: Sprout = self.data.attach(
-            # NEXT: handover the tree_locator here?
-            # - where to get it form?
+            # TEST: handover the tree_locator here?
             model,
+            tree_locator=tree_locator,
         )
-        # TODO:attach previous response id
+        # TODO:attach previous response id, see Grok
         logger.debug("Model connected with Data")
 
         self._load_client()

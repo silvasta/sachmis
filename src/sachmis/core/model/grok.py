@@ -8,6 +8,7 @@ from xai_sdk.sync.chat import Chat
 from sachmis.config.manager import config
 from sachmis.config.model import Groks
 from sachmis.data import DataManager
+from sachmis.utils.print import printer
 
 from .agent import Model
 
@@ -22,6 +23,7 @@ class Grok(Model):
         self,
         data: DataManager,
         model: Groks,
+        tree_locator: str = "",
         timeout: int = 3600,
         store_messages: bool = True,
     ):
@@ -33,7 +35,8 @@ class Grok(Model):
         # INFO: super() after storing variables for:
         # - self._load_client()
         # - data.attach()
-        super().__init__(data, model)
+        logger.debug(f"{tree_locator=}")
+        super().__init__(data, model, tree_locator)
 
     def _load_client(self):
         self.client = Client(
@@ -47,16 +50,15 @@ class Grok(Model):
             "store_messages": self.store_messages,
         }
         # NEXT: check in model.agent
-        # FIX:
-        # if self.previous_response_id:
-        #     param |= {
-        #         "previous_response_id": self.previous_response_id,
-        #     }
-        #     logger.debug(f"{self.model} using {self.previous_response_id=}")
-        #     printer.title(
-        #         f"{self.model.unique} is answering to previous response",
-        #         "bold black on yellow",
-        #     )
+        if self.old_tree_locator:
+            logger.debug("got locator")
+            previous_response_id: str = self.data.find_previous_id(
+                self.old_tree_locator
+            )
+            param |= {
+                "previous_response_id": previous_response_id,
+            }
+            logger.info(f"{self.model} using {previous_response_id=}")
         self.chat: Chat = self.client.chat.create(**param)
         logger.debug(f"{param=}")
 

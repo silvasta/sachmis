@@ -65,6 +65,7 @@ def pick_role_from_dir(path: Path, pattern: str = "*") -> Path:
     #     words = e.stem.split("-")
     #     return " ".join(w.capitalize() for w in words)
 
+    # WARN: throws bad explaining exception for empty folder!
     title: str = f"Choose System Role, defined in:\n{path}"
     select: Path = pick_from_folder(path, title=title)
 

@@ -34,8 +34,9 @@ class Sprout(BaseModel):
     def write_answer_get_path(self) -> Path:
         if self.response is None:
             raise AttributeError(f"Can't process empty response of {self=}")
-        self.answer_path.write_text(self.response.content)
-        return self.answer_path
+        unique_answer_path: Path = self.answer_path
+        unique_answer_path.write_text(self.response.content)
+        return unique_answer_path
 
 
 class Tree(BaseModel):
@@ -59,29 +60,38 @@ class Tree(BaseModel):
         )
         return Tree(id=id, model=model, tree_stem=prompt.topic, sprout=sprout)
 
-    def generate_locator(self, old_tree_locator: str) -> str:
+    def find_sprout(self, tree_locator: str) -> Sprout:
 
-        tree_id, *sprout_locations = old_tree_locator.split("-")
+        tree_id, *sprout_locations = tree_locator.split("-")
         if int(tree_id) != self.id:
-            raise AttributeError(f"Got {old_tree_locator=} for {self.id=}")
+            raise AttributeError(f"Got {tree_locator=} for {self.id=}")
 
         # Start iteration at root sprout, then follow the sprouts
         current_sprout: Sprout = self.sprout
 
         for next_sprout in sprout_locations:
             next_index: int = int(next_sprout) - 1
-            current_sprout: Sprout = current_sprout.sprouts[next_index]
+            if current_sprout.sprouts:
+                current_sprout: Sprout = current_sprout.sprouts[next_index]
+            else:  # REMOVE:
+                logger.debug(f"ended at {next_sprout=} with {current_sprout=}")
 
-        new_locator_end: int = len(current_sprout.sprouts) + 1
+        return current_sprout
+
+    def generate_locator(self, old_tree_locator: str) -> str:
+        previous_sprout: Sprout = self.find_sprout(old_tree_locator)
+        new_locator_end: int = len(previous_sprout.sprouts) + 1
 
         return f"{old_tree_locator}-{new_locator_end}"
 
     def attach_fresh_sprout(
         self, old_tree_locator: str, model: str, prompt: Prompt
     ) -> Sprout:
-        new_tee_locator: str = self.generate_locator(old_tree_locator)
+        logger.debug(f"{old_tree_locator=}")
+        new_tree_locator: str = self.generate_locator(old_tree_locator)
+        logger.debug(f"{new_tree_locator=}")
         new_sprout: Sprout = Sprout(
-            tree_locator=new_tee_locator,
+            tree_locator=new_tree_locator,
             model=model,
             prompt=prompt,
             response=None,
@@ -188,7 +198,8 @@ class Forest(BaseModel):
     def attach_sprout_in_tree(
         self, tree_locator: str, model: str, prompt: Prompt
     ):
-        tree_id, _ = tree_locator.split("-")
+        tree_id: str = tree_locator.split("-")[0]
+        logger.debug(f"{tree_id=}")
         tree: Tree = self.find_tree_by_id(int(tree_id))
 
         if tree.model != model:
@@ -198,6 +209,13 @@ class Forest(BaseModel):
         return tree.attach_fresh_sprout(
             old_tree_locator=tree_locator, model=model, prompt=prompt
         )
+
+    def find_sprout_in_tree(self, tree_locator: str) -> Sprout:
+        tree_id: str = tree_locator.split("-")[0]
+        logger.debug(f"{tree_id=}")
+        tree: Tree = self.find_tree_by_id(int(tree_id))
+        # REFACTOR: together with attach
+        return tree.find_sprout(tree_locator)
 
     def find_tree_by_id(self, tree_id: int) -> Tree:
         for tree in self.trees:
