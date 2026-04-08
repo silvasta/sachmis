@@ -6,6 +6,7 @@ from loguru import logger
 from pydantic import BaseModel, Field
 
 from sachmis.config.manager import config
+from sachmis.utils.print import printer
 
 from .files import Prompt, Response, UploadFile
 
@@ -13,6 +14,7 @@ from .files import Prompt, Response, UploadFile
 class Sprout(BaseModel):
     """Successor of Tree, can have own successors"""
 
+    # NEXT: id, use uuid - assigned by Biome?
     tree_locator: str  # LATER: why include tree id?
     model: str  # LATER: redundant, but fine?
     prompt: Prompt
@@ -103,6 +105,7 @@ class Tree(BaseModel):
 class Forest(BaseModel):
     """Master tree file: Data of all Trees and Sprouts in base"""
 
+    # NEXT: id
     created_at: datetime = Field(default_factory=datetime.now)
     last_updated: datetime | None = None
     trees: list[Tree] = Field(default_factory=list)
@@ -135,8 +138,7 @@ class Forest(BaseModel):
     def file_names(self) -> set[str]:
         return set(file.name for file in self.files)
 
-    @property
-    def files_in_folder(self) -> list[str]:
+    def files_on_disk(self) -> list[str]:
         # TASK: provide file with filtering
         return [
             file.name
@@ -225,21 +227,53 @@ class Forest(BaseModel):
         else:
             raise ValueError(f"{tree_id=} not found, use 0 for new tree")
 
-    def load_local_files(self, from_empty_status=False):
+    def load_local_files(
+        self,
+        local_file_dir: Path | None = None,
+        from_empty_status=False,
+    ):
         """Update file registry with new files placed in folder"""
-
-        self._prepare_file_registry(from_empty_status)
-
-        logger.info(f"Start loading files: {self.n_files=}")
-
         # LATER: sort! by folder/section? check with shmoodle
 
-        logger.info("Confirming local files")
-        for filename in self.files_in_folder:
-            if filename in self.file_names:  # PERF: set init?
+        self._prepare_file_registry(from_empty_status)
+        logger.info(f"Start loading files: {self.n_files=}")
+
+        target_dir: Path = config.paths.file_dir
+        local_file_dir: Path = local_file_dir or target_dir
+        # TODO: what else when local==target?
+
+        new_files: list[str] = [
+            file.name
+            for file in local_file_dir.glob("*")
+            if file.is_file()
+            # TODO: check for dublicated, especially from camp
+        ]
+
+        # NEXT: split in:
+        # - load or update from .camp/files
+        # - load from other folder (or recive directly list with paths)
+        # Move files from local_file_dir to target_dir
+
+        result: list[UploadFile] = []
+
+        for file in new_files:
+            if file in self.file_names:
+                msg = f"Dublicated name for: {file=}, implement hash or compare size?"
+                logger.warning(msg)
                 continue
-            self.files.append(UploadFile(name=filename))
-            logger.info(f"Added new file: {filename}")
+            # TODO: global_path: Path = PathGuard.unique(Path(file))
+            # - slugify name, but store original
+            # check with shmoodle
+            new_file = UploadFile(local_path=Path(file))
+            self.files.append(new_file)
+            result.append(new_file)
+            logger.info(f"Added {new_file=}")
+
+        printer.lines_from_list(
+            lines=[r.description for r in result],
+            header=f"New loaded files {len(result)}",
+            title=f"{local_file_dir}",
+        )
 
     def file_by_name(self, name: str) -> UploadFile:
         for file in self.files:
@@ -277,8 +311,8 @@ class Forest(BaseModel):
             self.files: list[UploadFile] = []
             return
 
-        # TODO: check online status as well? -> as function of Derived(UploadFile)
-        self._prune_local_files()
+            # TODO: check online status as well? -> as function of Derived(UploadFile)
+            self._prune_local_files()
 
     def _prune_local_files(self):
         """Drop files in registry if not in local folder"""
@@ -288,7 +322,7 @@ class Forest(BaseModel):
         self.files: list[UploadFile] = [
             file  # Assuming flat file structure
             for file in self.files
-            if file.name in self.files_in_folder
+            if file.name in self.files_on_disk()
         ]
 
 
@@ -304,6 +338,7 @@ class Biome(BaseModel):
     responses: list[Path] = Field(default_factory=list)
 
     created_at: datetime = Field(default_factory=datetime.now)
+    # updated_at?
     last_updated: datetime | None = None
 
     @property

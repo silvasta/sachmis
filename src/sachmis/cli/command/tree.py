@@ -24,7 +24,6 @@ from sachmis.utils.parse import (
 from sachmis.utils.picker import (
     pick_files,
     pick_images,
-    pick_models,
     pick_role_from_dir,
 )
 from sachmis.utils.print import printer
@@ -47,7 +46,7 @@ def tree(
     dry_run: DryRun = False,
     direct_fire: Fire = False,
 ):
-    """Load models and data, assemble prompt and fire"""
+    """Load existing tree from path, assemble prompt and fire"""
 
     with DataManager(forest_required=True) as data:
         data._write_to_cwd = True
@@ -90,7 +89,7 @@ def tree(
 
 
 def _extract_from_path(file_to_tree: Path) -> tuple[str, str]:
-    # TODO: function of Names
+    # MOVE: function of Names
     name_parts: list[str] = file_to_tree.stem.split("_")
     return (name_parts[1], name_parts[2])
 
@@ -108,34 +107,11 @@ def _get_locator(raw_string: str) -> str:
     return raw_string
 
 
-def _prepare_model_args(models: list[str] | None) -> list[ModelFamily]:
-
-    printer.title("Preparing Models...")
-
-    models: list[ModelFamily] = (
-        [
-            parsed_model
-            for model_unique in models
-            if (parsed_model := reversed_name_from_unique(model_unique))
-            is not None
-        ]
-        if models is not None
-        else pick_models()
-    )
-    logger.debug(f"loading {len(models)=}")
-
-    if not models:
-        raise AttributeError("No valid models parsed from input...")
-
-    printer.md(f"...{len(models)=} selected for pipeline")
-
-    return models
-
-
 def _prepare_file_args(
-    files: list[Path] | None, pick_file: bool
+    files: list[Path] | None,
+    pick_file: bool,
 ) -> list[Path]:
-
+    # REMOVE: load from fire, or ??
     printer.title("Preparing Files...")
 
     files: list[Path] = [
@@ -156,6 +132,7 @@ def _prepare_file_args(
 def _prepare_image_args(
     images: list[Path] | None, pick_image: bool
 ) -> list[Path]:
+    # REMOVE: load from fire, or ?? maybe as in args? parse directly there?
 
     printer.title("Preparing Images...")
 
@@ -175,7 +152,7 @@ def _prepare_image_args(
 
 
 def _prepare_role(pick_role: bool) -> Path | None:
-
+    # REMOVE: load from fire, or ?? still 'needs' prompt=data first... callback?
     printer.title("Preparing Role...")
 
     role: Path | None = (

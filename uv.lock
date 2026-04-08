@@ -1087,7 +1087,7 @@ wheels = [
 
 [[package]]
 name = "silvasta"
-version = "0.2.0a2"
+version = "0.2.0a3"
 source = { editable = "../../silvasta" }
 dependencies = [
     { name = "pick" },

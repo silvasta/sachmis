@@ -24,7 +24,7 @@ app.command()(command.tree)  # NEXT:
 
 # utils
 app.command("monitor")(command.launch_monitor)
-app.command()(command.data)
+app.command()(command.data)  # REMOVE: just for testing
 app.command("print")(command.print_file)
 
 # nested

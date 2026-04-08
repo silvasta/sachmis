@@ -54,6 +54,7 @@ class Paths(SstPaths[Names, Defaults]):
 
     @property
     @PathGuard.dir
+    # TODO: check local_file_dir
     def file_dir(self):
         return self.camp_dir / self._names.file_dir
 

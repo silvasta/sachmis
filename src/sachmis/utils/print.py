@@ -62,11 +62,6 @@ class SachmisPrinter(Printer):
 
         self(table)
 
-    def preview(self, title: str, lines: list):
-        """Print header followed by items per line in panel"""
-        printer.title(title)
-        self.panel(text="\n".join(lines), title=title)
-
 
 printer = SachmisPrinter(custom_theme)
 

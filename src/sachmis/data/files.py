@@ -1,15 +1,18 @@
+from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Annotated, Literal
 
+from loguru import logger
 from pydantic import BaseModel, Field
-from silvasta.data.files import File
+from silvasta.data.files import SstFile
 
 
 class Prompt(BaseModel):
     topic: str
     text: str
-    # LATER: files: Path or UploadFile? or just str
     files: list["UploadFile"] = Field(default_factory=list)
     images: list[Path] = Field(default_factory=list)
+    # TODO: local file rollout
 
 
 class Response(BaseModel):
@@ -17,52 +20,103 @@ class Response(BaseModel):
     id: str
     content: str = ""
     usage: dict = Field(default_factory=dict)
+    # TODO: local file rollout
 
 
-class UploadFile(File):
+class UploadState(BaseModel):  # PLUG:
+    last_upload: datetime = Field(default_factory=datetime.now)
+
+    @property
+    def age(self) -> timedelta:
+        """Return time since last upload of file"""
+        return datetime.now() - self.last_upload
+
+
+class XaiUploadState(UploadState):
+    # identifier
+    target: Literal["xai"] = "xai"
+    # specific states
+    x_id: str
+
+
+class GoogleUploadState(UploadState):
+    # identifier
+    target: Literal["google"] = "google"
+    # specific states
+    g_uri: str
+    g_mime_type: str
+    g_name: str
+
+    @property
+    def is_outdated(self) -> bool:
+        """Files are deleted after 48 hours"""
+        return self.age > timedelta(hours=47)  # PARAM:
+
+
+type RemoteState = Annotated[
+    XaiUploadState | GoogleUploadState,  # PLUG:
+    Field(discriminator="target"),
+]
+
+
+class UploadFile(SstFile):
     """Local file for upload and usage in prompt"""
 
-    name: str
-    category: str = ""
-    topic: str = ""
-    # local_path: Path LATER: relative from local filedir (.camp/files)??
+    remote_states: dict[str, RemoteState] = Field(default_factory=dict)
+
+    @property
+    def remotes(self) -> str:
+        parts: list[str] = [
+            f"[white]{self.name}[/]",
+            f"[dim]Uploads: {list(self.remote_states.keys())}[/dim]",
+        ]
+        return " - ".join(parts)
+
+    @property
+    # MERGE: somehow color/raw print
+    def _remotes(self) -> str:
+        parts: list[str] = [
+            f"{self.name}",
+            f"remotes: {list(self.remote_states.keys())}",
+        ]
+        return " - ".join(parts)
 
     @property
     def description(self):
-        return f"[blue]{self.category}[/]-[green]{self.topic}[/]-[white]{self.local_path.name}[/]"
+        # MOVE: to silvasta|project.config.setting.Names
+        parts: list[str] = [
+            f"[blue]{self.name}[/]",
+            f"[dim]{self.first_tracked}[/]",
+            f"[white]{self.last_updated}[/]",
+        ]
+        return "-".join(parts)
 
+    def attach_remote(self, state: RemoteState):
+        """Attach new remote states"""
+        self.remote_states[state.target] = state
+        self.touch()
 
-class XaiUploadFile(UploadFile):
-    # from xAI upload, needed for prompt attach
-    x_id: str | None = None
+    def find_remote(self, target: str) -> RemoteState | None:
+        """Find and get remote state for 'target', None for not found"""
+        return self.remote_states.get(target)
 
+    def has_remote(self, target: str) -> bool:
+        """Check if remote state for 'target' is avaliable"""
+        return self.find_remote(target) is not None
 
-# TASK: how to save this again into 1 UploadFile???
+    def get_remote_state(self, target: str) -> RemoteState:
+        """Get remote state for 'target' or raise"""
+        logger.debug(f"extracting for {target=}")
+        if (remote_state := self.remote_states.get(target)) is None:
+            logger.warning(self._remotes)
+            raise AttributeError(f"No remote state for {target} avaliable!")
+        return remote_state
 
-
-class GoogleUploadFile(UploadFile):
-    # from Goole upload, needed for prompt attach
-    g_uri: str | None = None
-    g_mime_type: str | None = None
-
-    # TASK: manage online files
-    # - do upload at first usage from file
-    # ...manual upload possibility probably still needed?
-    # def manage_online_forest_files( self, xai=False, google=False, task: Literal["push", "show", "delete"] = "show",):
-    #     uploaders: list[FileUploader] = []
-    #     if xai:
-    #         uploaders.append(XaiUploader())
-    #     if google:
-    #         uploaders.append(GoogleUploader())
-    #     for uploader in uploaders:
-    #         match task:
-    #             case "push":
-    #                 for file in self.forest.files:
-    # IMPORTANT: use this during runtime, e.g. in Fire or Script
-    #                     uploader.upload_local_file(
-    #                         file, base_path=self.config.file_dir
-    #                     )
-    #             case "show":
-    #                 uploader.show_all_files()
-    #             case "delete":
-    #                 uploader.delete_all_uploaded_files()
+    def remove_remote(self, target: str) -> RemoteState | None:
+        """Remove 'target' remote_states, get value or None for not existing"""
+        if (remote_state := self.remote_states.pop(target, None)) is None:
+            logger.warning(f"Attempt to remove not existing remote: {target=}")
+        else:
+            self.touch()
+            logger.debug(f"removed {target} from remote_states")
+        return remote_state

@@ -46,8 +46,24 @@ Fire = Annotated[
     ),
 ]
 
+Xai = Annotated[
+    bool,
+    typer.Option(
+        "--xai",
+        "-x",
+        help="Upload files to xAI file registry",  # TODO: change to more general name
+    ),
+]
+Google = Annotated[
+    bool,
+    typer.Option(
+        "--google",
+        "-g",
+        help="Upload files to Google file registry",  # TODO: change to more general name
+    ),
+]
 ### --- --- --- --- --- --- --- --- --- --- ---
-### --- Specific for Fire (so far)
+### --- Specific for Fire, Tree
 ### --- --- --- --- --- --- --- --- --- --- ---
 
 Models = Annotated[
@@ -79,13 +95,12 @@ Files = Annotated[
         help="Add files from paths",
     ),
 ]
-# LATER: check if Files/Models collapse
 PickFile = Annotated[
     bool,
     typer.Option(
         "--pick-file",
         "-F",
-        help="Pick files from registry",
+        help="Pick files from registry",  # TASK: implement picker for UploadFiles
     ),
 ]
 Images = Annotated[

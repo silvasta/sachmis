@@ -175,10 +175,15 @@ class DataManager:
 
         logger.info(f"New base created at:\n{base_dir}")
 
-    def load_local_files_to_forest(self, clear_current_files=False):
-        """Browse local files folder in camp and attach files to Forest"""
+    def load_local_files_to_forest(
+        self,
+        clear_current_files=False,
+        local_file_dir: Path | None = None,
+    ):
+        """Browse local files folder (default .camp/files) and attach files to Forest"""
 
         self.forest.load_local_files(
+            local_file_dir=local_file_dir,
             from_empty_status=clear_current_files,
         )
 
