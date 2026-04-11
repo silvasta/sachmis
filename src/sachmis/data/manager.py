@@ -110,6 +110,16 @@ class DataManager:
         # Propagate exception to caller
         return False
 
+    @property
+    def most_recent_topic(self) -> str:
+        """Get the topic of the last loaded prompt or '' (empty string)"""
+        return self._prompt.topic if hasattr(self, "_prompt") else ""
+
+    @property
+    def answer_file_path_strings(self) -> list[str]:
+        """Get the current state of the answer file paths formated as string"""
+        return [str(answer) for answer in self._answer_file_paths]
+
     def check_health_biome(self):
         DataManager._check_dublicated_biome_files()
         self.biome._prune_dublicated_forest_paths()
@@ -154,7 +164,7 @@ class DataManager:
             base_dir: Path = PathGuard.dir(base_dir_unique)
             # MOVE: somehow into PathGuard?
             if base_dir_unconfirmed != base_dir:
-                printer.warn(f"Detected Folder with new {base_name=}!")
+                printer.danger(f"Detected Folder with new {base_name=}!")
                 logger.warning(f"Using: {base_dir_unique=}")
 
             promp_path: Path = base_dir / config.names.prompt
@@ -346,13 +356,18 @@ class DataManager:
         self._images: list[Path] = confirmed_images
 
     def load_role(self, role_path: Path | None = None):
-        """Role text overrides paths if provided"""
-        if role_path is None:
-            self._role_path: Path | None = None
-            self._role: str | None = None
+        """Role text overrides paths if provided"""  # NOTE: ??
+
+        # TODO: create text input arg, input generates new role file
+
+        if role_path is not None and (role := role_path.read_text()):
+            self._role_path: Path = role_path
+            self._role: str = role
+            logger.warning("role")
         else:
             self._role_path: Path | None = None
-            self._role: str | None = role_path.read_text()
+            self._role: str | None = None
+            logger.warning("no role")
 
     # TASK: file roleout
     # - so far flat in 1 folder
