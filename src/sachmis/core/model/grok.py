@@ -1,16 +1,16 @@
 from google.protobuf import json_format
 from loguru import logger
-from tenacity import retry, stop_after_attempt, wait_exponential
 from xai_sdk import Client
-from xai_sdk.chat import Response, file, image, system, user
+from xai_sdk.chat import Response, image, system, user
 from xai_sdk.sync.chat import Chat
 
-from sachmis.config.manager import config
+from sachmis.config import SachmisConfig, get_config
 from sachmis.config.model import Groks
 from sachmis.data import DataManager
-from sachmis.utils.print import printer
 
 from .agent import Model
+
+config: SachmisConfig = get_config()
 
 
 class Grok(Model):

@@ -14,16 +14,14 @@ from .model.dummy import DummyModel
 
 def test_data_in_context():
     with DataManager() as data:
-        printer(data)
-        logger.info("var")
         printer(vars(data))
-        logger.info("dir")
         printer(dir(data))
+        printer(data)
 
 
-def match_family_and_init(
+def match_family(
     data: DataManager, model: ModelFamily, *args, **kwargs
-):
+) -> Model:
     """Create instance of execution model from Enum family model"""
 
     if isinstance(model, Groks):
@@ -35,20 +33,21 @@ def match_family_and_init(
     if isinstance(model, DummyFamily):
         return DummyModel(data, model, *args, **kwargs)
 
+    raise ValueError(f"Unknown {model=}")
+
 
 def load_models(
     data: DataManager, models: list[ModelFamily], *args, **kwargs
 ) -> list[Model]:
-    logger.warning(models)
+    logger.info(f"Start of loading: {models=}")
     return [
-        match_family_and_init(data, model, *args, **kwargs)  #
+        match_family(data, model, *args, **kwargs)  #
         for model in models
     ]
 
 
 def launch_models(agents: list[Model], use_async=False, dry_run=False):
-
-    # WARN: model.assemble_prompt() needed
+    """Pipeline dispatcher"""
 
     launch_methods: dict[tuple[bool, bool], Callable] = {
         (False, False): launch_sequential,
@@ -78,27 +77,28 @@ def launch_dry_run_sequential(models: list[Model]):
 
     for model in tqdm(models):
         printer(model.model.api_name)
-        logger.debug(model.topic)
+        model.assemble_prompt()
         time.sleep(1)
 
 
 # NOTE: fine so far, maybe replace tqdm
 
 
-def launch_async(models: list[Model], dry_run=False):
+def launch_async(models: list[Model]):
     import asyncio
 
-    # TEST: async behavior and error handling
     from tqdm.asyncio import tqdm
 
     logger.info("Start of async pipeline")
 
     # TASK: repair async
+
     async def thunder(models: list[Model]):
         printer.title(f"Launching Thunder with {len(models)} models")
         tasks: list = [model.fire() for model in models]
         results = await tqdm.gather(*tasks, return_exceptions=True)
         for model, result in zip(models, results):
+            model.assemble_prompt()  # WARN: model.assemble_prompt() needed, proper here?
             if isinstance(result, Exception):
                 logger.error(
                     f"Problem with model {model.model.unique}: {result}"
@@ -119,7 +119,7 @@ def launch_dry_run_async(models: list[Model]):
         printer.title(f"Launching {len(models)} models")
         for model in tqdm(models):
             printer(model.model.api_name)
-            logger.debug(model.topic)
+            model.assemble_prompt()
             await asyncio.sleep(1)
 
     asyncio.run(thunder(models))

@@ -1,10 +1,12 @@
 from loguru import logger
 
-from sachmis.config.manager import config
+from sachmis.config import SachmisConfig, get_config
 from sachmis.config.model.dummy import DummyFamily
 from sachmis.data import DataManager
 
 from .agent import Model
+
+config: SachmisConfig = get_config()
 
 
 class DummyModel(Model):

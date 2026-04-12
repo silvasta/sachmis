@@ -3,12 +3,14 @@ from pathlib import Path
 
 from loguru import logger
 
-from sachmis.config.manager import config
+from sachmis.config import SachmisConfig, get_config
 from sachmis.config.model import ModelFamily
 from sachmis.data import DataManager
 from sachmis.data.arboreal import Sprout
 from sachmis.data.files import Prompt, Response
 from sachmis.utils.print import printer
+
+config: SachmisConfig = get_config()
 
 
 class Model(ABC):
@@ -39,7 +41,7 @@ class Model(ABC):
 
         self._load_client()
         self._prepare_chat()
-        logger.debug("Client loaded, Chat prepared")
+        logger.info(f"Model loaded: {self.__class__.__name__}")
 
     @abstractmethod
     def _load_client(self, *args, **kwargs):

@@ -3,12 +3,14 @@ from google.genai.types import GenerateContentResponse
 from loguru import logger
 from tenacity import retry, stop_after_attempt, wait_exponential
 
-from sachmis.config.manager import config
+from sachmis.config import SachmisConfig, get_config
 from sachmis.config.model import Geminis
 from sachmis.data import DataManager
 from sachmis.utils.print import printer
 
 from .agent import Model
+
+config: SachmisConfig = get_config()
 
 # NEXT: adapt function names! _xxx()
 
