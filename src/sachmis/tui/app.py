@@ -5,8 +5,6 @@ from textual.binding import Binding
 from textual.screen import Screen
 from textual.widgets import Static
 
-# LATER: ...
-
 
 def main():
     setup_logging(quiet=False)

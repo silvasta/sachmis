@@ -11,6 +11,4 @@ try:  # Show pyproject.toml package name
 except PackageNotFoundError:
     __version__ = "unknown"
 
-# NOTE: logging?
-
-__all__: list = []
+__all__ = []

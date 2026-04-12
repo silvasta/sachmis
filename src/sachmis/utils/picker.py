@@ -7,12 +7,17 @@ from silvasta.utils.pick import (
     pick_multiple_get_index,
 )
 
-from sachmis.config.manager import config
+from sachmis.config import SachmisConfig, get_config
 from sachmis.config.model import Geminis, Groks, ModelFamily
 from sachmis.utils.print import printer
 
+config: SachmisConfig = get_config()
+
 # TASK: Check questionary library:
 # - improvement to pick for more advanced setups
+
+# TASK: check if picker = Picker() makes sense
+# - maybe derived from silvasta.utils.Picker?
 
 
 def pick_models() -> list[ModelFamily]:
@@ -68,6 +73,8 @@ def pick_role_from_dir(path: Path, pattern: str = "*") -> Path:
     # WARN: throws bad explaining exception for empty folder!
     title: str = f"Choose System Role, defined in:\n{path}"
     select: Path = pick_from_folder(path, title=title)
+
+    # TASK: better picker concept
 
     printer(f"Role will be set to:\n{select}")
 

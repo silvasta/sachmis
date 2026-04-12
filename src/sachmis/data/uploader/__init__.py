@@ -3,7 +3,7 @@ from .uploader import FileUploader
 from .xai import XaiUploader
 
 all = [
-    GoogleUploader,
-    XaiUploader,
-    FileUploader,
+    "GoogleUploader",
+    "XaiUploader",
+    "FileUploader",
 ]

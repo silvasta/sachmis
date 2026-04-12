@@ -17,8 +17,10 @@ class SachmisPrinter(Printer):
     def forest(self, forest_data) -> None:
         """Visualizes a Forest model as a nested Rich Tree"""
 
-        # IMPORTANT: style counter!
-        # - count which default/not default used and improve
+        # TASK: repair forest prints
+        # - compare with new file schema
+        # - provide abstract tree without and arboreal data
+        # - create the print here or in silvasta.Printer
 
         # Create the visual root (the Forest itself)
         root_label = f"[bold green]Forest:[/bold green] {forest_data.tree_file_path.name}"
@@ -50,7 +52,7 @@ class SachmisPrinter(Printer):
     def path_exists_table(self, paths: list[Path], title=None, header="Path"):
         """load base paths from file, check existance, print result"""
 
-        # INFO: candidate for silvasta.printer
+        # NEXT: candidate for silvasta.printer
 
         table = Table(title=title)
         table.add_column("Status", justify="center")
