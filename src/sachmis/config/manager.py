@@ -1,24 +1,29 @@
 from loguru import logger
-from silvasta.config.manager import ConfigManager
+from silvasta.config import ConfigManager
 
 from .paths import Paths
 from .settings import Defaults, Names, Settings
 
-# TASK: similar config setup as in log
-# - create singleton or return already created singleton
-# - save configs from CLI input! as in fily-analyzer
+SachmisConfig: type[ConfigManager] = ConfigManager[
+    Settings, Names, Defaults, Paths
+]
 
-# NOTE: global 'config' is fine but some cli apps don't need it
+_config_instance: SachmisConfig | None = None
 
-config: ConfigManager[
-    Settings,
-    Names,
-    Defaults,
-    Paths,
-] = ConfigManager(
-    settings_cls=Settings,
-    paths_cls=Paths,
-    save_defaults_to_file=True,
-)
 
-logger.info("ConfigManager setup completed")
+def get_config() -> SachmisConfig:
+    global _config_instance
+
+    if _config_instance is None:
+        logger.info("Setup Sachmis ConfigManager...")
+
+        _config_instance = ConfigManager(
+            settings_cls=Settings,
+            paths_cls=Paths,
+            write_new_master_setting_file_if_missing=True,
+        )
+        logger.info("ConfigManager setup completed")
+    else:
+        logger.debug("provide cached config")
+
+    return _config_instance

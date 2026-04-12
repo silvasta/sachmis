@@ -1,7 +1,7 @@
 from boltons.strutils import slugify
 from pydantic import Field
 from pydantic_settings import BaseSettings
-from silvasta.config.settings import (
+from silvasta.config import (
     SstDefaults,
     SstNames,
     SstSettings,
@@ -14,8 +14,8 @@ class Names(SstNames):
     biome_file: str = "biome.json"
 
     # Local file system - Base / Forest
-    base_dir: str = "base"
     forest_file: str = "forest.json"
+    base_dir: str = "base"
     camp_dir: str = ".camp"
     file_dir: str = "files"
     image_dir: str = "images"

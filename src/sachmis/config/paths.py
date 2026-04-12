@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from silvasta.config.paths import SstPaths
+from silvasta.config import SstPaths
 from silvasta.utils import PathGuard
 from silvasta.utils.path import (
     find_project_root,
