@@ -1033,7 +1033,7 @@ wheels = [
 
 [[package]]
 name = "sachmis"
-version = "0.4.0a6"
+version = "0.4.0a7"
 source = { editable = "." }
 dependencies = [
     { name = "boltons" },
@@ -1087,7 +1087,7 @@ wheels = [
 
 [[package]]
 name = "silvasta"
-version = "0.2.0a3"
+version = "0.2.0b1"
 source = { editable = "../../silvasta" }
 dependencies = [
     { name = "loguru" },
