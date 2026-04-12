@@ -5,12 +5,14 @@ from boltons.strutils import slugify
 from loguru import logger
 from silvasta.utils import PathGuard
 
-from sachmis.config.manager import config
-from sachmis.config.model.family import ModelFamily
+from sachmis.config import SachmisConfig, get_config
+from sachmis.config.model import ModelFamily
 from sachmis.data.files import Prompt, UploadFile
 from sachmis.utils.print import printer
 
 from .arboreal import Biome, Forest, Sprout
+
+config: SachmisConfig = get_config()
 
 
 class DataManager:

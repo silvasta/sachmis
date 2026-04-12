@@ -1,7 +1,6 @@
-from collections.abc import Callable
-
 from .collection import (
     data,
+    init,
     launch_monitor,
     print_file,
 )
@@ -10,12 +9,13 @@ from .loop import loop
 from .thunder import thunder
 from .tree import tree
 
-__all__: list[Callable] = [
-    fire,
-    loop,
-    thunder,
-    tree,
-    data,
-    print_file,
-    launch_monitor,
+__all__: list[str] = [
+    "init",
+    "thunder",
+    "fire",
+    "tree",
+    "loop",
+    "data",
+    "print_file",
+    "launch_monitor",
 ]

@@ -1,12 +1,11 @@
+
 from loguru import logger
 from silvasta.config import ConfigManager
 
 from .paths import Paths
 from .settings import Defaults, Names, Settings
 
-SachmisConfig: type[ConfigManager] = ConfigManager[
-    Settings, Names, Defaults, Paths
-]
+type SachmisConfig = ConfigManager[Settings, Names, Defaults, Paths]
 
 _config_instance: SachmisConfig | None = None
 

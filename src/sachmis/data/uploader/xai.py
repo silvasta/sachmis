@@ -2,10 +2,12 @@ from typing import Any
 
 from loguru import logger
 
-from sachmis.config.manager import config
+from sachmis.config import SachmisConfig, get_config
 from sachmis.data.files import UploadFile, XaiUploadState
 
 from .uploader import FileUploader
+
+config: SachmisConfig = get_config()
 
 
 class XaiUploader(FileUploader):

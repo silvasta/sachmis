@@ -5,10 +5,12 @@ from pathlib import Path
 from loguru import logger
 from pydantic import BaseModel, Field
 
-from sachmis.config.manager import config
+from sachmis.config import SachmisConfig, get_config
 from sachmis.utils.print import printer
 
 from .files import Prompt, Response, UploadFile
+
+config: SachmisConfig = get_config()
 
 
 class Sprout(BaseModel):

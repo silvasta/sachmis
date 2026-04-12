@@ -5,12 +5,14 @@ import typer
 from silvasta.cli.setup import attach_callback, logger_catch
 
 from sachmis.cli.args import Google, Xai
-from sachmis.config.manager import config
+from sachmis.config import SachmisConfig, get_config
 from sachmis.data import DataManager
 from sachmis.data.files import UploadFile
 from sachmis.data.uploader import GoogleUploader, XaiUploader
 from sachmis.data.uploader.uploader import FileUploader
 from sachmis.utils.print import printer
+
+config: SachmisConfig = get_config()
 
 
 def main() -> None:
@@ -19,7 +21,7 @@ def main() -> None:
 
 app = typer.Typer(
     name="files",
-    help="Manage local files for prompt attach",
+    help="Manage local files used for prompt attach",
     no_args_is_help=True,
 )
 attach_callback(app)
@@ -70,6 +72,7 @@ def push(xai: Xai = False, google: Google = False, ensure=True):
 @logger_catch
 def online(xai: Xai = False, google: Google = False):
     """Show all files on remote registry"""
+
     uploaders: list[FileUploader] = _prepare_uploader(
         *_zero_is_all(xai, google)
     )
@@ -81,6 +84,7 @@ def online(xai: Xai = False, google: Google = False):
 @logger_catch
 def status(xai: Xai = False, google: Google = False):
     """Show remote status of all files in Forest"""
+
     uploaders: list[FileUploader] = _prepare_uploader(
         *_zero_is_all(xai, google)
     )
@@ -122,7 +126,7 @@ def delete():
     printer.danger("Not already implemented ")
 
 
-def _zero_is_all(*args):
+def _zero_is_all(*args):  # MOVE: to args? latest at second usage
     """Modify input bool args only if all False -> all True"""
     return args if any(args) else (True for _ in args)
 

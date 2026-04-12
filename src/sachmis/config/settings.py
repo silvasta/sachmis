@@ -10,8 +10,11 @@ from silvasta.utils import day_count
 
 
 class Names(SstNames):
+    project: str = "sachmis"
+
     # Global file system - Home / Biome
     biome_file: str = "biome.json"
+    setting_file: str = "sachmis_config.json"
 
     # Local file system - Base / Forest
     forest_file: str = "forest.json"

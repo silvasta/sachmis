@@ -25,13 +25,15 @@ Async = Annotated[
     ),
 ]
 
-DryRun = Annotated[
-    bool,
-    typer.Option(
-        "--dry",
-        help="Simulate pipeline without execution",
-    ),
-]
+# NEXT:
+# REMOVE:
+# DryRun = Annotated[
+#     bool,
+#     typer.Option(
+#         "--dry",
+#         help="Simulate pipeline without execution",
+#     ),
+# ]
 
 ### --- --- --- --- --- --- --- --- --- --- ---
 ### --- Sachmis Specific
@@ -87,7 +89,17 @@ PickModel = Annotated[
     ),
 ]
 
+File = Annotated[
+    # WARN: check collision with Files
+    Path | None,
+    typer.Option(
+        "--file",
+        "-f",
+        help="Add file from path",
+    ),
+]
 Files = Annotated[
+    # WARN: check collision with File
     list[Path] | None,
     typer.Option(
         "--files",
@@ -124,7 +136,7 @@ PickRole = Annotated[
     bool,
     typer.Option(
         "--pick-role",
-        "-R",
+        "-R",  # IMPORTANT: how to use this for disabling pick-role?
         help="Pick roles from existing list",
     ),
 ]

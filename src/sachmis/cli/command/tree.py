@@ -5,7 +5,6 @@ from silvasta.cli.setup import logger_catch
 
 from sachmis.cli.args import (
     Async,
-    DryRun,
     Files,
     Fire,
     Images,
@@ -13,7 +12,7 @@ from sachmis.cli.args import (
     PickImage,
     PickRole,
 )
-from sachmis.config.manager import config
+from sachmis.config import SachmisConfig, get_config
 from sachmis.config.model import ModelFamily
 from sachmis.core import capstone as cap
 from sachmis.core.model.agent import Model
@@ -30,6 +29,8 @@ from sachmis.utils.print import printer
 
 from .fire import confirm_fire
 
+config: SachmisConfig = get_config()
+
 
 @logger_catch
 def tree(
@@ -43,7 +44,7 @@ def tree(
     pick_image: PickImage = False,
     # General Options
     use_async: Async = False,
-    dry_run: DryRun = False,
+    # dry_run: DryRun = False,
     direct_fire: Fire = False,
 ):
     """Load existing tree from path, assemble prompt and fire"""
@@ -51,6 +52,8 @@ def tree(
     with DataManager(forest_required=True) as data:
         data._write_to_cwd = True
         data.load_prompt()
+
+        # REFACTOR: collapse with Fire (and others)
 
         extracted: tuple[str, str] = _extract_from_path(file_to_tree)
         logger.debug(f"{extracted=}")
@@ -80,7 +83,7 @@ def tree(
 
         printer.title("Models finished to run, storing data, au revoir!")
 
-        printer.preview(
+        printer.lines_from_list(
             title="Paths of generated Files",
             lines=[str(answer) for answer in data._answer_file_paths],
         )

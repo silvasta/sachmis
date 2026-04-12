@@ -1,5 +1,5 @@
 from .manager import DataManager
 
-all = [
+__all__: list[str] = [
     "DataManager",
 ]

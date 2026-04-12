@@ -1,7 +1,8 @@
 import typer
+from loguru import logger
 from silvasta.cli.setup import attach_callback, logger_catch
 
-from sachmis.config.manager import config
+from sachmis.config import SachmisConfig, get_config
 from sachmis.config.model import Geminis, Groks
 from sachmis.data import DataManager
 from sachmis.utils.print import printer
@@ -22,7 +23,7 @@ attach_callback(app)
 @app.command()
 @logger_catch
 def biome():
-    """Show all Bases with Forest in Biome"""
+    """Show Biome information"""
     with DataManager(save_at_exit=False) as data:
         printer(data.biome)
         printer(f"{data.biome.n_forest=}")
@@ -35,7 +36,7 @@ def biome():
 @app.command()
 @logger_catch
 def bases():
-    """Show all Bases with Forest in Biome"""
+    """Show all Bases with Forest that are saved in Biome"""
     with DataManager(save_at_exit=False) as data:
         printer.path_exists_table(
             paths=data.biome.forests + data.biome.outdated_forests,
@@ -48,7 +49,7 @@ def bases():
 def trees():
     """Show all Trees in Forest"""
     with DataManager(save_at_exit=False, forest_required=True) as data:
-        # printer.forest(data.forest)  # TODO: repair: printer.tree
+        # printer.forest(data.forest) # TASK: repair: printer.tree
         printer(data.forest)
 
 
@@ -61,7 +62,7 @@ def files(  # NEXT: adapt this to new setup
 ):
     """Show files and status inside file registry"""
 
-    # MOVE: selection anyway needed in Forest
+    # MERGE: Files?
     select: dict[str, list[str]] = {}
     if cat is not None:
         select["category"] = cat
@@ -99,8 +100,12 @@ def models():  # TODO: rich table, statistics
 @logger_catch
 def config_details():
     """Print config to Console, so far just dotenv_path"""
+    config: SachmisConfig = get_config()
+
+    printer(config.compose_setup_param())  # LATER: show selection of paths
     printer(config.settings)
     printer(config.paths.dot_env)  # LATER: show selection of paths
+    printer(config.master_setting_file)  # LATER: show selection of paths
 
 
 @app.command()
