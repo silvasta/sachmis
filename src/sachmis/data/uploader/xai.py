@@ -16,6 +16,7 @@ class XaiUploader(FileUploader):
     @property
     def target(self) -> str:
         """Name of remote as defined in UploadFile"""
+        # TODO: this as function of XaiUploadState
         return "xai"
 
     @property

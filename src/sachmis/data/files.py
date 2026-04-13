@@ -34,6 +34,7 @@ class UploadState(BaseModel):  # PLUG:
 
 class XaiUploadState(UploadState):
     # identifier
+    # IMPORTANT: this as param somewhere avaliable everywhere -> config
     target: Literal["xai"] = "xai"
     # specific states
     x_id: str
@@ -41,6 +42,7 @@ class XaiUploadState(UploadState):
 
 class GoogleUploadState(UploadState):
     # identifier
+    # IMPORTANT: this as param somewhere avaliable everywhere -> config
     target: Literal["google"] = "google"
     # specific states
     g_uri: str
@@ -66,6 +68,7 @@ class UploadFile(SstFile):
 
     @property
     def remotes(self) -> str:
+        # FIX: unreadable
         parts: list[str] = [
             f"[white]{self.name}[/]",
             f"[dim]Uploads: {list(self.remote_states.keys())}[/dim]",

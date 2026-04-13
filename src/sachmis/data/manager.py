@@ -8,15 +8,31 @@ from silvasta.utils import PathGuard
 from sachmis.config import SachmisConfig, get_config
 from sachmis.config.model import ModelFamily
 from sachmis.data.files import Prompt, UploadFile
+from sachmis.data.uploader import FileUploader
+from sachmis.data.uploader import get_upload_cls
 from sachmis.utils.print import printer
 
 from .arboreal import Biome, Forest, Sprout
+from .uploader import RemoteUploader  # noqa: E402
 
 config: SachmisConfig = get_config()
 
 
 class DataManager:
     """Loads Pydantic models on entry, saves them on clean exit."""
+
+    # MOVE:
+    uploader: list[RemoteUploader] = []
+
+    # TODO: single dispach by filetype?
+    def get_uploader(self, target: str) -> RemoteUploader:
+        # TEST: works with derived class?
+        for u in self.uploader:
+            if u.target == target:
+                return u
+        new_uploader: RemoteUploader = get_upload_cls(target)()
+        self.uploader.append(new_uploader)
+        return new_uploader
 
     def __init__(self, save_at_exit=True, forest_required=False):
 

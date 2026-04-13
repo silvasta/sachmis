@@ -1,12 +1,14 @@
 from google.protobuf import json_format
 from loguru import logger
 from xai_sdk import Client
-from xai_sdk.chat import Response, image, system, user
+from xai_sdk.chat import Response, file, image, system, user
 from xai_sdk.sync.chat import Chat
 
 from sachmis.config import SachmisConfig, get_config
 from sachmis.config.model import Groks
 from sachmis.data import DataManager
+from sachmis.data.files import XaiUploadState
+from sachmis.data.uploader import XaiUploader
 
 from .agent import Model
 
@@ -100,17 +102,27 @@ class Grok(Model):
         #         logger.success("Files confirmed online")
         #     else:
         #         raise FileNotFoundError(
+        #
         #             "Check uploads, at least 1 file not online!"
         #         )
-        # for local_file in self.data.files:  # REMOVE: verification in data
-        #     if local_file.x_id is None:
-        #         logger.warning(f"Ignoring {local_file.name}, no valid x_id!")
-        #     else:
-        #         self.chat.append(user(file(local_file.x_id)))
-        #         logger.debug(
-        #             f"loaded file: {local_file.topic=}, {local_file.name}, {local_file.x_id}"
-        #         )
-        pass
+        # TODO: verification in data
+        # - maybe data checks UploadFile, here check with XaiUploader
+        logger.debug("files")
+        if self.data._files:
+            # check dispatch for UploadStates in FileUploader
+            uploader: XaiUploader = self.data.get_uploader("xai")
+            logger.debug("uploader fine")
+
+        for upload_file in self.data._files:
+            logger.debug(f"start of {upload_file.name}")
+            state: XaiUploadState = uploader.extract_remote_state(upload_file)
+
+            logger.debug("state extracted")
+            if state.x_id is None:
+                logger.warning(f"Ignoring {upload_file.name}, no valid x_id!")
+            else:
+                self.chat.append(user(file(state.x_id)))
+                logger.debug(f"loaded file: {upload_file.name=}, {state.x_id}")
 
     # @retry( # IMPORTANT: retry
     #     stop=stop_after_attempt(config.defaults.tenacity.max_attempts),
