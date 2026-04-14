@@ -1,5 +1,4 @@
 import typer
-from loguru import logger
 from silvasta.cli.setup import attach_callback, logger_catch
 
 from sachmis.config import SachmisConfig, get_config

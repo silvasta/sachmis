@@ -70,12 +70,7 @@ class Grok(Model):
         logger.debug(role)
 
     def _attach_prompt(self):
-
-        if not (prompt := self.prompt.text):
-            raise FileNotFoundError("Load proper prompt first!")
-
-        self.chat.append(user(prompt))
-        logger.debug(prompt)
+        self.chat.append(user(self._get_prompt_text()))
 
     def _attach_images(self):
         for i in self.data._images:
@@ -107,6 +102,7 @@ class Grok(Model):
         #         )
         # TODO: verification in data
         # - maybe data checks UploadFile, here check with XaiUploader
+        # MOVE: to data, there execute on FileUploader
         logger.debug("files")
         if self.data._files:
             # check dispatch for UploadStates in FileUploader
@@ -130,40 +126,33 @@ class Grok(Model):
     #     # TODO: before_sleep=before_sleep_log(logger, logging.WARNING)
     # )
     def _get_response(self):
-        self.raise_error = False  # REMOVE:
         response: Response = self.chat.sample()
         return response
 
     def _extract_full_response(self) -> str:
         try:
-            return str(self._response)
+            return str(self._raw_response)
         except Exception as e:
             logger.error(f"Error for response: {self.model.api_name}\n{e}")
-            if not self.raise_error:  # REMOVE:
-                return "no response"
             raise
 
     def _extract_response_content(self) -> str:
         try:
-            return self._response.content
+            return self._raw_response.content
         except Exception as e:
             logger.error(f"Error for content: {self.model.api_name}\n{e}")
-            if not self.raise_error:  # REMOVE:
-                return "no content"
             raise
 
     def _extract_response_id(self) -> str:
         try:
-            return self._response.id
+            return self._raw_response.id
         except Exception as e:
             logger.error(f"Error for ID: {self.model.api_name}\n{e}")
-            if not self.raise_error:  # REMOVE:
-                return "no id"
             raise
 
     def _extract_usage(self) -> dict | None:
         try:
-            return json_format.MessageToDict(self._response.usage)
+            return json_format.MessageToDict(self._raw_response.usage)
         except Exception as e:
             logger.error(f"Usage {self.model.unique}:\n{e}")
             return None

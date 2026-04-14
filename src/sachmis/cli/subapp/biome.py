@@ -19,12 +19,20 @@ attach_callback(app)
 
 @app.command()
 @logger_catch
-# NEXT: why not automatic at first launch?
-def setup(name: Name = ""):
-    # LATER: setup multiple biomes? each with differnet name?
+def setup(name: Name = ""):  # REMOVE: not optional!
+    # NEXT: create automatic at first launch
+    # TASK: setup multiple biomes
+    # - each with different name
+    # - set default in settings.json
     """Create new Biome with global data structure"""
     DataManager.create_new_biome(name)
 
+
+# TASK: commands
+# - set active biome
+# - show?
+# - repair?
+# - write all forest and trees to 1 folder?
 
 if __name__ == "__main__":
     main()

@@ -1,4 +1,5 @@
 import sys
+from contextlib import contextmanager
 from pathlib import Path
 
 from boltons.strutils import slugify
@@ -7,13 +8,11 @@ from silvasta.utils import PathGuard
 
 from sachmis.config import SachmisConfig, get_config
 from sachmis.config.model import ModelFamily
-from sachmis.data.files import Prompt, UploadFile
-from sachmis.data.uploader import FileUploader
-from sachmis.data.uploader import get_upload_cls
 from sachmis.utils.print import printer
 
 from .arboreal import Biome, Forest, Sprout
-from .uploader import RemoteUploader  # noqa: E402
+from .files import Prompt, UploadFile
+from .uploader import RemoteUploader, get_upload_cls
 
 config: SachmisConfig = get_config()
 
@@ -33,6 +32,19 @@ class DataManager:
         new_uploader: RemoteUploader = get_upload_cls(target)()
         self.uploader.append(new_uploader)
         return new_uploader
+
+    # NEXT:
+    @classmethod
+    @contextmanager
+    def read_mode(cls, name):
+        print(f"--- Opening {name} for READING ---")
+        # Setup logic here
+        instance = cls(name)
+        try:
+            yield instance
+        finally:
+            # Teardown logic here
+            print(f"--- Closing {name} (Read Mode) ---")
 
     def __init__(self, save_at_exit=True, forest_required=False):
 
@@ -147,6 +159,7 @@ class DataManager:
 
     @staticmethod
     def _check_dublicated_biome_files():
+        # REMOVE: dublicates not allowed
         # LATER: cls or self? how to handle multiple biomes?
         biome_files: list[Path] = PathGuard.find_sequence(
             config.paths.biome_file
@@ -160,6 +173,10 @@ class DataManager:
     @classmethod
     def create_new_biome(cls, name: str | None = None):
         logger.info("Create new Biome")
+        # TODO: set name in Names, save after check!
+        # - check if unique, otherwise error!
+        # error: display all already created biomes
+        # NEXT: setup automatic if not found
         Biome().save_state(
             biome_file=PathGuard.unique(config.paths.biome_file)
         )  # PathGuard.unique or not allow new Biome() if file exists
@@ -177,15 +194,15 @@ class DataManager:
             if base_name is None:
                 base_name: str = config.names.base_dir
 
-            base_dir_unconfirmed = Path.cwd() / base_name
-            base_dir_unique: Path = PathGuard.unique(base_dir_unconfirmed)
-            base_dir: Path = PathGuard.dir(base_dir_unique)
-            # MOVE: somehow into PathGuard?
-            if base_dir_unconfirmed != base_dir:
+            base_dir: Path = Path.cwd() / base_name
+
+            if base_dir != (unique_base_dir := PathGuard.unique(base_dir)):
                 printer.danger(f"Detected Folder with new {base_name=}!")
-                logger.warning(f"Using: {base_dir_unique=}")
+                logger.warning(f"Using: {unique_base_dir=}")
+                base_dir: Path = unique_base_dir
 
             promp_path: Path = base_dir / config.names.prompt
+
             PathGuard.file(promp_path, default_content="", raise_error=False)
 
             camp_name: str = config.names.camp_dir
@@ -316,6 +333,11 @@ class DataManager:
         if not self.in_forest:
             raise FileNotFoundError("Not in Forest!")
 
+        # TODO:
+        # tree:Tree
+        # sprout:Sprout=tree.extract_new_sprout_in_edit_mode()
+
+        # NEXT: attach Tree + active sprout
         if tree_locator:
             # TODO: maybe check from here if tree valid and handle error
             logger.debug(f"{tree_locator=}")

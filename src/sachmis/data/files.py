@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Annotated, Literal
 
+from boltons.strutils import slugify
 from loguru import logger
 from pydantic import BaseModel, Field
 from silvasta.data.files import SstFile
@@ -12,7 +13,11 @@ class Prompt(BaseModel):
     text: str
     files: list["UploadFile"] = Field(default_factory=list)
     images: list[Path] = Field(default_factory=list)
+
     # TODO: local file rollout
+    @property
+    def slug_topic(self):
+        return slugify(self.topic)
 
 
 class Response(BaseModel):
@@ -34,16 +39,14 @@ class UploadState(BaseModel):  # PLUG:
 
 class XaiUploadState(UploadState):
     # identifier
-    # IMPORTANT: this as param somewhere avaliable everywhere -> config
-    target: Literal["xai"] = "xai"
+    target: Literal["xai"] = "xai"  # PARAM:
     # specific states
     x_id: str
 
 
 class GoogleUploadState(UploadState):
     # identifier
-    # IMPORTANT: this as param somewhere avaliable everywhere -> config
-    target: Literal["google"] = "google"
+    target: Literal["google"] = "google"  # PARAM:
     # specific states
     g_uri: str
     g_mime_type: str
@@ -64,6 +67,7 @@ type RemoteState = Annotated[
 class UploadFile(SstFile):
     """Local file for upload and usage in prompt"""
 
+    # NEXT: original_name
     remote_states: dict[str, RemoteState] = Field(default_factory=dict)
 
     @property

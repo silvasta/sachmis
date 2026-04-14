@@ -18,6 +18,10 @@ class Paths(SstPaths[Names, Defaults]):
     def biome_file(self) -> Path:
         return self.data_home / self._names.biome_file
 
+    # NEXT: biome_file calls this
+    # - pathguard.unique? better in data
+    # def biome_from_name
+
     @property
     # LATER: check here but store value in data?
     def in_base(self) -> bool:
@@ -54,6 +58,18 @@ class Paths(SstPaths[Names, Defaults]):
 
     @property
     @PathGuard.dir
+    def tree_dir(self) -> Path:
+        """Error if not in base"""
+        return self.camp_dir / self._names.tree_dir
+
+    @PathGuard.unique(ensure_parent=True)
+    def tree_file(self, id: int, stem: str) -> Path:
+        """Error if not in base"""
+        # MOVE: Names
+        return self.camp_dir / f"t_{id}_{stem}.json"
+
+    @property
+    @PathGuard.dir
     # TODO: check local_file_dir
     def file_dir(self):
         return self.camp_dir / self._names.file_dir
@@ -66,14 +82,20 @@ class Paths(SstPaths[Names, Defaults]):
     @property
     @PathGuard.dir
     def role_dir(self) -> Path:
-        return self.data_home / "roles"
+        return self.data_home / "roles"  # PARAM:
+
+    def get_role_paths(self) -> list[Path]:
+        return list(self.role_dir.glob("*"))
+
+    # LATER: move function for (inactive) roles, + create  function
 
     @property
     @PathGuard.dir
     def inactive_role_dir(self) -> Path:
-        # TODO: move roles function
-        # TODO: new role function
-        return self.data_home / "inactive-roles"
+        return self.role_dir.with_stem(f"inactive-{self.role_dir.stem}")
+
+    def get_inactive_role_paths(self) -> list[Path]:
+        return list(self.inactive_role_dir.glob("*"))
 
     @property
     @PathGuard.dir
@@ -93,9 +115,14 @@ class Paths(SstPaths[Names, Defaults]):
 
     @PathGuard.unique
     def answer_file(
-        self, topic: str, tree_locator: str, model: str, suffix=".md"
+        # TASK: create relative path
+        self,
+        topic: str,
+        locator: str,
+        model: str,
+        suffix=".md",
     ) -> Path:
         answer_stem: str = self._names.sprout_stem(
-            topic=topic, tree_locator=tree_locator, spec=model
+            topic=topic, locator=locator, spec=model
         )
         return Path.cwd() / f"{answer_stem}{suffix}"

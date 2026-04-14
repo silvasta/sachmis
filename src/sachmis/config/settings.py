@@ -22,14 +22,14 @@ class Names(SstNames):
     camp_dir: str = ".camp"
     file_dir: str = "files"
     image_dir: str = "images"
+    tree_dir: str = "Trees"
+    # NEXT: Tree name generator?
 
-    # File system - files
+    # File system - rollout
     prompt: str = "prompt.md"
 
     @staticmethod
-    def sprout_stem(
-        topic: str = "", tree_locator: str = "", spec: str = ""
-    ) -> str:
+    def sprout_stem(topic: str = "", locator: str = "", spec: str = "") -> str:
 
         # INFO: still under development
 
@@ -37,7 +37,7 @@ class Names(SstNames):
         name_parts: list[str] = [
             str(day_count()),
             spec,
-            tree_locator,
+            locator,
             slugify(topic, delim="-"),
         ]
         return "_".join([part for part in name_parts if part])

@@ -22,3 +22,4 @@ old*
 /data
 logs
 plots
+/src/sachmis/data/arboreal/summary.xml

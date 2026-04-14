@@ -75,7 +75,7 @@ class FileUploader(ABC):
     def _fetch_all_files(self) -> list[Any]:
         """Load all avaliable files from remote registry"""
 
-    # REFACTOR: ensure local synced
+    # REFACTOR: naem to something like: ensure local synced
     def upload_local_file(self, file: UploadFile, ensure_after_upload=False):
         """Check and ensure that file is uploaded"""
 
@@ -107,7 +107,6 @@ class FileUploader(ABC):
 
         if not file.has_remote(self.target):
             return False
-        logger.debug(file.has_remote(self.target))
 
         self.refresh_remote_registry()  # Important for _confirm_online
 

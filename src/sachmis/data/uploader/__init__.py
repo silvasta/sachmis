@@ -11,6 +11,7 @@ match_table: dict[str, type[FileUploader]] = {
 }
 
 
+# NEXT: where to place? how to handle dispach?
 def get_upload_cls(identifier: str | RemoteState) -> type[RemoteUploader]:
 
     if isinstance(identifier, str):

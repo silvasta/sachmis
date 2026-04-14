@@ -8,6 +8,7 @@ requires-python = ">=3.13"
 dependencies = [
   "boltons>=25.0.0",
   "dotenv>=0.9.9",
+  "filelock>=3.25.2",
   "google-genai>=1.59.0",
   "loguru>=0.7.3",
   "pick>=2.4.0",
