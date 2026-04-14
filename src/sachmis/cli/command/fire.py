@@ -10,7 +10,7 @@ from sachmis.core import capstone as cap
 from sachmis.core.model.agent import Model
 from sachmis.data import DataManager
 from sachmis.utils.parse import (
-    reversed_name_from_unique,
+    model_from_unique,
 )
 from sachmis.utils.picker import (
     pick_files,
@@ -82,74 +82,66 @@ def fire(
     logger.info("All processes finished")
 
 
-def confirm_fire(data: DataManager, models: list[Model], fire=False) -> bool:
+def confirm_fire(data: DataManager, models: list[Model]) -> bool:
 
-    # TASK: style concept for entire printer story
+    printer.success(
+        "Summary of Release",
+    )
 
-    while not fire:  # LATER: show this once if input arg fire=True?
-        printer.success(
-            "Summary of Release",
+    printer.title(f"Prompt - {data._prompt.topic}")
+    printer.md(data._prompt.text)
+
+    def _lines_from_list_args(name, lines: list):
+        # MERGE: if good, either into silvasta.Printer or sachmis.Printer
+        return {
+            "header": f"{name}: {len(lines)}",
+            "title": name,
+            "lines": lines,
+        }
+
+    printer.lines_from_list(
+        **_lines_from_list_args(
+            name="Models",
+            lines=[model.model.api_name for model in models],
         )
+    )
 
-        printer.title(f"Prompt - {data._prompt.topic}")
-        printer.md(data._prompt.text)
+    printer.lines_from_list(
+        header=f"Role: {data._role_path.stem if data._role_path else 'No role selected!'}",
+        title="Role",
+        lines=[data._role or f"{data._role_path=} and {data._role=}"],
+    )
 
-        def _lines_from_list_args(name, lines: list):
-            # MERGE: if good, either into silvasta.Printer or sachmis.Printer
-            return {
-                "header": f"{name}: {len(lines)}",
-                "title": name,
-                "lines": lines,
-            }
+    printer.lines_from_list(
+        **_lines_from_list_args(
+            name="Files",
+            lines=[file.name for file in data._files],
+        )
+    )
 
-        printer.lines_from_list(
-            **_lines_from_list_args(
-                name="Models",
-                lines=[model.model.api_name for model in models],
+    printer.lines_from_list(
+        **_lines_from_list_args(
+            name="Images",
+            lines=[image.name for image in data._images],
+        )
+    )
+
+    # NEXT: confirm previous id proper loaded
+    for model in models:  # REFACTOR:
+        if model.old_tree_locator:
+            printer.title(
+                f"{model.model.unique} is answering to previous response",
+                style="bold black on yellow",
             )
-        )
+    printer.danger("Last check before deployment")
 
-        printer.lines_from_list(
-            header=f"Role: {data._role_path.stem if data._role_path else 'No role selected!'}",
-            title="Role",
-            lines=[data._role or f"{data._role_path=} and {data._role=}"],
-        )
-
-        printer.lines_from_list(
-            **_lines_from_list_args(
-                name="Files",
-                lines=[file.name for file in data._files],
-            )
-        )
-
-        printer.lines_from_list(
-            **_lines_from_list_args(
-                name="Images",
-                lines=[image.name for image in data._images],
-            )
-        )
-
-        for model in models:  # REFACTOR:
-            if model.old_tree_locator:
-                printer.title(
-                    f"{model.model.unique} is answering to previous response",
-                    style="bold black on yellow",
-                )
-        printer.danger("Last check before deployment")
-
-        match input("type 'ok' to launch, 'r' to reload: "):
-            case "ok":
-                fire = True
-                printer.title("send API request now!", style="green")
-            case "r":
-                # TODO: case to adapt role,image,model?
-                # probably not! either remove r
-                data.load_prompt()
-            case _:
-                printer.yellow(
-                    "see you when prompt and command chain is ready!"
-                )
-                break
+    match input("type 'ok' to launch: "):
+        case "ok":
+            printer.title("send API request now!", style="green")
+            fire = True
+        case _:
+            printer.yellow("see you when prompt and command chain is ready!")
+            fire = False
 
     return fire
 
@@ -163,7 +155,7 @@ def _prepare_model_args(models: list[str] | None) -> list[ModelFamily]:
         [
             parsed_model
             for model_unique in models
-            if (parsed_model := reversed_name_from_unique(model_unique))
+            if (parsed_model := model_from_unique(model_unique))  #
             is not None
         ]
         if models is not None

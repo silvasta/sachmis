@@ -18,7 +18,7 @@ from sachmis.core import capstone as cap
 from sachmis.core.model.agent import Model
 from sachmis.data import DataManager
 from sachmis.utils.parse import (
-    reversed_name_from_unique,
+    model_from_unique,
 )
 from sachmis.utils.picker import (
     pick_files,
@@ -98,7 +98,7 @@ def _extract_from_path(file_to_tree: Path) -> tuple[str, str]:
 
 
 def _get_model(raw_string: str) -> ModelFamily:
-    if (parsed_model := reversed_name_from_unique(raw_string)) is None:
+    if (parsed_model := model_from_unique(raw_string)) is None:
         logger.error(f"Failure for {raw_string=}")
         raise ValueError
     else:
