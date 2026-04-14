@@ -4,7 +4,8 @@ from sachmis.config.model import Geminis, Groks, ModelFamily
 from sachmis.config.model.dummy import DummyFamily
 
 
-def reversed_name_from_unique(model_unique: str) -> ModelFamily | None:
+# MOVE: as function of config.model?
+def model_from_unique(model_unique: str) -> ModelFamily | None:
     """Transform model unique str back to ModelFamily Enum"""
 
     try:
@@ -47,5 +48,5 @@ if __name__ == "__main__":
         "g-g3",
     ]
     for test in tests:
-        result: ModelFamily | None = reversed_name_from_unique(test)
+        result: ModelFamily | None = model_from_unique(test)
         print(result)

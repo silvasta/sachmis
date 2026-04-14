@@ -14,9 +14,8 @@ class Geminis(ModelFamily):
     # https://ai.google.dev/gemini-api/docs/robotics-overview
 
     # TODO: price list
-
     @property
-    def category_unique(self) -> str:
+    def unique_letter(self) -> str:
         """Used for pydantic, Models -> str -> Models and for CLI"""
         return "g"
 

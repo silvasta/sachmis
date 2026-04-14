@@ -23,7 +23,7 @@ class Groks(ModelFamily):
     # - Text to Speech
 
     @property
-    def category_unique(self) -> str:
+    def unique_letter(self) -> str:
         """Used for pydantic Models -> str -> Models and for CLI"""
         return "x"
 

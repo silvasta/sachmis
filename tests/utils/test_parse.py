@@ -3,10 +3,11 @@ from pathlib import Path
 import pytest
 
 from sachmis.config.model import Geminis, Groks, ModelFamily
-from sachmis.utils.parse import reversed_name_from_unique
+from sachmis.utils.parse import model_from_unique
 
-# good test
 
+# IMPORTANT: make this avaliable for all
+# - define in config.model
 all_families: list[type[ModelFamily]] = [
     # PLUG: family for test
     Geminis,
@@ -23,9 +24,7 @@ all_models: list[ModelFamily] = [
 # GOOD TESTS
 for model in all_models:
     string_to_test: str = model.unique
-    result: ModelFamily | None = reversed_name_from_unique(
-        model_unique=string_to_test
-    )
+    result: ModelFamily | None = model_from_unique(model_unique=string_to_test)
     assert model == result
 
 # BAD TESTS
@@ -49,7 +48,7 @@ def test_reversed_name_success(expected_model: ModelFamily):
     from its .unique string property.
     """
     # Act
-    result = reversed_name_from_unique(expected_model.unique)
+    result = model_from_unique(expected_model.unique)
 
     # Assert
     assert result == expected_model
@@ -62,7 +61,7 @@ def test_reversed_name_failures(invalid_input: str):
     Test that invalid strings return None and do not raise Exceptions.
     """
     # Act
-    result = reversed_name_from_unique(invalid_input)
+    result = model_from_unique(invalid_input)
 
     # Assert
     assert result is None
@@ -72,6 +71,6 @@ def test_reversed_name_type_safety():
     """
     Specific check for return types on a known good value.
     """
-    result = reversed_name_from_unique("g-g3")
+    result = model_from_unique("g-g3")
     assert isinstance(result, Geminis)
     assert result == Geminis.G3
