@@ -4,7 +4,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Self, TypeVar
+from typing import Self
 
 from filelock import FileLock
 from loguru import logger
@@ -64,12 +64,11 @@ class Arboreal(BaseModel):
         raise NotImplementedError
 
 
-ArboT = TypeVar("ArboT", bound=Arboreal)
-
-
 class ArborealTracker(BaseModel):
     """Lightweight reference to track and write registry members,
     they are intended to be saved as their own files on disk"""
+
+    # IDEA: merge with / derive from , SstFile
 
     unique_id: str
     local_id: int = 0

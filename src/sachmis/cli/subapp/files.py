@@ -2,7 +2,7 @@ from itertools import product
 from pathlib import Path
 
 import typer
-from silvasta.cli.setup import attach_callback, logger_catch
+from silvasta.cli import attach_callback, logger_catch
 
 from sachmis.cli.args import Google, Xai
 from sachmis.config import SachmisConfig, get_config
@@ -12,6 +12,7 @@ from sachmis.data.uploader import GoogleUploader, XaiUploader
 from sachmis.data.uploader.uploader import FileUploader
 from sachmis.utils.print import printer
 
+# MOVE:
 config: SachmisConfig = get_config()
 
 

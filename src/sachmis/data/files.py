@@ -1,53 +1,34 @@
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Annotated, Literal
+from typing import Annotated, Literal, Self
 
 from boltons.strutils import slugify
 from loguru import logger
 from pydantic import BaseModel, Field
-from silvasta.data.files import SstFile
+from silvasta.config import get_config
+from silvasta.data.files import FileRegistry, FileSystemManager, SstFile
 
-
-class Prompt(BaseModel):
-    topic: str
-    text: str
-    files: list["UploadFile"] = Field(default_factory=list)
-    images: list[Path] = Field(default_factory=list)
-
-    # TODO: local file rollout
-    @property
-    def slug_topic(self):
-        return slugify(self.topic)
-
-
-class Response(BaseModel):
-    full_response: Path
-    id: str
-    content: str = ""
-    usage: dict = Field(default_factory=dict)
-    # TODO: local file rollout
+from sachmis.config import SachmisConfig
 
 
 class UploadState(BaseModel):  # PLUG:
-    last_upload: datetime = Field(default_factory=datetime.now)
+    last_upload: datetime = Field(default_factory=datetime.now(UTC))
 
     @property
     def age(self) -> timedelta:
         """Return time since last upload of file"""
-        return datetime.now() - self.last_upload
+        return datetime.now(UTC) - self.last_upload
 
 
 class XaiUploadState(UploadState):
-    # identifier
-    target: Literal["xai"] = "xai"  # PARAM:
-    # specific states
+    target: Literal["xai"] = "xai"
+
     x_id: str
 
 
 class GoogleUploadState(UploadState):
-    # identifier
-    target: Literal["google"] = "google"  # PARAM:
-    # specific states
+    target: Literal["google"] = "google"
+
     g_uri: str
     g_mime_type: str
     g_name: str
@@ -58,6 +39,8 @@ class GoogleUploadState(UploadState):
         return self.age > timedelta(hours=47)  # PARAM:
 
 
+# IDEA: move state to config.param? or simply data.states
+
 type RemoteState = Annotated[
     XaiUploadState | GoogleUploadState,  # PLUG:
     Field(discriminator="target"),
@@ -67,8 +50,16 @@ type RemoteState = Annotated[
 class UploadFile(SstFile):
     """Local file for upload and usage in prompt"""
 
-    # NEXT: original_name
     remote_states: dict[str, RemoteState] = Field(default_factory=dict)
+
+    _name_at_load: str = Field(default_factory=lambda path: path.name)
+
+    @classmethod
+    def with_slug_name(cls, path: Path) -> Self:
+        name_at_load: str = path.name
+        slug_name: str = slugify(name_at_load)
+        slug_path: Path = path.with_name(slug_name)
+        return cls(local_path=slug_path, _name_at_load=name_at_load)
 
     @property
     def remotes(self) -> str:
@@ -80,8 +71,8 @@ class UploadFile(SstFile):
         return " - ".join(parts)
 
     @property
-    # MERGE: somehow color/raw print
     def _remotes(self) -> str:
+        # MOVE: to silvasta|project.config.setting.Names
         parts: list[str] = [
             f"{self.name}",
             f"remotes: {list(self.remote_states.keys())}",
@@ -127,3 +118,22 @@ class UploadFile(SstFile):
             self.touch()
             logger.debug(f"removed {target} from remote_states")
         return remote_state
+
+
+class CampManager(FileSystemManager):
+    def __init__(self):
+        config: SachmisConfig = get_config()
+        self.role_registry: FileRegistry[SstFile] = FileRegistry(
+            local_root=Path(config.paths.role_dir), file_constructor=SstFile
+        )
+        self.upload_registry: FileRegistry[UploadFile] = FileRegistry(
+            local_root=Path(config.paths.camp_dir),
+            file_constructor=UploadFile.with_slug_name,
+        )
+
+    # def print_loaded(self):
+    #     printer.lines_from_list(
+    #         lines=[r.description for r in result],
+    #         header=f"New loaded files {len(result)}",
+    #         title=f"{self.}",
+    #     )

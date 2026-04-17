@@ -1,18 +1,4 @@
 class FileManager:
-    @property
-    def file_names(self) -> set[str]:
-        return set(file.name for file in self.files)
-
-    def files_on_disk(self) -> list[str]:
-        config: SachmisConfig = get_config()
-        # TASK: provide files with filtering
-        # MOVE: like roles to paths? other location? files?!
-        return [
-            file.name
-            for file in config.paths.file_dir.glob("*")
-            if file.is_file()
-        ]
-
     # INFO: from here files, move to new registry or manager?
     #
     def load_local_files(
@@ -60,18 +46,6 @@ class FileManager:
             logger.info(f"Added {new_file=}")
 
         # MOVE: return list, caller prints
-        printer.lines_from_list(
-            lines=[r.description for r in result],
-            header=f"New loaded files {len(result)}",
-            title=f"{local_file_dir}",
-        )
-
-    def file_by_name(self, name: str) -> UploadFile:
-        for file in self.files:
-            if file.name == name:
-                return file
-        else:
-            raise ValueError(f"File with {name=} not in registry")
 
     def load_files_from_path(self, files: list[Path]) -> list[UploadFile]:
         config: SachmisConfig = get_config()
