@@ -23,7 +23,8 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-silvasta = { path = "../../silvasta", editable = true }
+silvasta = { path = "../../sstcore/latest", editable = true }
+# silvasta = { path = "../../sstcore/main", editable = false }
 
 [project.scripts]
 sachmis = "sachmis.cli.app:main"

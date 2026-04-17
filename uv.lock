@@ -1095,7 +1095,7 @@ requires-dist = [
     { name = "pick", specifier = ">=2.4.0" },
     { name = "protobuf", specifier = ">=6.33.1" },
     { name = "rich", specifier = ">=14.1.0" },
-    { name = "silvasta", editable = "../../silvasta" },
+    { name = "silvasta", editable = "../../sstcore/latest" },
     { name = "tenacity", specifier = ">=9.1.4" },
     { name = "textual", specifier = ">=7.3.0" },
     { name = "tqdm", specifier = ">=4.67.1" },
@@ -1117,8 +1117,8 @@ wheels = [
 
 [[package]]
 name = "silvasta"
-version = "0.2.0b1"
-source = { editable = "../../silvasta" }
+version = "0.2.1a1"
+source = { editable = "../../sstcore/latest" }
 dependencies = [
     { name = "loguru" },
     { name = "pick" },

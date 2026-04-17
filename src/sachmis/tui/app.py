@@ -10,7 +10,7 @@ def main():
     setup_logging(quiet=False)
     with logger.catch():
         logger.info("Launch Combined TUI")
-        tui = ProjectApp()
+        tui = SachmisApp()
         tui.run()
 
 
@@ -25,7 +25,7 @@ class StartScreen(Screen):
         yield Static("Press any key to continue [blink]_[/]", id="any-key")
 
 
-class ProjectApp(App):
+class SachmisApp(App):
     """project description"""
 
     CSS_PATH = "sachmis.tcss"
