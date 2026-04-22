@@ -8,7 +8,8 @@ from silvasta.utils.path import (
     recursive_root,
 )
 
-from .settings import Defaults, Names
+from .defaults import Defaults
+from .names import Names
 
 
 class Paths(SstPaths[Names, Defaults]):
