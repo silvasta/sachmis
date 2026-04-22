@@ -105,25 +105,26 @@ class Paths(SstPaths[Names, Defaults]):
 
     @PathGuard.unique
     def full_response(self, topic="", model="", suffix=".txt") -> Path:
-        stem: str = self._names.sprout_stem(topic=topic, spec=model)
+        # TODO: check locator, needed? how to compose name best?
+        stem: str = self._names.sprout_stem.computed(topic=topic, spec=model)
         return self.full_response_dir / f"{stem}{suffix}"
 
     @PathGuard.unique
     def prompt_file(self, topic: str, suffix: str = ".md") -> Path:
         """New prompt file name after usage"""
-        prompt_stem: str = self._names.sprout_stem(topic=topic, spec="prompt")
+        # TODO: check locator, needed? how to compose name best?
+        prompt_stem: str = self._names.sprout_stem.computed(
+            topic=topic, spec="prompt"
+        )
         return Path.cwd() / f"{prompt_stem}{suffix}"
 
     @PathGuard.unique
     def answer_file(
-        # TASK: create relative path
-        self,
-        topic: str,
-        locator: str,
-        model: str,
-        suffix=".md",
+        self, topic: str, locator: str, model: str, suffix=".md"
     ) -> Path:
-        answer_stem: str = self._names.sprout_stem(
+        # TODO: check locator, needed? how to compose name best?
+        answer_stem: str = self._names.sprout_stem.computed(
             topic=topic, locator=locator, spec=model
         )
+        # TASK: create nested relative path
         return Path.cwd() / f"{answer_stem}{suffix}"
