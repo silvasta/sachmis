@@ -21,19 +21,6 @@ attach_callback(app)
 
 @app.command()
 @logger_catch
-def biome():
-    """Show Biome information"""
-    with DataManager(save_at_exit=False) as data:
-        printer(data.biome)
-        printer(f"{data.biome.n_forest=}")
-        printer(f"{data.biome.n_responses=}")
-        printer(f"{data.biome.roles=}")
-        printer(f"{data.biome.n_roles=}")
-        # LATER: create proper selection, maybe attach to printer
-
-
-@app.command()
-@logger_catch
 def bases():
     """Show all Bases with Forest that are saved in Biome"""
     with DataManager(save_at_exit=False) as data:
@@ -68,7 +55,7 @@ def files(  # NEXT: adapt this to new setup
     if topic is not None:
         select["topic"] = topic
 
-    with DataManager(save_at_exit=False, forest_required=True) as data:
+    with DataManager(save_at_exit=False, forest_required=True):
         raise NotImplementedError("create: printer.NEW(selection)")
 
 
@@ -99,6 +86,7 @@ def models():  # TODO: rich table, statistics
 @logger_catch
 def config_details():
     """Print config to Console, so far just dotenv_path"""
+    # MOVE: to silvasta?
     config: SachmisConfig = get_config()
 
     printer(config.compose_setup_param())  # LATER: show selection of paths

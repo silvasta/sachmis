@@ -66,14 +66,29 @@ class SproutRegistryError(ValueError, ArborealError):
 # TODO: SproutResponseMissingError ??
 
 
-class NotInForestError(FileNotFoundError, SachmisError):
-    """Raised when CWD not inside proper filesystem structure for desired task"""
+class SachmisCwdError(SachmisError):
+    """Raised when function is launched from invalid location"""
 
+
+class NotInForestError(FileNotFoundError, SachmisError):
     def __init__(self, message=None):
         if message is None:
             message = (
                 "Current location not in Base with Forest!"
                 "Create new Base with Forest: sachmis init {-n NAME}"
+                # TODO: check commands with newest updates
+                "Find existing Bases with: sachmis show bases"
+            )
+        super().__init__(message)
+
+
+class NotInCampError(FileNotFoundError, SachmisError):
+    def __init__(self, message=None):
+        if message is None:
+            message = (
+                "Current location not in Camp of Forest and Base!"
+                "Create new Base with Forest: sachmis init {-n NAME}"
+                # TODO: check commands with newest updates
                 "Find existing Bases with: sachmis show bases"
             )
         super().__init__(message)

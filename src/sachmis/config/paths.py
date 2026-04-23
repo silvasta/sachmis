@@ -1,12 +1,16 @@
 from pathlib import Path
+from typing import Literal
 
+from loguru import logger
 from silvasta.config import SstPaths
 from silvasta.utils import PathGuard
 from silvasta.utils.path import (
-    find_project_root,
     recursive_parent,
     recursive_root,
 )
+
+from sachmis.utils import ArborealFileExistsError
+from sachmis.utils.exceptions import NotInCampError, NotInForestError
 
 from .defaults import Defaults
 from .names import Names
@@ -16,41 +20,81 @@ class Paths(SstPaths[Names, Defaults]):
     """Assemble paths for project"""
 
     @property
+    def biome_dir(self) -> Path:
+        return self.data_home
+
+    @property
+    @PathGuard.file(raise_error=True)
     def biome_file(self) -> Path:
-        return self.data_home / self._names.biome_file
-
-    # NEXT: biome_file calls this
-    # - pathguard.unique? better in data
-    # def biome_from_name
+        """Current active Biome file"""
+        return self._biome_file(self._names.biome_file)
 
     @property
-    # LATER: check here but store value in data?
-    def in_base(self) -> bool:
-        return (
-            recursive_root(path=Path.cwd(), indicator=self._names.camp_dir)
-            is not None
-        )
+    def unconfirmed_biome_file(self) -> Path:
+        """unchecked composition of path and name"""
+        return self._biome_file(self._names.biome_file)
+
+    def _biome_file(self, biome_filename: str) -> Path:
+        return self.biome_dir / biome_filename
+
+    def new_biome_file(self, name: str) -> Path:
+        """Generate new biome_file path if it not already exists"""
+
+        # Ensure it works for 'name.json' or just 'name'
+        biome_filename: str = f"{name.strip('.json')}.json"
+
+        new_file: Path = self._biome_file(biome_filename)
+
+        if new_file in self.biome_files:
+            raise ArborealFileExistsError("Biome", new_file)
+
+        logger.success(f"Created writable Path for new Biome: {new_file=}")
+
+        return new_file
 
     @property
-    # LATER: check here but store value in data?
-    def in_camp(self) -> bool:
-        return (
-            recursive_parent(
-                path=Path.cwd(), parent_dir_name=self._names.camp_dir
-            )
-            is not None
-        )
+    def biome_files(self) -> set[Path]:
+        # LATER: ensure no other .json in biome_dir
+        return set(self.biome_dir.glob("*.json"))
 
     @property
     def base_dir(self) -> Path:
-        """Error if not in base"""
-        return find_project_root(indicator=self._names.camp_dir)
+        root: Path | None = recursive_root(
+            path=Path.cwd(), indicator=self._names.camp_dir
+        )
+        if root is None:
+            raise NotInForestError
+        return root
+
+    @property
+    def in_forest(self) -> bool:
+        try:
+            _ = self.base_dir
+            return True
+        except NotInForestError:
+            return False
 
     @property
     @PathGuard.dir
-    def camp_dir(self):
-        """Error if not in base"""
+    def camp_dir(self) -> Path:
         return self.base_dir / self._names.camp_dir
+
+    @property
+    def camp_dir_as_parent(self):
+        parent: Path | None = recursive_parent(
+            path=Path.cwd(), parent_dir_name=self._names.camp_dir
+        )
+        if parent is None:
+            raise NotInCampError
+        return parent
+
+    @property
+    def in_camp(self) -> bool:
+        try:
+            _ = self.camp_dir_as_parent
+            return True
+        except NotInCampError:
+            return False
 
     @property
     def forest_file(self) -> Path:
@@ -66,14 +110,18 @@ class Paths(SstPaths[Names, Defaults]):
     @PathGuard.unique(ensure_parent=True)
     def tree_file(self, id: int, stem: str) -> Path:
         """Error if not in base"""
-        # MOVE: Names
-        return self.camp_dir / f"t_{id}_{stem}.json"
+        tree_file: str = self._names.tree_file(id=id, stem=stem)
+        return self.tree_dir / tree_file
 
     @property
     @PathGuard.dir
-    # TODO: check local_file_dir
     def file_dir(self):
         return self.camp_dir / self._names.file_dir
+
+    @property
+    def local_file_dir(self):
+        """Used for loading files automatically"""
+        return Path.cwd() / self._names.file_dir
 
     @property
     @PathGuard.dir
@@ -81,50 +129,87 @@ class Paths(SstPaths[Names, Defaults]):
         return self.camp_dir / self._names.image_dir
 
     @property
+    def local_image_dir(self):
+        """Used for loading images automatically"""
+        return Path.cwd() / self._names.file_dir
+
+    @property
     @PathGuard.dir
     def role_dir(self) -> Path:
-        return self.data_home / "roles"  # PARAM:
+        return self.data_home / self._names.role_dir.lower()
 
-    def get_role_paths(self) -> list[Path]:
-        return list(self.role_dir.glob("*"))
+    def role_paths(
+        self, mode: Literal["all", "local", "global"] = "all"
+    ) -> list[Path]:
+        return [
+            *(self.role_dir.glob("*") if mode == "global" else []),
+            *(self.camp_role_dir.glob("*") if mode == "local" else []),
+        ]
 
-    # LATER: move function for (inactive) roles, + create  function
+    @property
+    @PathGuard.dir
+    def camp_role_dir(self) -> Path:
+        return self.camp_dir / self._names.role_dir
 
     @property
     @PathGuard.dir
     def inactive_role_dir(self) -> Path:
         return self.role_dir.with_stem(f"inactive-{self.role_dir.stem}")
 
-    def get_inactive_role_paths(self) -> list[Path]:
-        return list(self.inactive_role_dir.glob("*"))
+    def inactive_role_paths(
+        self, mode: Literal["all", "local", "global"] = "all"
+    ) -> list[Path]:
+        i_camp_role_dir: Path = self.inactive_camp_role_dir
+        return [
+            *(self.inactive_role_dir.glob("*") if mode == "global" else []),
+            *(i_camp_role_dir.glob("*") if mode == "local" else []),
+        ]
+
+    @property
+    @PathGuard.dir
+    def inactive_camp_role_dir(self) -> Path:
+        return self.role_dir.with_stem(f"inactive-{self.camp_role_dir.stem}")
 
     @property
     @PathGuard.dir
     def full_response_dir(self) -> Path:
-        return self.state_home / "full_respone"
+        return self.state_home / self._names.response_dir
 
     @PathGuard.unique
-    def full_response(self, topic="", model="", suffix=".txt") -> Path:
-        # TODO: check locator, needed? how to compose name best?
+    def full_response(self, topic: str, model: str, suffix=".txt") -> Path:
         stem: str = self._names.sprout_stem.computed(topic=topic, spec=model)
-        return self.full_response_dir / f"{stem}{suffix}"
+        return self._path_from_stem(stem, suffix, self.full_response_dir)
 
     @PathGuard.unique
-    def prompt_file(self, topic: str, suffix: str = ".md") -> Path:
-        """New prompt file name after usage"""
+    def prompt_file(
+        self, topic: str, suffix: str = ".md", root_dir: Path | None = None
+    ) -> Path:
+        # TASK: create nested relative path
         # TODO: check locator, needed? how to compose name best?
+        """New prompt file name after usage"""
         prompt_stem: str = self._names.sprout_stem.computed(
             topic=topic, spec="prompt"
         )
-        return Path.cwd() / f"{prompt_stem}{suffix}"
+        return self._path_from_stem(prompt_stem, suffix, root_dir)
+
+    def _path_from_stem(
+        self, stem: str, suffix: str, root_dir: Path | None = None
+    ):
+        suffix: str = suffix if suffix.startswith(".") else f".{suffix}"
+        return (root_dir or Path.cwd()) / f"{stem}{suffix}"
 
     @PathGuard.unique
     def answer_file(
-        self, topic: str, locator: str, model: str, suffix=".md"
+        self,
+        topic: str,
+        locator: str,
+        model: str,
+        suffix=".md",
+        root_dir: Path | None = None,
     ) -> Path:
+        # TASK: create nested relative path
         # TODO: check locator, needed? how to compose name best?
         answer_stem: str = self._names.sprout_stem.computed(
             topic=topic, locator=locator, spec=model
         )
-        # TASK: create nested relative path
-        return Path.cwd() / f"{answer_stem}{suffix}"
+        return self._path_from_stem(answer_stem, suffix, root_dir)

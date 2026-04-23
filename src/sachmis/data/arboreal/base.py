@@ -8,7 +8,7 @@ from typing import Self
 
 from filelock import FileLock
 from loguru import logger
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, Field, PrivateAttr, ValidationError
 
 from sachmis.config import SachmisConfig, get_config
 from sachmis.utils.exceptions import (
@@ -37,7 +37,7 @@ class Arboreal(BaseModel):
         )
 
     def touch(self) -> datetime:
-        self.last_updated = datetime.now(UTC)
+        self.last_updated: datetime = datetime.now(UTC)
         return self.last_updated
 
     @property
@@ -73,7 +73,7 @@ class ArborealTracker(BaseModel):
     unique_id: str
     local_id: int = 0
     path: Path
-    added_at: datetime = Field(default_factory=datetime.now(UTC))
+    added_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     @property
     def local_added_at(self) -> str:
@@ -89,9 +89,7 @@ class ArborealRegistry[ArboT: Arboreal](BaseModel):
     """Registry for data of Arboreals"""
 
     trackers: dict[str, ArborealTracker] = Field(default_factory=dict)
-    _members: dict[str, ArboT] = Field(
-        default_factory=dict, init=False, repr=False
-    )
+    _members: dict[str, ArboT] = PrivateAttr(default_factory=dict)
 
     @property
     def n_trackers(self) -> int:
@@ -177,6 +175,8 @@ class ArborealRegistry[ArboT: Arboreal](BaseModel):
         """Add instance to runtime registry, create and add reference tracker to writtten registry"""
         uid: str = instance.unique_id
 
+        logger.debug(instance)
+
         # Create tracker first, in case it fails
         tracker = ArborealTracker(
             unique_id=uid,
@@ -202,15 +202,15 @@ class ArborealRegistry[ArboT: Arboreal](BaseModel):
 class ArborealDisk[ArboT: Arboreal](Arboreal):
     """Common attributes of all Arboreals that are written to disk"""
 
-    _registry: ArborealRegistry[ArboT] = Field(
+    registry: ArborealRegistry[ArboT] = Field(
         default_factory=ArborealRegistry, init=False, repr=False
     )
     # Safety toggle for save_state, otherwise needs manual lock_required
-    _has_lock: bool = Field(default=False, repr=False)
+    _has_lock: bool = PrivateAttr(default=False)
 
     @property
     def n_children(self) -> int:
-        return self._registry.n_trackers
+        return self.registry.n_trackers
 
     @classmethod
     def load_state(cls, file: Path) -> Self:
@@ -264,7 +264,7 @@ class ArborealDisk[ArboT: Arboreal](Arboreal):
             # LATER: define which Exceptions raise, which allow write or not
 
             finally:
-                if save_on_error:
+                if save_on_error:  # IDEA: save to backup file?
                     instance.save_state(file)
                 instance._has_lock = False  # probably redundant
                 logger.debug(f"--- Lock released for {name} ---")
@@ -299,9 +299,9 @@ class ArborealDisk[ArboT: Arboreal](Arboreal):
     ) -> ArborealTracker:
         """Add instance to runtime registry, create and add reference tracker to writtten registry"""
 
-        self._registry.confirm_not_already_added(instance.unique_id)
+        self.registry.confirm_not_already_added(instance.unique_id)
 
-        tracker: ArborealTracker = self._registry.attach(
+        tracker: ArborealTracker = self.registry.attach(
             instance, path, local_id or self._next_instance_id
         )
         logger.debug(
@@ -311,7 +311,7 @@ class ArborealDisk[ArboT: Arboreal](Arboreal):
 
     def _check_tracker_paths_exist(self) -> bool:
         """Detect tracker with missing files at path"""
-        if missing_paths := self._registry.tracker_with_invalid_paths:
+        if missing_paths := self.registry.tracker_with_invalid_paths:
             missing: str = "\n".join(str(p) for p in missing_paths)
             logger.warning(f"Missing {ArboT.__name__} files:\n{missing}")
             return False
@@ -319,7 +319,7 @@ class ArborealDisk[ArboT: Arboreal](Arboreal):
 
     def _check_tracker_paths_unique(self) -> bool:
         """Detect tracker with missing files at path"""
-        paths: set[Path] = self._registry.tracker_paths
+        paths: set[Path] = self.registry.tracker_paths
         if (n_unique_paths := len(paths)) != self.n_children:
             logger.warning(f"{n_unique_paths=} but {self.n_children=})")
             return False

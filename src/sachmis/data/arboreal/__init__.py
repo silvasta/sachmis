@@ -1,3 +1,4 @@
+from .base import ArborealTracker
 from .biome import Biome
 from .forest import Forest
 from .sprout import Sprout
@@ -8,4 +9,5 @@ __all__: list[str] = [
     "Forest",
     "Tree",
     "Sprout",
+    "ArborealTracker",
 ]

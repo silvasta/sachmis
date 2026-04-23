@@ -4,6 +4,8 @@ from loguru import logger
 from pydantic import Field
 from silvasta.data.files import SstFile
 
+from sachmis.data.files import CampManager
+
 from .base import ArborealDisk, ArborealTracker
 from .forest import Forest
 
@@ -24,15 +26,15 @@ class Biome(ArborealDisk[Forest]):
     @property
     def forests(self) -> list[ArborealTracker]:
         """Serialized part of registry with UUID and ArborealTracker"""
-        return self._registry.all_trackers
+        return self.registry.all_trackers
 
     @property
     def loaded_forests(self) -> list[Forest]:
-        return self._registry.all_members
+        return self.registry.all_members
 
     @property
     def missing_forests(self) -> list[ArborealTracker]:
-        return self._registry.tracker_with_invalid_paths
+        return self.registry.tracker_with_invalid_paths
 
     def n_trees(self) -> int:
         return sum(forest.n_trees for forest in self.loaded_forests)
@@ -45,12 +47,15 @@ class Biome(ArborealDisk[Forest]):
     ) -> ArborealTracker:
         return self._attach(forest, forest_file)
 
-    def attach_new_forest(self, forest_file: Path) -> Forest:
-        new_forest = Forest()
-        new_forest.save_state(forest_file)
-        self.attach_forest(forest=new_forest, forest_file=forest_file)
+    def attach_new_forest(
+        self, forest_file: Path, camp: CampManager | None = None
+    ) -> ArborealTracker:
+        camp: CampManager = camp or CampManager()
 
-        return new_forest
+        new_forest: Forest = Forest.with_camp(camp)
+        new_forest.save_state(forest_file, lock_required=False)
+
+        return self.attach_forest(forest=new_forest, forest_file=forest_file)
 
     ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
     ### -- Biome - Health checks, maybe -> ArborealDisk?

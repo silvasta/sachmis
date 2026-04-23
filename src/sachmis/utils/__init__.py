@@ -1,7 +1,15 @@
 from .exceptions import (
     ArborealFileExistsError,
     ArborealFileMissingError,
-    ArborealRegistryDublicateError,
+    ArborealRegistryDuplicateError,
     ArborealRegistryMissingError,
     SproutResponseExistsError,
 )
+
+__all__: list[str] = [
+    "ArborealFileExistsError",
+    "ArborealFileMissingError",
+    "ArborealRegistryDuplicateError",
+    "ArborealRegistryMissingError",
+    "SproutResponseExistsError",
+]
