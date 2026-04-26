@@ -7,3 +7,9 @@ class PromptError(ValueError, SachmisDataError):  # TEST: ValueError?
             message = "Problems while processing Prompt"
         super().__init__(message)
 
+
+class DataManagerRuntimeError(RuntimeError, SachmisDataError):
+    def __init__(self, message=None):
+        if message is None:
+            message = "Required Data not avaliable within this setup!"
+        super().__init__(message)

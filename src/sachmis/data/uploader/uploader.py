@@ -155,9 +155,7 @@ class FileUploader(ABC):
         title = (  # NOTE: this title better for status?
             f"{self.remote_state_cls.__name__} for files at {self.local_dir}"
         )
-        printer.lines_from_list(
-            lines=file_descriptions, header=header, title=title
-        )
+        printer.lines(lines=file_descriptions, header=header, title=title)
 
     @abstractmethod
     def _remote_file_description(self, file: Any) -> str:
@@ -276,21 +274,21 @@ class FileUploader(ABC):
 
         # IDEA: function of CompareResult
         frac = f"{len(intersection)}/{n_files}"
-        printer.lines_from_list(
+        printer.lines(
             lines=[file.description for file in intersection],
             header=f"Intersection of Local and Remote Files {frac}",
             title=f"Intersection - {self.print_name}",
         )
 
         frac = f"{len(only_local)}/{n_files}"
-        printer.lines_from_list(
+        printer.lines(
             lines=[file.description for file in only_local],
             header=f"Files only in Local registry {frac}",
             title=f"Local - {self.print_name}",
         )
 
         frac = f"{len(only_remote)}/{n_files}"
-        printer.lines_from_list(
+        printer.lines(
             lines=only_remote,
             header=f"Files only in Remote registry {frac}",
             title=f"Global - {self.print_name}",

@@ -5,13 +5,18 @@ from typing import Annotated, Literal, Self
 from boltons.strutils import slugify
 from loguru import logger
 from pydantic import BaseModel, Field
-from silvasta.config import get_config
-from silvasta.data.files import FileRegistry, FileSystemManager, SstFile
+from sstcore.data import (
+    FileRegistry,
+    FileSystemManager,
+    SstFile,
+    SstFileRegistry,
+)
 
-from sachmis.config import SachmisConfig
+from ..config import SachmisConfig, get_config
+from ..utils.print import printer
 
 
-class UploadState(BaseModel):  # PLUG:
+class UploadState(BaseModel):
     last_upload: datetime = Field(default_factory=datetime.now(UTC))
 
     @property
@@ -42,7 +47,7 @@ class GoogleUploadState(UploadState):
 # IDEA: move state to config.param? or simply data.states
 
 type RemoteState = Annotated[
-    XaiUploadState | GoogleUploadState,  # PLUG:
+    XaiUploadState | GoogleUploadState,
     Field(discriminator="target"),
 ]
 
@@ -52,42 +57,27 @@ class UploadFile(SstFile):
 
     remote_states: dict[str, RemoteState] = Field(default_factory=dict)
 
-    _name_at_load: str = Field(default_factory=lambda path: path.name)
+    name_at_load: str = Field(default_factory=lambda path: path.name)
 
     @classmethod
-    def with_slug_name(cls, path: Path) -> Self:
-        name_at_load: str = path.name
+    def with_slug_name(cls, local_path: Path) -> Self:
+        name_at_load: str = local_path.name
         slug_name: str = slugify(name_at_load)
-        slug_path: Path = path.with_name(slug_name)
-        return cls(local_path=slug_path, _name_at_load=name_at_load)
+        slug_path: Path = local_path.with_name(slug_name)
+        return cls(local_path=slug_path, name_at_load=name_at_load)
 
     @property
     def remotes(self) -> str:
-        # FIX: unreadable
-        parts: list[str] = [
-            f"[white]{self.name}[/]",
-            f"[dim]Uploads: {list(self.remote_states.keys())}[/dim]",
-        ]
-        return " - ".join(parts)
+        config: SachmisConfig = get_config()
+        return config.names.remotes.styled([self.name, self._remotes])
 
-    @property
     def _remotes(self) -> str:
-        # MOVE: to silvasta|project.config.setting.Names
-        parts: list[str] = [
-            f"{self.name}",
-            f"remotes: {list(self.remote_states.keys())}",
-        ]
-        return " - ".join(parts)
+        return " - ".join(list(self.remote_states.keys()))
 
     @property
-    def description(self):
-        # MOVE: to silvasta|project.config.setting.Names
-        parts: list[str] = [
-            f"[blue]{self.name}[/]",
-            f"[dim]{self.first_tracked}[/]",
-            f"[white]{self.last_updated}[/]",
-        ]
-        return "-".join(parts)
+    def remotes_plain(self) -> str:
+        config: SachmisConfig = get_config()
+        return config.names.remotes([self.name, self._remotes])
 
     def attach_remote(self, state: RemoteState):
         """Attach new remote states"""
@@ -106,7 +96,7 @@ class UploadFile(SstFile):
         """Get remote state for 'target' or raise"""
         logger.debug(f"extracting for {target=}")
         if (remote_state := self.remote_states.get(target)) is None:
-            logger.warning(self._remotes)
+            logger.warning(f"{self.remotes_plain}")
             raise AttributeError(f"No remote state for {target} avaliable!")
         return remote_state
 
@@ -120,20 +110,59 @@ class UploadFile(SstFile):
         return remote_state
 
 
+class UploadRegistry(FileRegistry[UploadFile]):
+    """Registry specifically for UploadFiles"""
+
+    def _create_local_file(self, path: Path) -> UploadFile:
+        if path.is_absolute():
+            path: Path = self.relative_to_local_root(path)
+
+        return UploadFile.with_slug_name(local_path=path)
+
+
 class CampManager(FileSystemManager):
     def __init__(self):
         config: SachmisConfig = get_config()
-        self.role_registry: FileRegistry[SstFile] = FileRegistry(
-            local_root=Path(config.paths.role_dir), file_constructor=SstFile
-        )
-        self.upload_registry: FileRegistry[UploadFile] = FileRegistry(
-            local_root=Path(config.paths.camp_dir),
-            file_constructor=UploadFile.with_slug_name,
-        )
 
-    # def print_loaded(self):
-    #     printer.lines_from_list(
-    #         lines=[r.description for r in result],
-    #         header=f"New loaded files {len(result)}",
-    #         title=f"{self.}",
-    #     )
+        # TASK: how to handle / sync with Forest?
+
+        # LATER: combine with global roles
+        self.role_registry: SstFileRegistry = SstFileRegistry(
+            local_root=Path(config.paths.camp_role_dir)
+        )
+        self.upload_registry: UploadRegistry = UploadRegistry(
+            local_root=Path(config.paths.file_dir),
+        )
+        self.image_registry: SstFileRegistry = SstFileRegistry(
+            local_root=Path(config.paths.image_dir),
+        )
+        logger.info("setup complete")
+
+    def load_files(self, root_dir: Path):
+        pass
+
+    def attach_from_camp_folder(self) -> list[UploadFile]:
+
+        # TODO: decide if print here or return here
+
+        new_files: list[UploadFile] = (
+            self.upload_registry.attach_new_files_from_local_folder()
+        )
+        printer.lines_with_len(
+            name="New Files",
+            lines=[file.description for file in new_files],
+        )
+        return new_files
+
+    def attach_from_dir(self, local_dir: Path) -> list[UploadFile]:
+        """Setup new registry at directory, sync content by config"""
+
+        temp_registry: UploadRegistry = UploadRegistry(local_root=local_dir)
+        temp_registry.attach_new_files_from_local_folder()
+
+        logger.debug(f"loaded {temp_registry.n_files} from: {local_dir}")
+
+        return self.registry_sync(
+            source=temp_registry,
+            target=self.upload_registry,
+        )

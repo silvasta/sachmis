@@ -1,265 +1,233 @@
-import sys
-from contextlib import contextmanager
+from itertools import product
 from pathlib import Path
+from typing import Self
 
-from boltons.strutils import slugify
 from loguru import logger
-from silvasta.utils import PathGuard
+from sstcore import PathGuard
+from sstcore.data import SstFile
 
-from sachmis.config import SachmisConfig, get_config
-from sachmis.config.model import ModelFamily
-from sachmis.utils.print import printer
-
-from .arboreal import Biome, Forest, Sprout
-from .files import Prompt, UploadFile
-from .uploader import RemoteUploader, get_upload_cls
-
-config: SachmisConfig = get_config()
+from ..config import SachmisConfig, get_config
+from ..exceptions import (
+    ArborealError,
+    ArborealFileExistsError,
+    SachmisDataError,
+    SachmisError,
+)
+from ..exceptions.data import DataManagerRuntimeError
+from .arboreal import ArborealTracker, Biome, Forest, Sprout, Tree
+from .files import CampManager, UploadFile
+from .prompt import Prompt
+from .uploader import RemoteUploader, create_uploader
 
 
 class DataManager:
     """Loads Pydantic models on entry, saves them on clean exit."""
 
-    # MOVE:
-    uploader: list[RemoteUploader] = []
+    _camp: CampManager | None = None
+    _prompt: Prompt | None = None
+    _uploader: dict[str, RemoteUploader] = {}
 
-    # TODO: single dispach by filetype?
+    _extracted_sprouts: dict[str, ArborealTracker] = {}
+    _answer_file_paths: list[Path] = []
+
+    # MOVE: to sprout: role as something like Role(SstFile)
+    _role_path: Path | None = None
+    _role: str | None = None
+
+    @property
+    def role_name(self) -> str:  # MOVE: together with role stuff
+        return self._role_path.name if self._role_path else "role from text"
+
+    @property
+    def camp(self) -> CampManager:
+        if self._camp is None:
+            raise DataManagerRuntimeError
+        return self._camp
+
+    @property
+    def prompt(self) -> Prompt:
+        if self._prompt is None:
+            raise DataManagerRuntimeError("No prompt loaded...")
+        return self._prompt
+
+    @property
+    def answer_file_paths(self) -> list[Path]:
+        """Get the current state of the answer file paths"""
+        return self._answer_file_paths
+
     def get_uploader(self, target: str) -> RemoteUploader:
-        # TEST: works with derived class?
-        for u in self.uploader:
-            if u.target == target:
-                return u
-        new_uploader: RemoteUploader = get_upload_cls(target)()
-        self.uploader.append(new_uploader)
-        return new_uploader
+        if target not in self._uploader:
+            self._uploader[target] = create_uploader(target)
+        return self._uploader[target]
 
-    # NEXT:
-    @classmethod
-    @contextmanager
-    def read_mode(cls, name):
-        print(f"--- Opening {name} for READING ---")
-        # Setup logic here
-        instance = cls(name)
-        try:
-            yield instance
-        finally:
-            # Teardown logic here
-            print(f"--- Closing {name} (Read Mode) ---")
+    def __init__(self, biome=False, forest=False, camp=False):
+        """Define at init what is required: Biome, Forest, inside Camp"""
+        config: SachmisConfig = get_config()
 
-    def __init__(self, save_at_exit=True, forest_required=False):
+        self._needs_biome: bool = biome
+        self._needs_forest: bool = forest
+        self._needs_inside_camp: bool = camp
 
-        self.save_at_exit: bool = save_at_exit
-        # LATER: this to __init__(...)?
-        self._write_to_cwd: bool = False
-        self._answer_file_paths: list[Path] = []
+        if self._needs_biome:
+            try:
+                self.biome_file: Path = config.paths.biome_file
+                logger.debug(f"biome: {self.biome_file}")
+            except FileNotFoundError:
+                raise ArborealFileExistsError(
+                    "Biome", config.paths._biome_file()
+                ) from None
+            self._full_responses: list[SstFile] = []
 
-        if config.paths.biome_file.exists():
-            logger.info("Biome file exists")
-        else:
-            logger.warning("Biome file not found, create new?")
-            # TODO: create biome here? wait for task!
-            # - or raise here?
+        if self._needs_forest:
+            self.forest_file: Path = config.paths.forest_file
+            logger.debug(f"forest: {self.forest_file}")
 
-        if config.paths.in_base:
-            logger.debug("Current location in base")
+        if self._needs_inside_camp:
+            self.camp_dir: Path = config.paths.camp_dir_as_parent
+            logger.debug(f"camp: {self.camp_dir}")
 
-            if config.paths.forest_file.exists():
-                logger.debug("Forest file exists")
-            else:
-                logger.warning(f"Not found:{config.paths.forest_file=}")
-            self.in_forest = True
-        else:
-            self.in_forest = False
-
-        logger.info(f"DataManager: {self.in_forest=}")
-
-        if forest_required and not self.in_forest:
-            # LATER: personalized exception, NotInForestError?
-            raise FileNotFoundError("Not in Forest!")
-
-    def __enter__(self) -> "DataManager":
+    def __enter__(self) -> Self:
         logger.info("DataManager: Load data in Context")
 
-        try:
-            self.biome: Biome = Biome.load_state()
-            # TASK: hande missing biome
-            # - check if biome_required in init make sense
-            # - check in self._with_biome makes sense
-            # - check for personalized exception
-            # so far: check in init, check in load raise exception, catch exception here...
-        except AttributeError as e:
-            logger.error(f"Problem with loading biome! {e}")
-            sys.exit(1)
-
-        self.check_health_biome()
-
-        if self.in_forest:
-            self.forest: Forest = Forest.load_state()
-            # LATER: open multiple forest
+        # TASK: Data start?
 
         return self
 
-    def __exit__(self, exception_type, exception_value, exception_trace_back):
-        # LATER: decide how to handle which error
-
-        if not self.save_at_exit:
-            logger.info("DataManager: Close intended without saving")
-            return
-
+    def __exit__(self, exception_type, exception_value, _exception_trace_back):
         logger.info("DataManager: Close data from context")
 
+        # TASK: Exception handling
+
         if exception_type is not None:
-            logger.error(f"DataManager - Error: ({exception_type.__name__})")
-            logger.warning("State not saved!")
+            logger.error(f"DataManager - Error: {exception_type.__name__}")
 
-            if issubclass(exception_type, ValueError):
-                # INFO: example error handling
-                logger.info(f"Harmless UI Error: {exception_value=}")
-                logger.warning("State not saved!")
-
-                # Surpress exception (after handling it here)
-                return True
-
-            if issubclass(exception_type, AttributeError):
-                # TEST: used for biome not found, where else?
-                # - personalized Exceptions! coming soon...
+            if issubclass(exception_type, ArborealError):
                 logger.error(f"Context: {exception_value=}")
                 logger.warning("State not saved!")
-
                 # Surpress exception (after handling it here)
                 return True
 
-        if self.in_forest:
-            self.forest.save_state()
-            # LATER: close multiple forest
+            if issubclass(exception_type, SachmisError):
+                logger.error(f"SachmisError: {exception_value}")
+                logger.warning("State not saved!")
+                # Surpress exception (after handling it here)
+                return True
 
-        self.biome.save_state()
+            logger.warning("State not saved!")
+
+        if self._extracted_sprouts:
+            logger.error("Not all Sprouts arrived well..")
+            logger.error(f" No answer from: {self._extracted_sprouts=}")
+
+        if self._needs_biome and self._full_responses:
+            self._attach_new_full_responses_to_biome()
+
+        # TASK: Data finish?
 
         logger.info("DataManager: Clean Exit")
 
         # Propagate exception to caller
         return False
 
-    @property
-    def most_recent_topic(self) -> str:
-        """Get the topic of the last loaded prompt or '' (empty string)"""
-        return self._prompt.topic if hasattr(self, "_prompt") else ""
-
-    @property
-    def answer_file_path_strings(self) -> list[str]:
-        """Get the current state of the answer file paths formated as string"""
-        return [str(answer) for answer in self._answer_file_paths]
-
-    def check_health_biome(self):
-        DataManager._check_dublicated_biome_files()
-        self.biome._prune_dublicated_forest_paths()
-        self.biome._check_active_forest_paths()
-        # LATER: other health tests?
-        logger.debug("biome healthcheck completed")
-
-    @staticmethod
-    def _check_dublicated_biome_files():
-        # REMOVE: dublicates not allowed
-        # LATER: cls or self? how to handle multiple biomes?
-        biome_files: list[Path] = PathGuard.find_sequence(
-            config.paths.biome_file
-        )
-        if num_biome_files := len(biome_files) > 1:
-            logger.warning(f"For current biome path: {num_biome_files=}")
-            for file in biome_files:
-                printer(file)
-            logger.debug(f"current status: {biome_files=}")
-
-    @classmethod
-    def create_new_biome(cls, name: str | None = None):
-        logger.info("Create new Biome")
-        # TODO: set name in Names, save after check!
-        # - check if unique, otherwise error!
-        # error: display all already created biomes
-        # NEXT: setup automatic if not found
-        Biome().save_state(
-            biome_file=PathGuard.unique(config.paths.biome_file)
-        )  # PathGuard.unique or not allow new Biome() if file exists
-        DataManager._check_dublicated_biome_files()
-
-    @classmethod
-    def create_new_base(cls, base_name: str | None = None):
-        logger.info("Create new Base with Forest")
-
-        with cls() as data:
-            if data.in_forest:
-                logger.error("Already in Base! No new Forest will be created.")
-                return
-
-            if base_name is None:
-                base_name: str = config.names.base_dir
-
-            base_dir: Path = Path.cwd() / base_name
-
-            if base_dir != (unique_base_dir := PathGuard.unique(base_dir)):
-                printer.danger(f"Detected Folder with new {base_name=}!")
-                logger.warning(f"Using: {unique_base_dir=}")
-                base_dir: Path = unique_base_dir
-
-            promp_path: Path = base_dir / config.names.prompt
-
-            PathGuard.file(promp_path, default_content="", raise_error=False)
-
-            camp_name: str = config.names.camp_dir
-            camp_dir: Path = PathGuard.dir(base_dir / camp_name)
-
-            # LATER: local structure in camp
-            # - config file(s)?
-            # - roles?
-            # - etc..
-
-            printer.success("Files and dirs ready: creating Forest now!")
-
-            forest_file: Path = camp_dir / config.names.forest_file
-            data.biome.attach_new_forest(forest_file)
-
-        logger.info(f"New base created at:\n{base_dir}")
-
-    def load_local_files_to_forest(
-        self,
-        clear_current_files=False,
-        local_file_dir: Path | None = None,
+    def track_extracted_sprout(
+        self, sprout: Sprout, tree_tracker: ArborealTracker
     ):
-        """Browse local files folder (default .camp/files) and attach files to Forest"""
+        if not self._needs_forest:
+            raise ArborealError("Invalid call for data with forest=False")
+        if sprout.unique_id in self._extracted_sprouts:
+            raise SachmisDataError("Sprout ID already in registry")
 
-        self.forest.load_local_files(
-            local_file_dir=local_file_dir,
-            from_empty_status=clear_current_files,
-        )
+        self._extracted_sprouts[sprout.unique_id] = tree_tracker
+        logger.debug(f"linked: {tree_tracker.path.name}, {sprout.unique_id=} ")
+
+    def _attach_sprout_to_tree(self, sprout: Sprout):
+        logger.debug("attaching final sprout back to tree")
+        tracker: ArborealTracker = self._extracted_sprouts[sprout.unique_id]
+        Tree.reattach_sprout(tree_file=tracker.path, sprout=sprout)
+
+    def _attach_new_full_responses_to_biome(self):
+        if not self._needs_biome:
+            raise ArborealError("Invalid call for data with biome=False")
+
+        config: SachmisConfig = get_config()
+
+        with Biome.edit_mode(config.paths.biome_file) as biome:
+            biome.responses.extend(self._full_responses)
+            # LATER: clear _full_responses?
+
+        logger.info(f"Attached {len(self._full_responses)} files to Biome")
+
+    def _add_temporary_full_response(self, text: str, path: Path) -> None:
+
+        path.write_text(text)
+        response: SstFile = SstFile(local_path=Path(path.name))
+
+        self._full_responses.append(response)
 
     def load_prompt(
-        self,
-        prompt_path: Path | None = None,
-        prompt_text: str | None = None,
-        topic: str | None = None,
-    ):
-        """Load prompt in storage, Priority: text > path > read from file"""
+        self, source: str | Path | None = None, topic: str | None = None
+    ) -> Prompt:
+        if isinstance(source, str):
+            self._prompt: Prompt = Prompt.load_from_text(source, topic)
+            self._input_prompt_path: Path | None = None
+        else:
+            config: SachmisConfig = get_config()
+            path: Path = source or Path(config.names.prompt)
+            self._prompt: Prompt = Prompt.load_from_path(path, topic)
+            self._input_prompt_path: Path | None = path
 
-        prompt: str = self._match_prompt_input_and_load(
-            prompt_path, prompt_text
-        )
-        topic: str = (
-            topic
-            or self._extract_topic_from_prompt(prompt)
-            or config.defaults.topic
-        )
-
-        self._prompt = Prompt(topic=topic, text=prompt)
-        logger.info(f"Prompt loaded with: {topic=}")
-
-        # Wait for first response, in case something fails
         self._prompt_written = False
 
+        return self._prompt
+
+    def load_camp(self, forest: Forest):
+        self._camp: CampManager = forest.provide_camp()
+
+    def load_files(self, files: list[UploadFile], ensure_after_upload=True):
+        """Assumes valid local data files, pushes to Remotes"""
+
+        logger.debug("attaching files to data.prompt")
+
+        prompt_files: list[UploadFile] = self.prompt.files
+
+        for file, uploader in product(files, self._uploader.values()):
+            try:
+                uploader.upload_local_file(file, ensure_after_upload)
+                prompt_files.append(file)
+            except FileNotFoundError:
+                logger.error(f"Missing {file=}")
+            except RuntimeError as err:
+                logger.error(f"Upload failed {file=}, {err}")
+                # TODO: check if raise or not
+
+    def load_images(self, images: list[SstFile]):
+        """Assumes valid local image files, pushes to Remotes"""
+
+        logger.debug("attaching files to data.image")
+
+        prompt_files: list[SstFile] = self.prompt.images
+        # TODO: any checks, logs, or prints?
+
+        prompt_files.extend(images)
+
+    def load_role(self, role_path: Path | None = None):
+        if role_path is not None and (role := role_path.read_text()):
+            self._role_path: Path | None = role_path
+            self._role: str | None = role
+
+    ### --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+    ### --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+
+    ### --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+    ### --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+
     def _move_or_write_prompt(self):
-        new_prompt_path: Path = config.paths.prompt_file(self._prompt.topic)
+
+        # TASK: file rollout
+        new_prompt_path: Path = self.prompt.get_path(root_dir=Path.cwd())
 
         if self._input_prompt_path is None:
-            new_prompt_path.write_text(self._prompt.text)
+            new_prompt_path.write_text(self.prompt.text)
         else:
             PathGuard.rotate(
                 source=self._input_prompt_path,
@@ -267,148 +235,23 @@ class DataManager:
                 reset=True,
             )
         self._answer_file_paths.append(new_prompt_path)
+        logger.debug(f"prompt moved: {new_prompt_path=}")
 
     def handle_response(self, sprout: Sprout):
         """So far: write when desired, later handle filetree | other.."""
-        if not self._write_to_cwd:
-            logger.debug("No response handling")
-            return
-        if not self._prompt_written:
-            self._move_or_write_prompt()
-            self._prompt_written = True
-            logger.debug(f"{self._prompt_written}")
 
         if sprout.response is None:
             logger.error(f"Can't process empty response of {sprout=}")
-        else:
-            answer_path: Path = sprout.write_answer_get_path
-            self._answer_file_paths.append(answer_path)
-            logger.debug(f"written to: {answer_path=}")
+            return
 
-    @staticmethod
-    def _extract_topic_from_prompt(prompt: str) -> str:
+        # TASK: file rollout
 
-        if lines := prompt.splitlines():
-            first_non_empty_line: str | None = next(
-                (line.strip() for line in lines if line.strip()), None
-            )
-            if first_non_empty_line:
-                topic: str = slugify(first_non_empty_line, delim="-")
-                return topic
+        if not self._prompt_written:
+            self._move_or_write_prompt()
+            self._prompt_written = True
 
-        logger.error("Prompt is empty, fix that before model release!")
-        raise AttributeError("Empty Prompt!")
+        answer_path: Path = sprout.answer_path_and_write(root_dir=Path.cwd())
+        logger.info("answer")
+        self._answer_file_paths.append(answer_path)
 
-    def _match_prompt_input_and_load(
-        self, prompt_path: Path | None = None, prompt_text: str | None = None
-    ) -> str:
-        match (prompt_path, prompt_text):
-            case (None, None):
-                path: Path = Path.cwd() / config.names.prompt
-                logger.info(f"Loading prompt from default path: {path}")
-                prompt: str = path.read_text()
-
-            case (Path() as path, None):
-                logger.info(f"Loading prompt from custom path: {path}")
-                prompt: str = path.read_text()
-
-            case (None, str() as text):
-                logger.info("Using prompt text from string input")
-                prompt: str = text
-                path = None
-
-            case (_, _):
-                logger.error(f"Input sources:\n{prompt_path=}\n{prompt_text=}")
-                raise AttributeError("Can't load prompt from 2 sources!")
-
-        if not prompt:
-            logger.error("Prompt is empty, fix that before model release!")
-            raise AttributeError("Empty Prompt!")
-
-        self._input_prompt_path: Path | None = path
-        return prompt
-
-    def attach(self, model: ModelFamily, tree_locator: str = "") -> Sprout:
-
-        if not self.in_forest:
-            raise FileNotFoundError("Not in Forest!")
-
-        # TODO:
-        # tree:Tree
-        # sprout:Sprout=tree.extract_new_sprout_in_edit_mode()
-
-        # NEXT: attach Tree + active sprout
-        if tree_locator:
-            # TODO: maybe check from here if tree valid and handle error
-            logger.debug(f"{tree_locator=}")
-            sprout: Sprout = self.forest.attach_sprout_in_tree(
-                tree_locator=tree_locator,
-                model=model.unique,
-                prompt=self._prompt,
-            )
-        else:
-            sprout: Sprout = self.forest.attach_new_tree(
-                model=model.unique, prompt=self._prompt
-            ).sprout
-
-        return sprout  # NOTE: save forest here? (or somewhen before release?)
-
-    def find_previous_id(self, tree_locator) -> str:
-        sprout: Sprout = self.forest.find_sprout_in_tree(tree_locator)
-        logger.debug("found sprout")
-        if sprout.response:
-            return sprout.response.id
-        raise ValueError(f"no response for {tree_locator=}")
-
-    def load_files(self, files: list[Path], ensure_file_loaded=False):
-
-        n_input_files: int = len(files)
-
-        files_in_forest: list[UploadFile] = self.forest.load_files_from_path(
-            [file for file in files if file.exists()]
-        )
-        n_confirmed_files: int = len(files_in_forest)
-
-        if n_confirmed_files != n_input_files:
-            logger.warning(f"{n_confirmed_files=} but {n_input_files=}!")
-            if ensure_file_loaded:
-                raise FileNotFoundError("Not all files confirmed!")
-        else:
-            logger.info(f"Attach all {n_input_files=} to data")
-
-        self._files: list[UploadFile] = files_in_forest
-
-    def load_images(self, images: list[Path], ensure_image_loaded=False):
-        n_input_images: int = len(images)
-
-        confirmed_images: list[Path] = [
-            image for image in images if image.exists()
-        ]
-        n_confirmed_images: int = len(confirmed_images)
-
-        if n_confirmed_images != n_input_images:
-            logger.warning(f"{n_confirmed_images=} but {n_input_images=}!")
-            if ensure_image_loaded:
-                raise FileNotFoundError("Not all images confirmed!")
-        else:
-            logger.info(f"Attach all {n_input_images=} to data")
-
-        self._images: list[Path] = confirmed_images
-
-    def load_role(self, role_path: Path | None = None):
-        """Role text overrides paths if provided"""  # NOTE: ??
-
-        # TODO: create text input arg, input generates new role file
-
-        if role_path is not None and (role := role_path.read_text()):
-            self._role_path: Path = role_path
-            self._role: str = role
-            logger.warning("role")
-        else:
-            self._role_path: Path | None = None
-            self._role: str | None = None
-            logger.warning("no role")
-
-    # TASK: file roleout
-    # - so far flat in 1 folder
-    # - group by tree?
+        logger.debug(f"written to: {answer_path=}")

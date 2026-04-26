@@ -1,16 +1,14 @@
-from sachmis.utils import ArborealFileMissingError
 import shutil
 from contextlib import chdir
 from pathlib import Path
 
 from loguru import logger
-from silvasta.utils import PathGuard
+from sstcore.utils import PathGuard
 
-from sachmis.config import SachmisConfig, get_config
-from sachmis.data.files import CampManager
-from sachmis.utils.exceptions import SachmisError
-from sachmis.utils.print import printer
-
+from ..config import SachmisConfig, get_config
+from ..data.files import CampManager
+from ..exceptions import ArborealFileMissingError
+from ..utils.print import printer
 from .arboreal import ArborealTracker, Biome
 
 
@@ -48,7 +46,6 @@ def check_biome_files():
         logger.debug(f"current status: 1 {biome_files=}")
 
 
-@PathGuard.dir
 def _ensure_base_dir(base_name: str, root_dir: Path | None = None):
     base_dir: Path = (root_dir or Path.cwd()) / base_name
 
@@ -57,7 +54,7 @@ def _ensure_base_dir(base_name: str, root_dir: Path | None = None):
         logger.warning(f"Using: {unique_base_dir=}")
         base_dir: Path = unique_base_dir
 
-    return base_dir
+    return PathGuard.dir(base_dir)
 
 
 def create_new_base(base_name: str | None = None):
