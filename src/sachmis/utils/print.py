@@ -1,23 +1,18 @@
+from itertools import cycle
 from pathlib import Path
 
-from rich.markdown import Markdown
 from rich.table import Table
-from silvasta.utils.print import Printer
+from sstcore.utils import Printer
+
+from sachmis.config.model import ModelFamily
 
 custom_theme: dict[str, str] = {
     # "write": "bold white on green",
-    # LATER: now everything gone...
-    # store for future use?
+    # LATER: now everything gone... what could be added?
 }
-
-# LATER: probably still needed, specific prompt/llm prints?
 
 
 class SachmisPrinter(Printer):
-    def yellow(self, text: str, *args, **kwargs):
-        # TODO: check
-        printer(text, *args, style="yellow", **kwargs)
-
     def path_exists_table(self, paths: list[Path], title=None, header="Path"):
         """load base paths from file, check existance, print result"""
 
@@ -33,18 +28,24 @@ class SachmisPrinter(Printer):
 
         self(table)
 
+    def model_table(
+        self, models: list[ModelFamily], title=None, show_header=True
+    ):
+        """load base paths from file, check existance, print result"""
+
+        table = Table(title=title, show_header=show_header)
+        table.add_column("Unique")
+        table.add_column("Name")
+        table.add_column("API Request Alias")
+
+        colors: list[str] = ["cyan", "magenta", "yellow", "green", "white"]
+
+        for model, color in zip(models, cycle(colors), strict=False):
+            table.add_row(
+                model.unique, str(model), model.api_name, style=color
+            )
+
+        self(table)
+
 
 printer = SachmisPrinter(custom_theme)
-
-if __name__ == "__main__":
-    title = "# Models"
-    printer.console.print(Markdown(title))
-    models = [
-        # "sss",
-        # "sss",
-        # "sss",
-        # "sss",
-        # "sss",
-    ]
-    printer.panel(text="\n".join(models), title=title)
-    printer.danger("Last check before deployment")
