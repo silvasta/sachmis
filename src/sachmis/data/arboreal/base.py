@@ -10,8 +10,8 @@ from filelock import FileLock
 from loguru import logger
 from pydantic import BaseModel, Field, PrivateAttr, ValidationError
 
-from sachmis.config import SachmisConfig, get_config
-from sachmis.utils.exceptions import (
+from ...config import SachmisConfig, get_config
+from ...exceptions import (
     ArborealError,
     ArborealFileMissingError,
     ArborealRegistryDuplicateError,
@@ -40,21 +40,17 @@ class Arboreal(BaseModel):
         self.last_updated: datetime = datetime.now(UTC)
         return self.last_updated
 
-    @property
-    def n_instanciated(self) -> int:
-        return self._local_counter
-
-    _local_counter: int = 0
+    local_counter: int = 0
 
     @property
     def _next_instance_id(self) -> int:
-        self._local_counter += 1
+        self.local_counter += 1
         self.touch()
         logger.debug(
-            f"New local id {self._local_counter} created from "
+            f"New local id {self.local_counter} created from "
             f"{self.__class__.__name__}: {self.unique_id}"
         )
-        return self._local_counter
+        return self.local_counter
 
     def _attach(self, *_args, **_kwargs):
         raise NotImplementedError
@@ -316,6 +312,8 @@ class ArborealDisk[ArboT: Arboreal](Arboreal):
             logger.warning(f"Missing {ArboT.__name__} files:\n{missing}")
             return False
         return True
+
+    # TASK: prune missing?
 
     def _check_tracker_paths_unique(self) -> bool:
         """Detect tracker with missing files at path"""

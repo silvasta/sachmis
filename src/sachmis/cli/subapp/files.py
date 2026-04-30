@@ -2,15 +2,14 @@ from itertools import product
 from pathlib import Path
 
 import typer
-from silvasta.cli import attach_callback, logger_catch
+from sstcore.cli import attach_callback, logger_catch
 
-from sachmis.cli.args import Google, Xai
-from sachmis.config import SachmisConfig, get_config
-from sachmis.data import DataManager
-from sachmis.data.files import UploadFile
-from sachmis.data.uploader import GoogleUploader, XaiUploader
-from sachmis.data.uploader.uploader import FileUploader
-from sachmis.utils.print import printer
+from ...config import SachmisConfig, get_config
+from ...data import DataManager
+from ...data.files import UploadFile
+from ...data.uploader import FileUploader, GoogleUploader, XaiUploader
+from ...utils.print import printer
+from ..args import Google, Xai
 
 # MOVE:
 config: SachmisConfig = get_config()

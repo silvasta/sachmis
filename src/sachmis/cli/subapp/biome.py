@@ -1,16 +1,16 @@
-from sachmis.data.arboreal import Biome, ArborealTracker
 from pathlib import Path
 
 import typer
 from loguru import logger
-from silvasta.cli.setup import attach_callback, logger_catch
-from silvasta.tui.list_selector import ListSelectorApp
+from sstcore.cli import attach_callback, logger_catch
+from sstcore.tui import ListSelectorApp
 
-from sachmis.cli import args
-from sachmis.config import SachmisConfig, get_config
-from sachmis.data.setup import create_new_biome
-from sachmis.utils import ArborealFileMissingError
-from sachmis.utils.print import printer
+from ...cli import args
+from ...config import SachmisConfig, get_config
+from ...data.arboreal import ArborealTracker, Biome
+from ...data.setup import create_new_biome
+from ...exceptions import ArborealFileMissingError
+from ...utils.print import printer
 
 
 def main() -> None:
@@ -42,7 +42,7 @@ def setup(name: args.Name | None = None):
 def show():
     """Show all Biomes and their Files"""
     config: SachmisConfig = get_config()
-    printer._lines_from_list_len(
+    printer.lines_with_len(
         name="Biomes",
         lines=list(config.paths.biome_files),
     )
@@ -56,7 +56,7 @@ def select():
     """Show all Biome Files and select 1"""
     config: SachmisConfig = get_config()
     biome_files: list[Path] = list(config.paths.biome_files)
-    printer.lines_from_list(
+    printer.lines(
         lines=biome_files,
         header=None,
         title="Selecting from Biome Files",
@@ -69,6 +69,7 @@ def select():
             raise ArborealFileMissingError("Biome", config.paths.biome_dir)
         case 1:
             printer.warn("There is only 1 Biome File, nothing to select!")
+            printer(config.paths.biome_file)
             return
         case _:
             pass
@@ -90,6 +91,7 @@ def select():
 @logger_catch
 def stat():
     """Show statistics of active Biome"""
+    # LATER: generic for Arbo
     config: SachmisConfig = get_config()
 
     active: str = "[bold]Active:[/]"
@@ -103,10 +105,11 @@ def stat():
         name: str = forest.path.parent.parent.name
         to_print.append(f"[bold black on white]{name}[/] - {forest.path}")
 
-    printer._lines_from_list_len(
+    printer.lines_with_len(
         name="Forests",
         lines=to_print,
     )
+    printer.path_exists_table([forest.path for forest in forests])
 
 
 # TASK: commands

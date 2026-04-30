@@ -6,9 +6,13 @@ from loguru import logger
 from pydantic import Field, model_validator
 
 from sachmis.config import SachmisConfig, get_config
-from sachmis.utils.exceptions import SproutResponseExistsError
+from sachmis.exceptions import (
+    SproutResponseExistsError,
+    SproutResponseMissingError,
+)
 
-from ..files import Prompt, Response
+from ..prompt import Prompt
+from ..response import Response
 from .base import Arboreal
 
 
@@ -20,6 +24,7 @@ class Sprout(Arboreal):
     response: Response | None
 
     sprout_locator: Path  # NOTE: some id/path hack
+    previous_response_id: str
     sprouts: list[Self] = Field(default_factory=list)
 
     # LATER: group that with Status(Enum) or similar
@@ -47,11 +52,14 @@ class Sprout(Arboreal):
         return next_locator
 
     def attach_sprout_to_sprout(self, model, prompt) -> Self:
+        # TODO: ensure it catches only root with that
+        prev: str = "" if self.response is None else self.completed_response.id
         new_sprout: Self = self.__class__(
             model=model,
             prompt=prompt,
             response=None,
             sprout_locator=self._next_sprout_locator(),
+            previous_response_id=prev,
         )
         return self._attach(new_sprout)
 
@@ -113,15 +121,25 @@ class Sprout(Arboreal):
     ### -- Sprout - Custom Functions and Atributes
     ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
 
+    # Sprout created in Tree, detached, Tree closed, Sprout in Model
     def set_extracted(self):
         self.extracted_at: datetime = self.touch()
 
+    # Prompt Loaded
     def set_loaded(self):
         self.loaded_at: datetime = self.touch()
 
+    def load_prompt_text(self) -> str:
+        if not (prompt := self.prompt.text):
+            raise FileNotFoundError("Load proper prompt first!")
+        self.set_loaded()
+        return prompt
+
+    # Prompt Launched
     def set_started(self):
         self.started_at: datetime = self.touch()
 
+    # Response Processed
     def set_completed(self):
         self.completed_at: datetime = self.touch()
 
@@ -136,19 +154,24 @@ class Sprout(Arboreal):
         self.set_completed()
 
     @property
-    def answer_path(self) -> Path:
-        """Calculated from CWD, used to save response"""
+    def completed_response(self) -> Response:
+        if not self.response:
+            raise SproutResponseMissingError("Attach Response first!")
+        return self.response
+
+    def answer_path(self, root_dir: Path | None = None) -> Path:
         config: SachmisConfig = get_config()
+
         return config.paths.answer_file(
             self.prompt.topic,
             locator=f"{self.sprout_locator}",
             model=self.model,
+            root_dir=root_dir,
         )
 
-    @property
-    def write_answer_get_path(self) -> Path:
+    def answer_path_and_write(self, root_dir: Path | None) -> Path:
         if self.response is None:
-            raise AttributeError(f"Can't process empty response of {self=}")
-        unique_answer_path: Path = self.answer_path
-        unique_answer_path.write_text(self.response.content)
-        return unique_answer_path
+            raise SproutResponseMissingError("Nothing to write!")
+        path: Path = self.answer_path(root_dir)
+        path.write_text(self.response.content)
+        return path

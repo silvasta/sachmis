@@ -1,7 +1,9 @@
 import typer
-from silvasta.cli.setup import attach_callback, logger_catch
+from sstcore.cli import attach_callback, logger_catch
 
-from sachmis.utils.print import printer
+from ...config import SachmisConfig, get_config
+from ...data.arboreal import ArborealTracker, Forest, Tree
+from ...utils.print import printer
 
 
 def main() -> None:
@@ -18,10 +20,31 @@ attach_callback(app)
 
 @app.command()
 @logger_catch
-# NEXT: rollout
-def maybe_roll_out(ctx: typer.Context):
-    """Expand condensed Forest data to file system"""
-    printer.danger("Implement!")
+def stat():
+    """Show statistics of active Forest"""
+    # LATER: generic for Arbo
+    config: SachmisConfig = get_config()
+
+    active: str = "[bold]Active:[/]"
+    printer.title(f"{active} {config.paths.forest_file}", style="warning")
+
+    forest: Forest = Forest.read_mode(config.paths.forest_file)
+    trees: list[ArborealTracker] = forest.trees
+
+    to_print: list[str] = []
+    for tree in trees:
+        name: str = tree.path.stem
+        to_print.append(f"[bold black on white]{name}[/] - {tree.path}")
+
+    printer.lines_with_len(
+        name="Trees",
+        lines=to_print,
+    )
+    printer.path_exists_table([tree.path for tree in trees])
+
+    for tree in trees:
+        loaded_tree: Tree = Tree.read_mode(tree.path)
+        printer(loaded_tree)
 
 
 if __name__ == "__main__":

@@ -2,10 +2,9 @@ from pathlib import Path
 
 from loguru import logger
 from pydantic import Field
-from silvasta.data.files import SstFile
+from sstcore.data.files import SstFile
 
-from sachmis.data.files import CampManager
-
+from ...data.files import CampManager
 from .base import ArborealDisk, ArborealTracker
 from .forest import Forest
 
@@ -83,7 +82,7 @@ class Biome(ArborealDisk[Forest]):
     def attach_new_full_response(self, text: str, path: Path) -> None:
         """Setup File tracker with relative path to full response dir"""
 
-        response: SstFile = SstFile(local_path=Path(path.name))
         path.write_text(text)
+        response: SstFile = SstFile(local_path=Path(path.name))
 
         self.responses.append(response)

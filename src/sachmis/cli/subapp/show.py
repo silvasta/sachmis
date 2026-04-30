@@ -1,10 +1,9 @@
 import typer
-from silvasta.cli.setup import attach_callback, logger_catch
+from sstcore.cli.setup import attach_callback, logger_catch
 
-from sachmis.config import SachmisConfig, get_config
-from sachmis.config.model import Geminis, Groks
-from sachmis.data import DataManager
-from sachmis.utils.print import printer
+from ...config import SachmisConfig, get_config
+from ...config.model import Geminis, Groks, get_all_models
+from ...utils.print import printer
 
 
 def main() -> None:
@@ -17,46 +16,6 @@ app = typer.Typer(
     no_args_is_help=True,
 )
 attach_callback(app)
-
-
-@app.command()
-@logger_catch
-def bases():
-    """Show all Bases with Forest that are saved in Biome"""
-    with DataManager(save_at_exit=False) as data:
-        printer.path_exists_table(
-            paths=data.biome.forests + data.biome.outdated_forests,
-            header="Biome: Active and Outdated Forests",
-        )
-
-
-@app.command()
-@logger_catch
-def trees():
-    """Show all Trees in Forest"""
-    with DataManager(save_at_exit=False, forest_required=True) as data:
-        # printer.forest(data.forest) # TASK: repair: printer.tree
-        printer(data.forest)
-
-
-@app.command()
-@logger_catch
-def files(  # NEXT: adapt this to new setup
-    cat: list[str] | None = None,
-    # TODO: adapt to new setup
-    topic: list[str] | None = None,
-):
-    """Show files and status inside file registry"""
-
-    # MERGE: Files?
-    select: dict[str, list[str]] = {}
-    if cat is not None:
-        select["category"] = cat
-    if topic is not None:
-        select["topic"] = topic
-
-    with DataManager(save_at_exit=False, forest_required=True):
-        raise NotImplementedError("create: printer.NEW(selection)")
 
 
 @app.command()
@@ -80,15 +39,21 @@ def models():  # TODO: rich table, statistics
             f"-g {model.value:<6} {model:<14} **{model.api_name}**",
             style="normal",
         )
+    printer.lines_with_len(
+        name="All Models",
+        lines=[model.unique for model in get_all_models(with_dummy=True)],
+    )
+    printer.model_table(get_all_models())
 
 
 @app.command("config")
 @logger_catch
 def config_details():
     """Print config to Console, so far just dotenv_path"""
-    # MOVE: to silvasta?
+    # MOVE: to silvasta? yes! some basic stats
     config: SachmisConfig = get_config()
 
+    # REFACTOR: create subapp, config management etc
     printer(config.compose_setup_param())  # LATER: show selection of paths
     printer(config.settings)
     printer(config.paths.dot_env)  # LATER: show selection of paths
