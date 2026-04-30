@@ -6,13 +6,13 @@ class DummyFamily(ModelFamily):
     D2 = "d2"
 
     @property
-    def category_unique(self) -> str:
-        """Used for pydantic, Models -> str -> Models and for CLI"""
+    def unique_letter(self) -> str:
+        """Unique bidirectional identifier for model company"""
         return "d"
 
     @property
     def api_name(self) -> str:
         return {
-            self.D1: "d1-pro",
-            self.D2: "d1-flash",
+            DummyFamily.D1: "d1-pro",
+            DummyFamily.D2: "d1-flash",
         }[self]

@@ -1,5 +1,5 @@
 from loguru import logger
-from silvasta.config import ConfigManager
+from sstcore.config import ConfigManager
 
 from .defaults import Defaults
 from .names import Names

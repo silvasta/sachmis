@@ -1,5 +1,5 @@
 from pydantic import Field
-from silvasta.config import SstSettings
+from sstcore.config import SstSettings
 
 from .defaults import Defaults
 from .names import Names

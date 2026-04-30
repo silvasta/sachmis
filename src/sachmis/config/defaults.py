@@ -1,9 +1,10 @@
-from pydantic import Field
-from pydantic_settings import BaseSettings
-from silvasta.config import SstDefaults
+from typing import Literal
+
+from pydantic import BaseModel, Field
+from sstcore.config import SstDefaults
 
 
-class TenacityDefaults(BaseSettings):
+class TenacityDefaults(BaseModel):
     max_attempts: int = 3
     wait_exponential: dict[str, int] = {
         "multiplier": 1,
@@ -11,6 +12,21 @@ class TenacityDefaults(BaseSettings):
         "min": 2,
         "max": 10,
     }
+
+
+class ModelParam(BaseModel):
+    """Specific values and defaults, depending on Model and ModelFamily"""
+
+
+class GrokParam(ModelParam):
+    timeout: int = 3600
+    store_messages: bool = True
+    n_agents: Literal[0, 4, 16] = 4  # 0 intended for interactive?
+
+
+class GeminiParam(ModelParam):
+    # -1 = dynamic, 0 = off, 1024 = high
+    thinking_budget: int | None = -1
 
 
 class Defaults(SstDefaults):

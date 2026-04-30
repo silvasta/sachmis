@@ -22,9 +22,9 @@ class Geminis(ModelFamily):
     @property
     def api_name(self) -> str:
         return {
-            self.G31F: "gemini-3.1-flash-lite-preview",
-            self.G3: "gemini-3.1-pro-preview",
-            self.G3F: "gemini-3-flash-preview",
-            self.G3I: "gemini-3-pro-image-preview",
-            self.GE2: "gemini-embedding-2-preview",
+            Geminis.G31F: "gemini-3.1-flash-lite-preview",
+            Geminis.G3: "gemini-3.1-pro-preview",
+            Geminis.G3F: "gemini-3-flash-preview",
+            Geminis.G3I: "gemini-3-pro-image-preview",
+            Geminis.GE2: "gemini-embedding-2-preview",
         }[self]

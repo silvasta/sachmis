@@ -1,6 +1,6 @@
 from boltons.strutils import slugify
-from silvasta.config import ParsedName, SstNames, StyledName
-from silvasta.utils import day_count
+from sstcore.config import ParsedName, SstNames, StyledName
+from sstcore.utils import day_count
 
 
 class SproutName(ParsedName):

@@ -2,16 +2,15 @@ from pathlib import Path
 from typing import Literal
 
 from loguru import logger
-from silvasta.config import SstPaths
-from silvasta.utils import PathGuard
-from silvasta.utils.path import (
+from sstcore import PathGuard
+from sstcore.config import SstPaths
+from sstcore.utils.path import (
     recursive_parent,
     recursive_root,
 )
 
-from sachmis.utils import ArborealFileExistsError
-from sachmis.utils.exceptions import NotInCampError, NotInForestError
-
+from ..utils import ArborealFileExistsError
+from ..utils.exceptions import NotInCampError, NotInForestError
 from .defaults import Defaults
 from .names import Names
 
@@ -27,15 +26,20 @@ class Paths(SstPaths[Names, Defaults]):
     @PathGuard.file(raise_error=True)
     def biome_file(self) -> Path:
         """Current active Biome file"""
-        return self._biome_file(self._names.biome_file)
+        return self._biome_file()
+
+    @property
+    def active_biome(self) -> bool:
+        return self.unconfirmed_biome_file.exists()
 
     @property
     def unconfirmed_biome_file(self) -> Path:
         """unchecked composition of path and name"""
-        return self._biome_file(self._names.biome_file)
+        return self._biome_file()
 
-    def _biome_file(self, biome_filename: str) -> Path:
-        return self.biome_dir / biome_filename
+    def _biome_file(self, biome_filename: str | None = None) -> Path:
+        """path constructor class"""
+        return self.biome_dir / (biome_filename or self._names.biome_file)
 
     def new_biome_file(self, name: str) -> Path:
         """Generate new biome_file path if it not already exists"""
@@ -110,7 +114,7 @@ class Paths(SstPaths[Names, Defaults]):
     @PathGuard.unique(ensure_parent=True)
     def tree_file(self, id: int, stem: str) -> Path:
         """Error if not in base"""
-        tree_file: str = self._names.tree_file(id=id, stem=stem)
+        tree_file: str = self._names.tree_file([id, stem])
         return self.tree_dir / tree_file
 
     @property

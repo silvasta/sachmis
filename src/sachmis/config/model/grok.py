@@ -1,10 +1,8 @@
 from loguru import logger
 
-from sachmis.utils.print import printer
-
 from .family import ModelFamily
 
-# IMPORTANT: Last update: 18.03.2026
+# NEXT: Last update: 18.03.2026
 
 
 class Groks(ModelFamily):
@@ -115,6 +113,7 @@ class Groks(ModelFamily):
         logger.info(f"{xai_prompt_token=}")
         logger.info(f"{cached_token=}")
 
-        printer(f"{total_cost=}")
+        # TODO: move to printer?
+        print(f"{total_cost=}")
 
         return total_cost  # LATER: return dataclass or so
