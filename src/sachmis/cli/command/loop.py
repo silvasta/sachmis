@@ -1,6 +1,6 @@
-from silvasta.cli.setup import logger_catch
+from sstcore.cli.setup import logger_catch
 
-from sachmis.utils.print import printer
+from ...utils.print import printer
 
 
 @logger_catch

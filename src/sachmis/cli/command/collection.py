@@ -1,13 +1,10 @@
-from pathlib import Path
+from sstcore.cli import logger_catch
 
-from silvasta.cli import monitor
-from silvasta.cli.setup import logger_catch
-
-import sachmis.core.capstone as cap
-from sachmis.cli import args
-from sachmis.config import SachmisConfig, get_config
-from sachmis.data import DataManager
-from sachmis.utils.print import printer
+from ...config import SachmisConfig, get_config
+from ...config.model import Geminis, Groks, get_all_models
+from ...data.setup import create_new_base
+from ...utils.print import printer
+from .. import args
 
 config: SachmisConfig = get_config()
 
@@ -15,23 +12,47 @@ config: SachmisConfig = get_config()
 @logger_catch
 def init(name: args.Name = config.names.base_dir):
     """Create new Base with Forest and Local Data Structure"""
-    DataManager.create_new_base(name)
+    create_new_base(name)
 
 
 @logger_catch
-def launch_monitor(file: args.File = None):  # NOTE: CLI hint not amazing...
-    """Launch Log Console Monitor: watch new log file entries"""
-    monitor(log_path=file)
+def models():  # TODO: rich table, statistics
+    """Show all models of all providers"""
+
+    printer.title("Groks")
+    for model in Groks:
+        printer.md(
+            f"-x {model.value:<6} {model:<14} **{model.api_name}**",
+            style="normal",
+        )
+
+    printer.title("Geminis")
+    for model in Geminis:
+        printer.md(
+            f"-g {model.value:<6} {model:<14} **{model.api_name}**",
+            style="normal",
+        )
+    printer.lines_with_len(
+        name="All Models",
+        lines=[model.unique for model in get_all_models(with_dummy=True)],
+    )
+    printer.model_table(get_all_models())
 
 
 @logger_catch
-def print_file(path: Path):
-    """Print Prompt, Response or any Markdown file in Rich style"""
-    printer.md(path.read_text())
+def roles():  # TODO: create "new role" function (somewhere else)
+    # TASK: where to place? solve together with local|global role
+    printer.danger("not avaliable")
 
 
 @logger_catch
-def data():
-    """Open DataManger in Context: with DataManger() as data..."""
-    printer.md("Maybe something to show could be useful")
-    cap.test_data_in_context()
+def config_details():
+    """Print config to Console, so far just dotenv_path"""
+    # MOVE: to silvasta? yes! some basic stats
+    config: SachmisConfig = get_config()
+
+    # REFACTOR: create subapp, config management etc
+    printer(config.compose_setup_param())  # LATER: show selection of paths
+    printer(config.settings)
+    printer(config.paths.dot_env)  # LATER: show selection of paths
+    printer(config.master_setting_file)  # LATER: show selection of paths

@@ -1,26 +1,24 @@
 from pathlib import Path
 
 from loguru import logger
-from silvasta.cli import logger_catch, sargs
+from sstcore.cli import logger_catch, sargs
+from sstcore.data import SstFile
 
-from sachmis.cli import args
-from sachmis.config import SachmisConfig, get_config
-from sachmis.config.model import ModelFamily
-from sachmis.core import capstone as cap
-from sachmis.core.model.agent import Model
-from sachmis.data import DataManager
-from sachmis.utils.parse import (
-    model_from_unique,
-)
-from sachmis.utils.picker import (
-    pick_files,
-    pick_images,
-    pick_models,
-    pick_role_from_dir,
-)
-from sachmis.utils.print import printer
+from ...config import SachmisConfig, get_config
+from ...config.model import ModelFamily
+from ...core import capstone as cap
+from ...core.model import Model
+from ...data import DataManager
+from ...data.files import CampManager, UploadFile
+from ...exceptions.data import DataManagerRuntimeError
+from ...tui.selector import file_selector, model_selector, role_selector
+from ...utils.parse import model_from_unique
+from ...utils.print import printer
+from .. import args
 
 config: SachmisConfig = get_config()
+
+DEBUG = True
 
 
 @logger_catch
@@ -29,7 +27,7 @@ def fire(
     models: args.Models = None,
     # Options for task selection
     pick_role: args.PickRole = True,
-    files: args.Files = None,
+    files: sargs.Files = None,
     pick_file: args.PickFile = False,
     images: args.Images = None,
     pick_image: args.PickImage = False,
@@ -44,23 +42,22 @@ def fire(
     # - loading models and prompt before picking files and images
     # - model/prompt failures should not cause unnecessary picks
 
-    with DataManager(forest_required=True) as data:
-        data._write_to_cwd = True
+    with DataManager(biome=True, forest=True) as data:
         data.load_prompt()
 
-        # MOVE: _prepare... to args?
         models: list[ModelFamily] = _prepare_model_args(models)
         agents: list[Model] = cap.load_models(data, models)
 
-        # MOVE: _prepare... to args?
-        files: list[Path] = _prepare_file_args(files, pick_file)
+        files: list[UploadFile] = _prepare_file_args(
+            data.camp, files, pick_file
+        )
         data.load_files(files)
 
-        # MOVE: _prepare... to args?
-        images: list[Path] = _prepare_image_args(images, pick_image)
+        images: list[SstFile] = _prepare_image_args(
+            data.camp, images, pick_image
+        )
         data.load_images(images)
 
-        # MOVE: _prepare... to args?
         role: Path | None = _prepare_role(pick_role)
         data.load_role(role)
 
@@ -73,10 +70,10 @@ def fire(
 
         printer.success("Models finished to run, storing data, au revoir!")
 
-        printer.lines_from_list(
+        printer.lines(
             header="Paths of generated Files",
-            title=data.most_recent_topic,
-            lines=data.answer_file_path_strings,
+            title=data.prompt.topic,
+            lines=data._answer_file_paths,
         )
 
     logger.info("All processes finished")
@@ -88,47 +85,32 @@ def confirm_fire(data: DataManager, models: list[Model]) -> bool:
         "Summary of Release",
     )
 
-    printer.title(f"Prompt - {data._prompt.topic}")
-    printer.md(data._prompt.text)
+    printer.title(f"Prompt - {data.prompt.topic}")
+    printer.md(data.prompt.text)
 
-    def _lines_from_list_args(name, lines: list):
-        # MERGE: if good, either into silvasta.Printer or sachmis.Printer
-        return {
-            "header": f"{name}: {len(lines)}",
-            "title": name,
-            "lines": lines,
-        }
-
-    printer.lines_from_list(
-        **_lines_from_list_args(
-            name="Models",
-            lines=[model.model.api_name for model in models],
-        )
+    printer.lines_with_len(
+        name="Models",
+        lines=[model.model.api_name for model in models],
     )
 
-    printer.lines_from_list(
+    printer.lines(
         header=f"Role: {data._role_path.stem if data._role_path else 'No role selected!'}",
         title="Role",
         lines=[data._role or f"{data._role_path=} and {data._role=}"],
     )
 
-    printer.lines_from_list(
-        **_lines_from_list_args(
-            name="Files",
-            lines=[file.name for file in data._files],
-        )
+    printer.lines_with_len(
+        name="Files",
+        lines=[file.name for file in data.prompt.files],
     )
 
-    printer.lines_from_list(
-        **_lines_from_list_args(
-            name="Images",
-            lines=[image.name for image in data._images],
-        )
+    printer.lines_with_len(
+        name="Images",
+        lines=[image.name for image in data.prompt.images],
     )
 
-    # NEXT: confirm previous id proper loaded
-    for model in models:  # REFACTOR:
-        if model.old_tree_locator:
+    for model in models:
+        if model.sprout.previous_response_id:
             printer.title(
                 f"{model.model.unique} is answering to previous response",
                 style="bold black on yellow",
@@ -140,79 +122,116 @@ def confirm_fire(data: DataManager, models: list[Model]) -> bool:
             printer.title("send API request now!", style="green")
             fire = True
         case _:
-            printer.yellow("see you when prompt and command chain is ready!")
+            printer(
+                "see you when prompt and command chain is ready!",
+                style="yellow",
+            )
             fire = False
 
     return fire
 
 
 # MOVE: _prepare... to args?
-def _prepare_model_args(models: list[str] | None) -> list[ModelFamily]:
+def _prepare_model_args(
+    models: list[str] | None,
+    with_dummy=DEBUG,
+) -> list[ModelFamily]:
 
     printer.title("Preparing Models...")
 
-    models: list[ModelFamily] = (
-        [
-            parsed_model
-            for model_unique in models
-            if (parsed_model := model_from_unique(model_unique))  #
-            is not None
-        ]
-        if models is not None
-        else pick_models()
+    models: list[str] = models or model_selector(
+        multi_select=True, with_dummy=with_dummy
     )
-    logger.debug(f"loading {len(models)=}")
+    selected_models: list[ModelFamily] = [
+        parsed_model
+        for model_unique in models
+        if (parsed_model := model_from_unique(model_unique))  #
+        is not None
+    ]
+    logger.debug(f"loading {len(selected_models)=}")
 
-    if not models:
-        raise AttributeError("No valid models parsed from input...")
+    printer.md(f"...{len(selected_models)} selected for pipeline")
 
-    printer.md(f"...{len(models)=} selected for pipeline")
+    # NEXT: empty list for no select == continue from last sprout?
 
-    return models
+    return selected_models
 
 
 # MOVE: _prepare... to args?
 def _prepare_file_args(
-    files: list[Path] | None, pick_file: bool
-) -> list[Path]:
+    camp: CampManager, files: list[Path] | None, pick_file: bool
+) -> list[UploadFile]:
 
     printer.title("Preparing Files...")
 
-    files: list[Path] = [
-        *(files or []),
-        *(pick_files() if pick_file else []),
-    ]
-    logger.debug(f"appending {len(files)=}")
+    prepared_files: list[UploadFile] = []
 
-    for file in files:
-        if not file.exists():
-            raise AttributeError(f"Invalid {file=}")
+    if pick_file:  # Pick first to avoid picking as well new added files
+        selected_files: list[Path] = file_selector(files=camp.files)
+        for path in selected_files:
+            match len(file := camp.files.get_files_by_path(path)):
+                case 0:
+                    logger.error(f"File not found in UploadRegistry: {path}")
+                case 1:
+                    file: UploadFile = file[0]
+                    prepared_files.append(file)
+                    logger.debug(f"added new file: {file.description}")
+                case _:
+                    logger.error(f"Multiple files with: {path}, {file=}")
 
-    printer.md(f"...{len(files)} files selected for pipeline")
+    if files:  # Mirror = copy for CLI provided links
+        prepared_files.extend(camp.files.mirror_from_path(source=files))
 
-    return files
+    if (local_files := get_config().paths.local_file_dir).exists():
+        camp.files.absorb_from_path(local_files)
+        # LATER: remove  the folder (or just content) afterwards?
+
+    for file in prepared_files:
+        if not file.confirm_local_status(camp.files.local_root):
+            # TODO: better Error
+            raise DataManagerRuntimeError(f"Failed to Import {file=}")
+
+    printer.md(f"...{len(prepared_files)} files selected for pipeline")
+
+    return prepared_files
 
 
 # MOVE: _prepare... to args?
 def _prepare_image_args(
-    images: list[Path] | None, pick_image: bool
-) -> list[Path]:
+    camp: CampManager, images: list[Path] | None, pick_image: bool
+) -> list[SstFile]:
 
     printer.title("Preparing Images...")
 
-    images: list[Path] = [
-        *(images or []),
-        *(pick_images() if pick_image else []),
-    ]
-    logger.debug(f"loading {len(images)=}")
+    prepared_images: list[SstFile] = []
 
-    for image in images:
-        if not image.exists():
-            raise AttributeError(f"Invalid {image=}")
+    if pick_image:  # Pick first to avoid picking as well new added files
+        # TODO: use ListSelector? or unify with _prepare_file_args
+        selected_images: list[Path] = file_selector(files=camp.images)
+        for path in selected_images:
+            match len(file := camp.images.get_files_by_path(path)):
+                case 0:
+                    logger.error(f"File not found in UploadRegistry: {path}")
+                case 1:
+                    file: SstFile = file[0]
+                    prepared_images.append(file)
+                    logger.debug(f"added new file: {file.description}")
+                case _:
+                    logger.error(f"Multiple files with: {path}, {file=}")
 
-    printer.md(f"...{len(images)} images selected for pipeline")
+    if images:  # Mirror = copy for CLI provided links
+        prepared_images.extend(camp.images.mirror_from_path(source=images))
 
-    return images
+    if (local_files := get_config().paths.local_file_dir).exists():
+        camp.images.absorb_from_path(local_files)
+
+    for image in prepared_images:
+        if not image.confirm_local_status(camp.images.local_root):
+            raise DataManagerRuntimeError(f"Failed to Import {file=}")
+
+    printer.md(f"...{len(prepared_images)} images selected for pipeline")
+
+    return prepared_images
 
 
 # MOVE: _prepare... to args?
@@ -220,9 +239,12 @@ def _prepare_role(pick_role: bool) -> Path | None:
 
     printer.title("Preparing Role...")
 
-    role: Path | None = (
-        pick_role_from_dir(config.paths.role_dir) if pick_role else None
-    )
+    if pick_role:
+        roles: list[Path] = config.paths.role_paths(mode="all")
+        role: Path | None = role_selector(roles)
+    else:
+        role = None
+
     if role:
         logger.info(f"Selected Role: {role.stem}")
     else:

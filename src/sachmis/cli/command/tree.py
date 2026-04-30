@@ -1,32 +1,23 @@
 from pathlib import Path
 
 from loguru import logger
-from silvasta.cli.setup import logger_catch
+from sstcore.cli import logger_catch, sargs
 
-from sachmis.cli.args import (
+from ...config import SachmisConfig, get_config
+from ...config.model import ModelFamily
+from ...core import capstone as cap
+from ...core.model.agent import Model
+from ...data import DataManager
+from ...utils.parse import model_from_unique
+from ...utils.print import printer
+from ..args import (
     Async,
-    Files,
     Fire,
     Images,
     PickFile,
     PickImage,
     PickRole,
 )
-from sachmis.config import SachmisConfig, get_config
-from sachmis.config.model import ModelFamily
-from sachmis.core import capstone as cap
-from sachmis.core.model.agent import Model
-from sachmis.data import DataManager
-from sachmis.utils.parse import (
-    model_from_unique,
-)
-from sachmis.utils.picker import (
-    pick_files,
-    pick_images,
-    pick_role_from_dir,
-)
-from sachmis.utils.print import printer
-
 from .fire import confirm_fire
 
 config: SachmisConfig = get_config()
@@ -38,7 +29,7 @@ def tree(
     file_to_tree: Path,
     # Options for task selection
     pick_role: PickRole = True,
-    files: Files = None,
+    files: sargs.Files = None,
     pick_file: PickFile = False,
     images: Images = None,
     pick_image: PickImage = False,
@@ -50,7 +41,6 @@ def tree(
     """Load existing tree from path, assemble prompt and fire"""
 
     with DataManager(forest_required=True) as data:
-        data._write_to_cwd = True
         data.load_prompt()
 
         # REFACTOR: collapse with Fire (and others)
@@ -64,29 +54,15 @@ def tree(
             data, [model], tree_locator=tree_locator
         )
 
-        files: list[Path] = _prepare_file_args(files, pick_file)
-        data.load_files(files)
-
-        images: list[Path] = _prepare_image_args(images, pick_image)
-        data.load_images(images)
-
-        role: Path | None = _prepare_role(pick_role)
-        logger.debug("at role")
-        data.load_role(role)
-
         if not direct_fire and not confirm_fire(data, agents):
             return
 
         logger.info("Ready to fire")
 
+        dry_run = False
         cap.launch_models(agents, use_async, dry_run)
 
         printer.title("Models finished to run, storing data, au revoir!")
-
-        printer.lines_from_list(
-            title="Paths of generated Files",
-            lines=[str(answer) for answer in data._answer_file_paths],
-        )
 
     logger.info("All processes finished")
 
@@ -108,62 +84,3 @@ def _get_model(raw_string: str) -> ModelFamily:
 def _get_locator(raw_string: str) -> str:
     logger.info(f"{raw_string=}")
     return raw_string
-
-
-def _prepare_file_args(
-    files: list[Path] | None,
-    pick_file: bool,
-) -> list[Path]:
-    # REMOVE: load from fire, or ??
-    printer.title("Preparing Files...")
-
-    files: list[Path] = [
-        *(files or []),
-        *(pick_files() if pick_file else []),
-    ]
-    logger.debug(f"appending {len(files)=}")
-
-    for file in files:
-        if not file.exists():
-            raise AttributeError(f"Invalid {file=}")
-
-    printer.md(f"...{len(files)} files selected for pipeline")
-
-    return files
-
-
-def _prepare_image_args(
-    images: list[Path] | None, pick_image: bool
-) -> list[Path]:
-    # REMOVE: load from fire, or ?? maybe as in args? parse directly there?
-
-    printer.title("Preparing Images...")
-
-    images: list[Path] = [
-        *(images or []),
-        *(pick_images() if pick_image else []),
-    ]
-    logger.debug(f"loading {len(images)=}")
-
-    for image in images:
-        if not image.exists():
-            raise AttributeError(f"Invalid {image=}")
-
-    printer.md(f"...{len(images)} images selected for pipeline")
-
-    return images
-
-
-def _prepare_role(pick_role: bool) -> Path | None:
-    # REMOVE: load from fire, or ?? still 'needs' prompt=data first... callback?
-    printer.title("Preparing Role...")
-
-    role: Path | None = (
-        pick_role_from_dir(config.paths.role_dir) if pick_role else None
-    )
-    if role:
-        logger.info(f"Selected Role: {role.stem}")
-    else:
-        logger.info("no role selected")
-
-    return role

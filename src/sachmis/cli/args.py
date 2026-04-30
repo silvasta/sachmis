@@ -11,7 +11,7 @@ Name = Annotated[
     str,
     typer.Option(
         "--name",
-        "-n",
+        "-n",  # FIX: dont workt in: sachmis biome setup
         help="Name of current target",
     ),
 ]
@@ -25,15 +25,15 @@ Async = Annotated[
     ),
 ]
 
-# NEXT:
-# REMOVE:
-# DryRun = Annotated[
-#     bool,
-#     typer.Option(
-#         "--dry",
-#         help="Simulate pipeline without execution",
-#     ),
-# ]
+OutputFile = Annotated[
+    # WARN: check collision with Files
+    Path | None,
+    typer.Option(
+        "--output-file",
+        "-o",
+        help="Choose custom output file path",
+    ),
+]
 
 ### --- --- --- --- --- --- --- --- --- --- ---
 ### --- Sachmis Specific
@@ -69,7 +69,7 @@ Google = Annotated[
 ### --- --- --- --- --- --- --- --- --- --- ---
 
 Models = Annotated[
-    list[str] | None,
+    list[str] | None,  # REMOVE: None?
     # INFO: using Argument instead of Option allows easy list!
     typer.Argument(
         # "--model",
@@ -89,24 +89,6 @@ PickModel = Annotated[
     ),
 ]
 
-File = Annotated[
-    # WARN: check collision with Files
-    Path | None,
-    typer.Option(
-        "--file",
-        "-f",
-        help="Add file from path",
-    ),
-]
-Files = Annotated[
-    # WARN: check collision with File
-    list[Path] | None,
-    typer.Option(
-        "--files",
-        "-f",
-        help="Add files from paths",
-    ),
-]
 PickFile = Annotated[
     bool,
     typer.Option(

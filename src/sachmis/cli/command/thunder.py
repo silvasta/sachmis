@@ -3,12 +3,12 @@ from typing import Annotated
 
 import typer
 from loguru import logger
-from silvasta.cli.setup import logger_catch
+from sstcore.cli.setup import logger_catch
 
-from sachmis.config.model import Geminis, Groks, ModelFamily
-from sachmis.core.model import Gemini, Grok, Model
-from sachmis.data import DataManager
-from sachmis.utils.print import printer
+from ...config.model import Geminis, Groks, ModelFamily
+from ...core.model import Gemini, Grok, Model
+from ...data import DataManager
+from ...utils.print import printer
 
 # IMPORTANT: launch v0.4.0b1 when this is ready!
 
