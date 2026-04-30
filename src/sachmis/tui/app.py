@@ -1,5 +1,5 @@
 from loguru import logger
-from silvasta.utils import setup_logging
+from sstcore.utils import setup_logging
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.screen import Screen
