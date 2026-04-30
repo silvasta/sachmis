@@ -1,23 +1,19 @@
 from loguru import logger
 
-from sachmis.config import SachmisConfig, get_config
-from sachmis.config.model.dummy import DummyFamily
-from sachmis.data import DataManager
+from sachmis.config.defaults import ModelParam
 
+from ...config import SachmisConfig, get_config
+from ...config.model.dummy import DummyFamily
 from .agent import Model
 
 config: SachmisConfig = get_config()
 
+# NEXT: models
+
 
 class DummyModel(Model):
     model: DummyFamily
-
-    def __init__(
-        self,
-        data: DataManager,
-        model: DummyFamily,
-    ):
-        super().__init__(data, model)
+    param: ModelParam
 
     def _load_client(self):
         logger.info("Client prepared")
@@ -54,7 +50,7 @@ class DummyModel(Model):
         return response
 
     def _extract_full_response(self) -> str:
-        return self._response
+        return str(self._raw_response)
 
     def _extract_response_content(self) -> str:
         return """# content

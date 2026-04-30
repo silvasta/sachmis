@@ -4,12 +4,12 @@ from xai_sdk import Client
 from xai_sdk.chat import Response, file, image, system, user
 from xai_sdk.sync.chat import Chat
 
-from sachmis.config import SachmisConfig, get_config
-from sachmis.config.model import Groks
-from sachmis.data import DataManager
-from sachmis.data.files import XaiUploadState
-from sachmis.data.uploader import XaiUploader
-
+# from tenacity import retry, stop_after_attempt, wait_exponential
+from ...config import SachmisConfig, get_config
+from ...config.defaults import GrokParam
+from ...config.model import Groks
+from ...data.files import XaiUploadState
+from ...data.uploader import XaiUploader
 from .agent import Model
 
 config: SachmisConfig = get_config()
@@ -17,60 +17,38 @@ config: SachmisConfig = get_config()
 
 class Grok(Model):
     model: Groks
+    param: GrokParam
     client: Client
     chat: Chat
     response: Response
 
-    def __init__(
-        self,
-        data: DataManager,
-        model: Groks,
-        tree_locator: str = "",
-        timeout: int = 3600,
-        store_messages: bool = True,
-    ):
-
-        # TODO: grok default config to config.defaults
-        self.timeout: int = timeout
-        self.store_messages: bool = store_messages
-
-        # INFO: super() after storing variables for:
-        # - self._load_client()
-        # - data.attach()
-        logger.debug(f"{tree_locator=}")
-        super().__init__(data, model, tree_locator)
-
     def _load_client(self):
         self.client = Client(
             api_key=config.from_env(key="XAI_API_KEY"),
-            timeout=self.timeout,
+            timeout=self.param.timeout,
         )
 
     def _prepare_chat(self):
         param: dict = {
             "model": self.model.api_name,
-            "store_messages": self.store_messages,
+            "store_messages": self.param.store_messages,
         }
-        # NEXT: check in model.agent
-        if self.old_tree_locator:
+        if id := self.previous_response_id():
             logger.debug("got locator")
-            previous_response_id: str = self.data.find_previous_id(
-                self.old_tree_locator
-            )
-            param |= {
-                "previous_response_id": previous_response_id,
-            }
-            logger.info(f"{self.model} using {previous_response_id=}")
-        self.chat: Chat = self.client.chat.create(**param)
+            param |= {"previous_response_id": id}
+            logger.info(f"{self.model} attaches previous response with: {id=}")
+
+        if self.model == Groks.G420M:
+            param |= {"agent_count": self.param.n_agents}
+
         logger.debug(f"{param=}")
+        self.chat: Chat = self.client.chat.create(**param)
 
-    def _attach_role(self):
-        if role := self.data._role:
-            self.chat.append(system(role))
-        logger.debug(role)
+    def _attach_role(self, role: str):
+        self.chat.append(system(role))
 
-    def _attach_prompt(self):
-        self.chat.append(user(self._get_prompt_text()))
+    def _attach_prompt(self, prompt: str):
+        self.chat.append(user(prompt))
 
     def _attach_images(self):
         for i in self.data._images:
@@ -103,10 +81,10 @@ class Grok(Model):
         # TODO: verification in data
         # - maybe data checks UploadFile, here check with XaiUploader
         # MOVE: to data, there execute on FileUploader
+        # IDEA: just tell data, x needs upload (same for g emini)
         logger.debug("files")
         if self.data._files:
-            # check dispatch for UploadStates in FileUploader
-            uploader: XaiUploader = self.data.get_uploader("xai")
+            uploader: XaiUploader = self.data.get_uploader("xai")  # ty:ignore
             logger.debug("uploader fine")
 
         for upload_file in self.data._files:

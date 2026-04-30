@@ -3,47 +3,72 @@ from collections.abc import Callable
 
 from loguru import logger
 
-from sachmis.config.model import Geminis, Groks, ModelFamily
-from sachmis.config.model.dummy import DummyFamily
-from sachmis.data import DataManager
-from sachmis.utils.print import printer
+from sachmis.config.defaults import GeminiParam, GrokParam, ModelParam
 
+from ..config.model import Geminis, Groks, ModelFamily
+from ..config.model.dummy import DummyFamily
+from ..data import DataManager
+from ..data.arboreal import ArborealTracker, Forest, Sprout, Tree
+from ..utils.print import printer
 from .model import Gemini, Grok, Model
 from .model.dummy import DummyModel
 
 
-def test_data_in_context():
-    with DataManager() as data:
-        printer(vars(data))
-        printer(dir(data))
-        printer(data)
-
-
-def match_family(
-    data: DataManager, model: ModelFamily, *args, **kwargs
-) -> Model:
+def match_family(model, **kwargs) -> Model:
     """Create instance of execution model from Enum family model"""
 
     if isinstance(model, Groks):
-        return Grok(data, model, *args, **kwargs)
+        if "param" not in kwargs:
+            kwargs |= GrokParam()
+            printer(kwargs)
+        return Grok(model, **kwargs)
 
     if isinstance(model, Geminis):
-        return Gemini(data, model, *args, **kwargs)
+        if "param" not in kwargs:
+            kwargs |= GeminiParam()
+            printer(kwargs)
+        return Gemini(model, **kwargs)
 
     if isinstance(model, DummyFamily):
-        return DummyModel(data, model, *args, **kwargs)
+        if "param" not in kwargs:
+            kwargs["param"] = ModelParam()
+            printer(kwargs)
+        return DummyModel(model, **kwargs)
 
     raise ValueError(f"Unknown {model=}")
 
 
-def load_models(
-    data: DataManager, models: list[ModelFamily], *args, **kwargs
-) -> list[Model]:
+def load_models(data: DataManager, models: list[ModelFamily]) -> list[Model]:
     logger.info(f"Start of loading: {models=}")
-    return [
-        match_family(data, model, *args, **kwargs)  #
-        for model in models
+
+    tree_tracker: list[ArborealTracker] = []
+
+    with Forest.edit_mode(data.forest_file) as forest:
+        logger.info("Loading Forest and extract Trees")
+        for model in models:
+            tree_tracker.append(  # NEXT: info from data
+                forest.provide_tree(model=model.unique, prompt=data._prompt)
+            )
+    logger.info("Trees extracted, closing Forest during task")
+
+    sprouts: list[Sprout] = []
+
+    for model, tree in zip(models, tree_tracker, strict=True):
+        with Tree.edit_mode(tree.path) as tree:
+            sprouts.append(  # NEXT: info from data, LOCATOR
+                tree.provide_sprout(model=model.unique, prompt=data._prompt)
+            )
+    logger.info("Sprouts extracted, closing Trees during task")
+
+    trees: list[Tree] = [Tree.read_mode(t.path) for t in tree_tracker]
+    # LATER: optimize how this works, Trees openend for 3th time here...
+
+    attached_models: list[Model] = [
+        match_family(model, data=data, tree=tree, sprout=sprout)
+        for model, tree, sprout in zip(models, trees, sprouts, strict=True)
     ]
+
+    return attached_models
 
 
 def launch_models(agents: list[Model], use_async=False, dry_run=False):
@@ -97,7 +122,7 @@ def launch_async(models: list[Model]):
         printer.title(f"Launching Thunder with {len(models)} models")
         tasks: list = [model.fire() for model in models]
         results = await tqdm.gather(*tasks, return_exceptions=True)
-        for model, result in zip(models, results):
+        for model, result in zip(models, results, strict=False):
             model.assemble_prompt()  # WARN: model.assemble_prompt() needed, proper here?
             if isinstance(result, Exception):
                 logger.error(

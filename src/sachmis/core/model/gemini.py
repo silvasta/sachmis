@@ -1,40 +1,22 @@
 from google.genai import Client, types
 from google.genai.types import GenerateContentResponse
 from loguru import logger
-from tenacity import retry, stop_after_attempt, wait_exponential
 
-from sachmis.config import SachmisConfig, get_config
-from sachmis.config.model import Geminis
-from sachmis.data import DataManager
-from sachmis.utils.print import printer
-
+# from tenacity import retry, stop_after_attempt, wait_exponential
+from ...config import SachmisConfig, get_config
+from ...config.defaults import GeminiParam
+from ...config.model import Geminis
+from ...utils.print import printer
 from .agent import Model
 
 config: SachmisConfig = get_config()
 
-# NEXT: adapt function names! _xxx()
-
 
 class Gemini(Model):
     model: Geminis
+    param: GeminiParam
     client: Client
     response: GenerateContentResponse
-
-    def __init__(
-        self,
-        data: DataManager,
-        model: Geminis,
-        topic: str | None = None,
-        thinking_budget: int | None = -1,  # -1 = dynamic, 0 = off, 1024 = high
-    ):
-
-        # TODO: gemini default config to config.defaults
-        self.thinking_budget: int | None = thinking_budget
-
-        # INFO: super() after storing variables for:
-        # - self._load_client()
-        # - data.attach()
-        super().__init__(data, model, topic)
 
     def _load_client(self):
         self.client = Client(
@@ -44,69 +26,66 @@ class Gemini(Model):
     def prepare_chat(self):
         self.contents: list = []  # INFO: this is where all files,images, role and prompt get collected
         self.content_config: dict = {}
-        if self.thinking_budget:
+        if self.param.thinking_budget:
             self.content_config |= {
                 "thinking_config": types.ThinkingConfig(
-                    thinking_budget=self.thinking_budget
+                    thinking_budget=self.param.thinking_budget
                 ),
             }
-        # FIX:
+        # TASK:
         # if self.previous_response_id:
         #     logger.info(
         #         "Answer to Gemini here but, prepare file structure first!"
         #     )
 
-    def attach_role(self):
-        role: str = self.data.system_role
+    def _attach_role(self, role: str):
         self.content_config |= {"system_instruction": role}
 
-    def attach_prompt(self):
-
-        if self.data.prompt is None:
-            raise FileNotFoundError("Load proper prompt first!")
-
-        prompt: str = self.data.prompt
+    def _attach_prompt(self, prompt: str):
         self.contents.append(prompt)
 
     def attach_images(self):
-        for i in self.data.bytes_images:
-            mime: str = (
-                "image/png" if i.startswith(b"\x89PNG") else "image/jpeg"
-            )
-            self.contents.append(
-                types.Part.from_bytes(data=i, mime_type=mime),
-            )
-        # TODO: images loading
-        # def load_input_image(self, image_path: Path) -> None:
-        #     """So far, encoding image to base64 string"""
-        #
-        #     # bytes image loading for gemini
-        #     if image := load_bytes_image(image_path):
-        #         self.bytes_images.append(image)
-        #     else:
-        #         logger.warning(f"Bytes image loading failed: {image_path}")
-        #     self.input_image_paths.append(image_path)
+        for i in self.data._images:
+            # FIX: image
+            # mime: str = (
+            #     "image/png" if i.startswith(b"\x89PNG") else "image/jpeg"
+            # )
+            # self.contents.append(
+            #     types.Part.from_bytes(data=i, mime_type=mime),
+            # )
+            # TODO: images loading
+            # def load_input_image(self, image_path: Path) -> None:
+            #     """So far, encoding image to base64 string"""
+            #
+            #     # bytes image loading for gemini
+            #     if image := load_bytes_image(image_path):
+            #         self.bytes_images.append(image)
+            #     else:
+            #         logger.warning(f"Bytes image loading failed: {image_path}")
+            #     self.input_image_paths.append(image_path)
+            logger.debug(f"ignoring {i}")
 
     def attach_files(self):
-        for local_file in self.data.files:
-            if local_file.g_uri is None:  # REMOVE: verification in data
-                logger.warning(f"Ignoring {local_file.name}, no valid g_id!")
-            else:
-                logger.debug(
-                    f"loaded file: {local_file.topic=}, {local_file.name}, {local_file.g_uri}"
-                )
-                self.contents.append(
-                    types.Part.from_uri(
-                        file_uri=local_file.g_uri,
-                        mime_type=local_file.g_mime_type,
-                    )
-                )
+        # for local_file in self.data.files:
+        #     if local_file.g_uri is None:  # REMOVE: verification in data
+        #         logger.warning(f"Ignoring {local_file.name}, no valid g_id!")
+        #     else:
+        #         logger.debug(
+        #             f"loaded file: {local_file.topic=}, {local_file.name}, {local_file.g_uri}"
+        #         )
+        #         self.contents.append(
+        #             types.Part.from_uri(
+        #                 file_uri=local_file.g_uri,
+        #                 mime_type=local_file.g_mime_type,
+        #             )
+        #         )
+        pass
 
-    @retry(
-        stop=stop_after_attempt(config.defaults.tenacity.max_attempts),
-        wait=wait_exponential(**config.defaults.tenacity.wait_exponential),
-        # TODO: before_sleep=before_sleep_log(logger, logging.WARNING)
-    )
+    # @retry( # IMPORTANT: retry
+    #     stop=stop_after_attempt(config.defaults.tenacity.max_attempts),
+    #     wait=wait_exponential(**config.defaults.tenacity.wait_exponential),
+    #     # TODO: before_sleep=before_sleep_log(logger, logging.WARNING)
+    # )
     def _get_response(self):
         self.response: GenerateContentResponse = (
             self.client.models.generate_content(
@@ -136,7 +115,6 @@ class Gemini(Model):
             self.id: str = self.response.response_id
 
     def _extract_usage(self):
-        self.usage: dict[str, int] = {}
         try:
             if self.response.usage_metadata is None:
                 logger.error(f"Fail with usage_metadata! {self.model=}")
@@ -151,18 +129,6 @@ class Gemini(Model):
         except Exception as e:
             logger.error(f"Usage {self.model.unique}:\n{e}")
 
-    def _calculate_usage_cost(self):
+    def _calculate_usage_cost(self, usage: dict):
         printer("Implement usage calculation for Gemini!")
-
-    def _setup_response_data(self):
-        try:
-            self.data.process_response(
-                id=self.id,
-                model=self.model,
-                usage=self.usage,
-                content=self.content,
-                full_response=self.full_response,
-                topic=self.topic,
-            )
-        except Exception as e:
-            logger.error(f"Error for tree {self.model.api_name}\n{e}")
+        printer(usage)
