@@ -19,13 +19,12 @@ def model_from_unique(model_unique: str) -> ModelFamily | None:
         logger.error(f"String operation failure for {model_unique=}:\n{e}")
         return None
 
-    match family:  # PLUG: new model(family) for parser
+    match family:
         case "x":
             target_enum: type[ModelFamily] = Groks
         case "g":
             target_enum: type[ModelFamily] = Geminis
         case "d":
-            # REMOVE:
             target_enum: type[ModelFamily] = DummyFamily
         case _:
             logger.error("ModelFamily can't be identified by input {family=}")

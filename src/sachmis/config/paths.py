@@ -9,8 +9,11 @@ from sstcore.utils.path import (
     recursive_root,
 )
 
-from ..utils import ArborealFileExistsError
-from ..utils.exceptions import NotInCampError, NotInForestError
+from ..exceptions import (
+    ArborealFileExistsError,
+    NotInCampError,
+    NotInForestError,
+)
 from .defaults import Defaults
 from .names import Names
 
@@ -146,8 +149,13 @@ class Paths(SstPaths[Names, Defaults]):
         self, mode: Literal["all", "local", "global"] = "all"
     ) -> list[Path]:
         return [
-            *(self.role_dir.glob("*") if mode == "global" else []),
-            *(self.camp_role_dir.glob("*") if mode == "local" else []),
+            # FIX: works  that now?
+            *(self.role_dir.glob("*") if mode == "all" or "global" else []),
+            *(
+                self.camp_role_dir.glob("*")
+                if mode == "all" or "local"
+                else []
+            ),
         ]
 
     @property
@@ -198,7 +206,7 @@ class Paths(SstPaths[Names, Defaults]):
 
     def _path_from_stem(
         self, stem: str, suffix: str, root_dir: Path | None = None
-    ):
+    ) -> Path:
         suffix: str = suffix if suffix.startswith(".") else f".{suffix}"
         return (root_dir or Path.cwd()) / f"{stem}{suffix}"
 

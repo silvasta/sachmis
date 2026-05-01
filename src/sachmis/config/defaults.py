@@ -8,7 +8,7 @@ class TenacityDefaults(BaseModel):
     max_attempts: int = 3
     wait_exponential: dict[str, int] = {
         "multiplier": 1,
-        # NEXT: check gemini chat, this few seconds are ridicoulous!
+        # TASK: check gemini chat, this few seconds are ridicoulous!
         "min": 2,
         "max": 10,
     }
@@ -27,6 +27,9 @@ class GrokParam(ModelParam):
 class GeminiParam(ModelParam):
     # -1 = dynamic, 0 = off, 1024 = high
     thinking_budget: int | None = -1
+
+
+# TASK: attach ModelParam to Defaults?
 
 
 class Defaults(SstDefaults):
