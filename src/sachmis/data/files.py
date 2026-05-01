@@ -113,56 +113,66 @@ class UploadFile(SstFile):
 class UploadRegistry(FileRegistry[UploadFile]):
     """Registry specifically for UploadFiles"""
 
-    def _create_local_file(self, path: Path) -> UploadFile:
-        if path.is_absolute():
-            path: Path = self.relative_to_local_root(path)
-
-        return UploadFile.with_slug_name(local_path=path)
+    def _create_local_file(self, local_path: Path) -> UploadFile:
+        return UploadFile.with_slug_name(local_path=local_path)
 
 
 class CampManager(FileSystemManager):
-    def __init__(self):
+    """Manage local utilities that are not covered by the Forest"""
+
+    roles: SstFileRegistry  # TODO: Role(SstFile) with content and counter
+    files: UploadRegistry
+    # TASK: code: (dict or list of) hardlink registry/ies
+    images: SstFileRegistry
+
+    def __init__(
+        self,
+        roles: SstFileRegistry | None = None,
+        files: UploadRegistry | None = None,
+        images: SstFileRegistry | None = None,
+    ):
         config: SachmisConfig = get_config()
 
         # TASK: how to handle / sync with Forest?
 
-        # LATER: combine with global roles
-        self.role_registry: SstFileRegistry = SstFileRegistry(
-            local_root=Path(config.paths.camp_role_dir)
-        )
-        self.upload_registry: UploadRegistry = UploadRegistry(
+        self.files: UploadRegistry = files or UploadRegistry(
             local_root=Path(config.paths.file_dir),
         )
-        self.image_registry: SstFileRegistry = SstFileRegistry(
+        self.images: SstFileRegistry = images or SstFileRegistry(
             local_root=Path(config.paths.image_dir),
+        )
+        # LATER: combine with global roles, so far unused!
+        # - add some tracking of role performance
+        self.roles: SstFileRegistry = roles or SstFileRegistry(
+            local_root=Path(config.paths.camp_role_dir)
         )
         logger.info("setup complete")
 
-    def load_files(self, root_dir: Path):
-        pass
-
     def attach_from_camp_folder(self) -> list[UploadFile]:
 
-        # TODO: decide if print here or return here
-
         new_files: list[UploadFile] = (
-            self.upload_registry.attach_new_files_from_local_folder()
+            self.files.attach_new_files_from_local_folder()
         )
-        printer.lines_with_len(
+        printer.lines_with_len(  # MOVE: to CLI
             name="New Files",
             lines=[file.description for file in new_files],
         )
+        logger.error("Move to CLI!!!!")
+
         return new_files
 
-    def attach_from_dir(self, local_dir: Path) -> list[UploadFile]:
-        """Setup new registry at directory, sync content by config"""
+    def absorb_files(self, paths: Path | list[Path]) -> list[UploadFile]:
+        """Move files at path location into camp and registry"""
+        return self.files.absorb_from_path(paths)
 
-        temp_registry: UploadRegistry = UploadRegistry(local_root=local_dir)
-        temp_registry.attach_new_files_from_local_folder()
+    def mirror_files(self, paths: Path | list[Path]) -> list[UploadFile]:
+        """Copy files at path location into camp and registry"""
+        return self.files.mirror_from_path(paths)
 
-        logger.debug(f"loaded {temp_registry.n_files} from: {local_dir}")
+    def absorb_images(self, paths: Path | list[Path]) -> list[SstFile]:
+        """Move images at path location into camp and registry"""
+        return self.images.absorb_from_path(paths)
 
-        return self.registry_sync(
-            source=temp_registry,
-            target=self.upload_registry,
-        )
+    def mirror_images(self, paths: Path | list[Path]) -> list[SstFile]:
+        """Copy images at path location into camp and registry"""
+        return self.images.mirror_from_path(paths)
