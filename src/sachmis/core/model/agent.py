@@ -9,7 +9,7 @@ from sachmis.config.defaults import ModelParam
 from ...config import SachmisConfig, get_config
 from ...config.model import ModelFamily
 from ...data import DataManager, Prompt, Response
-from ...data.arboreal import Sprout, Tree
+from ...data.arboreal import Sprout
 from ...utils.print import printer
 
 config: SachmisConfig = get_config()
@@ -24,17 +24,15 @@ class Model(ABC):
         self,
         model: ModelFamily,
         data: DataManager,
-        param: ModelParam,
-        tree: Tree,
         sprout: Sprout,
+        param: ModelParam | None = None,
     ):
         logger.debug(f"Loading {model.api_name}")
 
         self.model: ModelFamily = model
         self.data: DataManager = data
-        self.param: ModelParam = param
-        self.read_only_tree: Tree = tree
         self.sprout: Sprout = sprout
+        self.param: ModelParam = self._load_param(param)
 
         logger.debug(f"Model ({self.__class__.__name__}) connected with Data")
 
@@ -42,6 +40,10 @@ class Model(ABC):
         self._prepare_chat()
 
         logger.info(f"Model loaded: {self.__class__.__name__}")
+
+    @abstractmethod
+    def _load_param(self, param: ModelParam | None) -> ModelParam:
+        """Load defaults if param not set"""
 
     @abstractmethod
     def _load_client(self, *args, **kwargs):
@@ -55,18 +57,6 @@ class Model(ABC):
     def response(self) -> Response | None:
         return self.sprout.response
 
-    def find_previous_sprout(self) -> Sprout | None:
-        return self.read_only_tree.find_previous_sprout(self.sprout)
-
-    def previous_response_id(self) -> str | None:
-        if (previous := self.find_previous_sprout()) is None:
-            logger.debug("previous_sprout not found")
-            return None
-        if previous.response is None:
-            logger.error("FAIL: Previous Sprout without Response??")
-            return None
-        return previous.response.id
-
     @abstractmethod
     def _prepare_chat(self, *args, **kwargs):
         """Load chat with params defined per Model"""
@@ -74,14 +64,18 @@ class Model(ABC):
     def assemble_prompt(self):
         logger.info("Start assembling prompt")
         self.attach_role()
+        logger.debug("role attached")
         self._attach_prompt(prompt=self.sprout.load_prompt_text())
+        logger.debug("prompt attached")
         self._attach_images()
+        logger.debug("images attached")
         self._attach_files()
+        logger.debug("files attached")
 
     def attach_role(self):
         if role := self.data._role:
             self._attach_role(role)
-            logger.debug(f"using role: {self.data._role_path.name}")
+            logger.debug(f"using role: {self.data.role_name}")
         else:
             logger.debug("using no role")
 
@@ -92,12 +86,6 @@ class Model(ABC):
     @abstractmethod
     def _attach_prompt(self, prompt: str):
         pass
-
-    def _get_prompt_text(self) -> str:  # MOVE: to sprout?
-        if not (prompt := self.prompt.text):
-            raise FileNotFoundError("Load proper prompt first!")
-        self.sprout.set_loaded()
-        return prompt
 
     @abstractmethod
     def _attach_images(self):
@@ -146,7 +134,6 @@ class Model(ABC):
         usage: dict = self._extract_usage() or {}
 
         if not self._calculate_usage_cost(usage):
-            # TODO: ensure this prints calculate usage
             printer(usage)
 
         response = Response(
@@ -155,8 +142,8 @@ class Model(ABC):
             content=content,
             usage=usage,
         )
-        self.sprout.response: Response = response
-        logger.info(f"Response processed: {self.model}")
+        self.sprout.attach_response(response)
+        logger.info(f"Response processed: {self.model.unique}")
 
         self.data.handle_response(self.sprout)
 

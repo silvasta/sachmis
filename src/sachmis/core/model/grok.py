@@ -6,13 +6,11 @@ from xai_sdk.sync.chat import Chat
 
 # from tenacity import retry, stop_after_attempt, wait_exponential
 from ...config import SachmisConfig, get_config
-from ...config.defaults import GrokParam
+from ...config.defaults import GrokParam, ModelParam
 from ...config.model import Groks
 from ...data.files import XaiUploadState
-from ...data.uploader import XaiUploader
+from ...exceptions import SachmisDataError
 from .agent import Model
-
-config: SachmisConfig = get_config()
 
 
 class Grok(Model):
@@ -20,9 +18,22 @@ class Grok(Model):
     param: GrokParam
     client: Client
     chat: Chat
-    response: Response
+    _raw_response: Response
+
+    def _load_param(self, param: ModelParam | None) -> GrokParam:
+        """Load defaults if param not set"""
+
+        if param is None:
+            config: SachmisConfig = get_config()
+            param: GrokParam = config.defaults.grok
+
+        if isinstance(param, GrokParam):
+            return param
+
+        raise SachmisDataError(f"{self.__class__.__name__}: Invalid {param=}")
 
     def _load_client(self):
+        config: SachmisConfig = get_config()
         self.client = Client(
             api_key=config.from_env(key="XAI_API_KEY"),
             timeout=self.param.timeout,
@@ -33,7 +44,7 @@ class Grok(Model):
             "model": self.model.api_name,
             "store_messages": self.param.store_messages,
         }
-        if id := self.previous_response_id():
+        if id := self.sprout.previous_response_id:
             logger.debug("got locator")
             param |= {"previous_response_id": id}
             logger.info(f"{self.model} attaches previous response with: {id=}")
@@ -51,7 +62,7 @@ class Grok(Model):
         self.chat.append(user(prompt))
 
     def _attach_images(self):
-        for i in self.data._images:
+        for i in self.prompt.images:
             # FIX: apply base64 transform
             self.chat.append(
                 user(image(image_url=f"data:image/jpeg;base64,{i}"))
@@ -68,41 +79,18 @@ class Grok(Model):
     #         logger.warning(f"Base 64 image loading failed: {image_path}")
 
     def _attach_files(self):
-        # FIX:
-        # x = XaiUploader()  # MOVE: do this in data
-        # if len(self.data._files) > 0:
-        #     if x.compare_with_list(self.data._files):
-        #         logger.success("Files confirmed online")
-        #     else:
-        #         raise FileNotFoundError(
-        #
-        #             "Check uploads, at least 1 file not online!"
-        #         )
-        # TODO: verification in data
-        # - maybe data checks UploadFile, here check with XaiUploader
-        # MOVE: to data, there execute on FileUploader
-        # IDEA: just tell data, x needs upload (same for g emini)
-        logger.debug("files")
-        if self.data._files:
-            uploader: XaiUploader = self.data.get_uploader("xai")  # ty:ignore
-            logger.debug("uploader fine")
-
-        for upload_file in self.data._files:
-            logger.debug(f"start of {upload_file.name}")
-            state: XaiUploadState = uploader.extract_remote_state(upload_file)
-
-            logger.debug("state extracted")
-            if state.x_id is None:
-                logger.warning(f"Ignoring {upload_file.name}, no valid x_id!")
-            else:
+        for upload_file in self.prompt.files:
+            state = upload_file.get_remote_state(self.model.target)
+            if isinstance(state, XaiUploadState):
                 self.chat.append(user(file(state.x_id)))
-                logger.debug(f"loaded file: {upload_file.name=}, {state.x_id}")
+                logger.debug(f"loaded: {upload_file.name=}, {state.x_id}")
+            else:
+                logger.warning(f"Failed: {upload_file=}")
 
     # @retry( # IMPORTANT: retry
     #     stop=stop_after_attempt(config.defaults.tenacity.max_attempts),
     #     wait=wait_exponential(**config.defaults.tenacity.wait_exponential),
-    #     # TODO: before_sleep=before_sleep_log(logger, logging.WARNING)
-    # )
+    #     # TODO: before_sleep=before_sleep_log(logger, logging.WARNING))
     def _get_response(self):
         response: Response = self.chat.sample()
         return response
@@ -126,11 +114,11 @@ class Grok(Model):
             return self._raw_response.id
         except Exception as e:
             logger.error(f"Error for ID: {self.model.api_name}\n{e}")
-            raise
+            return "FAIL"
 
     def _extract_usage(self) -> dict | None:
         try:
-            return json_format.MessageToDict(self._raw_response.usage)
+            return json_format.MessageToDict(self._raw_response.usage)  # ty:ignore
         except Exception as e:
             logger.error(f"Usage {self.model.unique}:\n{e}")
             return None

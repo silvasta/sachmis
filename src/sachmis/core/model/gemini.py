@@ -2,9 +2,12 @@ from google.genai import Client, types
 from google.genai.types import GenerateContentResponse
 from loguru import logger
 
+from sachmis.data.files import GoogleUploadState
+from sachmis.exceptions import SachmisDataError
+
 # from tenacity import retry, stop_after_attempt, wait_exponential
 from ...config import SachmisConfig, get_config
-from ...config.defaults import GeminiParam
+from ...config.defaults import GeminiParam, ModelParam
 from ...config.model import Geminis
 from ...utils.print import printer
 from .agent import Model
@@ -16,14 +19,26 @@ class Gemini(Model):
     model: Geminis
     param: GeminiParam
     client: Client
-    response: GenerateContentResponse
+    _raw_response: GenerateContentResponse
+
+    def _load_param(self, param: ModelParam | None) -> GeminiParam:
+        """Load defaults if param not set"""
+
+        if param is None:
+            config: SachmisConfig = get_config()
+            param: GeminiParam = config.defaults.gemini
+
+        if isinstance(param, GeminiParam):
+            return param
+
+        raise SachmisDataError(f"{self.__class__.__name__}: Invalid {param=}")
 
     def _load_client(self):
         self.client = Client(
             api_key=config.from_env(key="GEMINI_API_KEY"),
         )
 
-    def prepare_chat(self):
+    def _prepare_chat(self):
         self.contents: list = []  # INFO: this is where all files,images, role and prompt get collected
         self.content_config: dict = {}
         if self.param.thinking_budget:
@@ -44,8 +59,8 @@ class Gemini(Model):
     def _attach_prompt(self, prompt: str):
         self.contents.append(prompt)
 
-    def attach_images(self):
-        for i in self.data._images:
+    def _attach_images(self):
+        for i in self.prompt.images:
             # FIX: image
             # mime: str = (
             #     "image/png" if i.startswith(b"\x89PNG") else "image/jpeg"
@@ -65,70 +80,65 @@ class Gemini(Model):
             #     self.input_image_paths.append(image_path)
             logger.debug(f"ignoring {i}")
 
-    def attach_files(self):
-        # for local_file in self.data.files:
-        #     if local_file.g_uri is None:  # REMOVE: verification in data
-        #         logger.warning(f"Ignoring {local_file.name}, no valid g_id!")
-        #     else:
-        #         logger.debug(
-        #             f"loaded file: {local_file.topic=}, {local_file.name}, {local_file.g_uri}"
-        #         )
-        #         self.contents.append(
-        #             types.Part.from_uri(
-        #                 file_uri=local_file.g_uri,
-        #                 mime_type=local_file.g_mime_type,
-        #             )
-        #         )
-        pass
+    def _attach_files(self):
+        for upload_file in self.prompt.files:
+            state = upload_file.get_remote_state(self.model.target)
+            if isinstance(state, GoogleUploadState):
+                self.contents.append(
+                    types.Part.from_uri(
+                        file_uri=state.g_uri,
+                        mime_type=state.g_mime_type,
+                    )
+                )
+                logger.debug(f"loaded: {upload_file.name=}, {state.g_uri}")
+            else:
+                logger.warning(f"Failed: {upload_file=}")
 
-    # @retry( # IMPORTANT: retry
+    # @retry( # LATER: retry
     #     stop=stop_after_attempt(config.defaults.tenacity.max_attempts),
     #     wait=wait_exponential(**config.defaults.tenacity.wait_exponential),
     #     # TODO: before_sleep=before_sleep_log(logger, logging.WARNING)
     # )
     def _get_response(self):
-        self.response: GenerateContentResponse = (
+        response: GenerateContentResponse = (
             self.client.models.generate_content(
                 model=self.model.api_name,
                 contents=self.contents,
                 config=types.GenerateContentConfig(**self.content_config),
             )
         )
+        return response
 
-    def _extract_full_response(self):
+    def _extract_full_response(self) -> str:
         try:
-            self.full_response: str = str(self.response)
+            return str(self._raw_response)
+        except Exception as e:
+            logger.error(f"Error for response: {self.model.api_name}\n{e}")
+            raise
+
+    def _extract_response_content(self) -> str:
+        try:
+            return self._raw_response.text or ""
         except Exception as e:
             logger.error(f"Error for content: {self.model.api_name}\n{e}")
+            raise
 
-    def _extract_response_content(self):
+    def _extract_response_id(self) -> str:
         try:
-            self.content: str = self.response.text or ""
+            return self._raw_response.response_id or "FAIL"
         except Exception as e:
-            logger.error(f"Error for content: {self.model.api_name}\n{e}")
+            logger.error(f"Error for ID: {self.model.api_name}\n{e}")
+            return "FAIL"
 
-    def _extract_response_id(self):
-        if self.response.response_id is None:
-            logger.error(f"Fail for response_id! {self.model=}")
-            self.id = "FAIL"
-        else:
-            self.id: str = self.response.response_id
-
-    def _extract_usage(self):
+    def _extract_usage(self) -> dict | None:
         try:
-            if self.response.usage_metadata is None:
+            if self._raw_response.usage_metadata is None:
                 logger.error(f"Fail with usage_metadata! {self.model=}")
             else:
-                usage_from_response = self.response.usage_metadata
-                logger.debug(f"{self.model.unique} {usage_from_response=}")
-
-            # TODO: improve this!
-            self.usage = usage_from_response
-            printer(self.usage)
-
+                return self._raw_response.usage_metadata.model_dump()
         except Exception as e:
             logger.error(f"Usage {self.model.unique}:\n{e}")
 
-    def _calculate_usage_cost(self, usage: dict):
-        printer("Implement usage calculation for Gemini!")
-        printer(usage)
+    def _calculate_usage_cost(self, usage: dict) -> bool:
+        printer("NotImplemented! Usage calculation for Gemini")
+        return False

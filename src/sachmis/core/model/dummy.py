@@ -15,28 +15,29 @@ class DummyModel(Model):
     model: DummyFamily
     param: ModelParam
 
+    def _load_param(self, param: ModelParam | None):
+        self.param: ModelParam = param or ModelParam()
+
     def _load_client(self):
         logger.info("Client prepared")
 
     def _prepare_chat(self):
         logger.info("Chat prepared")
 
-    def _attach_role(self):
-        if role := self.data._role:
-            logger.debug(role)
+    def _attach_role(self, role: str):
+        logger.debug(role)
 
-    def _attach_prompt(self):
-
-        if not (prompt := self.prompt.text):
+    def _attach_prompt(self, prompt: str):
+        if not prompt:
             raise FileNotFoundError("Load proper prompt first!")
-        logger.debug(prompt)
+        logger.debug("loaded prompt")
 
     def _attach_images(self):
-        for i in self.data._images:
+        for i in self.prompt.images:
             logger.info(i)
 
     def _attach_files(self):
-        for i in self.data._files:
+        for i in self.prompt.files:
             logger.info(i)
 
     def _get_response(self):

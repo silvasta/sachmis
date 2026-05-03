@@ -3,8 +3,6 @@ from collections.abc import Callable
 
 from loguru import logger
 
-from sachmis.config.defaults import GeminiParam, GrokParam, ModelParam
-
 from ..config.model import Geminis, Groks, ModelFamily
 from ..config.model.dummy import DummyFamily
 from ..data import DataManager
@@ -14,26 +12,19 @@ from .model import Gemini, Grok, Model
 from .model.dummy import DummyModel
 
 
-def match_family(model, **kwargs) -> Model:
+def match_family(model, data, **kwargs) -> Model:
     """Create instance of execution model from Enum family model"""
 
     if isinstance(model, Groks):
-        if "param" not in kwargs:
-            kwargs |= GrokParam()
-            printer(kwargs)
-        return Grok(model, **kwargs)
+        data.get_uploader(target=model.target)
+        return Grok(model, data, **kwargs)
 
     if isinstance(model, Geminis):
-        if "param" not in kwargs:
-            kwargs |= GeminiParam()
-            printer(kwargs)
-        return Gemini(model, **kwargs)
+        data.get_uploader(target=model.target)
+        return Gemini(model, data, **kwargs)
 
     if isinstance(model, DummyFamily):
-        if "param" not in kwargs:
-            kwargs["param"] = ModelParam()
-            printer(kwargs)
-        return DummyModel(model, **kwargs)
+        return DummyModel(model, data, **kwargs)
 
     raise ValueError(f"Unknown {model=}")
 
@@ -44,28 +35,31 @@ def load_models(data: DataManager, models: list[ModelFamily]) -> list[Model]:
     tree_tracker: list[ArborealTracker] = []
 
     with Forest.edit_mode(data.forest_file) as forest:
-        logger.info("Loading Forest and extract Trees")
+        logger.info("Load Forest and extract Trees")
         for model in models:
-            tree_tracker.append(  # NEXT: info from data
-                forest.provide_tree(model=model.unique, prompt=data._prompt)
+            tree_tracker.append(  # NEXT: info from data, find existing Tree
+                forest.provide_tree(model=model.unique, prompt=data.prompt)
             )
-    logger.info("Trees extracted, closing Forest during task")
+        data.load_camp(forest)
+    logger.info("Trees extracted, close and unlock Forest during task")
 
     sprouts: list[Sprout] = []
 
-    for model, tree in zip(models, tree_tracker, strict=True):
-        with Tree.edit_mode(tree.path) as tree:
-            sprouts.append(  # NEXT: info from data, LOCATOR
-                tree.provide_sprout(model=model.unique, prompt=data._prompt)
-            )
-    logger.info("Sprouts extracted, closing Trees during task")
+    for model, tracker in zip(models, tree_tracker, strict=True):
+        sprout: Sprout = Tree.extract_sprout(
+            tree_file=tracker.path,
+            sprout_locator="LOC",  # NEXT: info from data, find Sprout Location
+            model=model.unique,
+            prompt=data.prompt,
+        )
+        logger.debug(f"extracted from Tree: {sprout.unique_id=}")
+        sprouts.append(sprout)
 
-    trees: list[Tree] = [Tree.read_mode(t.path) for t in tree_tracker]
-    # LATER: optimize how this works, Trees openend for 3th time here...
+    logger.info("Sprouts extracted, close and unlock Trees during task")
 
     attached_models: list[Model] = [
-        match_family(model, data=data, tree=tree, sprout=sprout)
-        for model, tree, sprout in zip(models, trees, sprouts, strict=True)
+        match_family(model, data=data, sprout=sprout)
+        for model, sprout in zip(models, sprouts, strict=True)
     ]
 
     return attached_models
