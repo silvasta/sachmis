@@ -11,6 +11,11 @@ class DummyFamily(ModelFamily):
         return "d"
 
     @property
+    def target(self) -> str:
+        """Identifier for FileUploader"""
+        return "dummy"
+
+    @property
     def api_name(self) -> str:
         return {
             DummyFamily.D1: "d1-pro",

@@ -38,3 +38,8 @@ class ModelFamily(Enum, metaclass=AbstractEnum):
     @abstractmethod
     def unique_letter(self) -> str:
         """Unique bidirectional identifier for model company"""
+
+    @property
+    @abstractmethod
+    def target(self) -> str:
+        """Identifier for FileUploader"""

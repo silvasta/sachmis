@@ -4,11 +4,10 @@ from .family import ModelFamily
 
 
 class Geminis(ModelFamily):
-    G3 = "g3"
+    G31 = "g3"
     G31F = "g31f"
-    G3F = "g3f"
     G3I = "g3i"
-    GE2 = "ge2"
+    GR = "gr"
 
     # NOTE: Ideas
     # https://ai.google.dev/gemini-api/docs/robotics-overview
@@ -22,9 +21,13 @@ class Geminis(ModelFamily):
     @property
     def api_name(self) -> str:
         return {
+            Geminis.G31: "gemini-3.1-pro-preview",
             Geminis.G31F: "gemini-3.1-flash-lite-preview",
-            Geminis.G3: "gemini-3.1-pro-preview",
-            Geminis.G3F: "gemini-3-flash-preview",
             Geminis.G3I: "gemini-3-pro-image-preview",
-            Geminis.GE2: "gemini-embedding-2-preview",
+            Geminis.GR: "gemini-robotics-er-1.6-preview",
         }[self]
+
+    @property
+    def target(self) -> str:
+        """Identifier for FileUploader"""
+        return "google"

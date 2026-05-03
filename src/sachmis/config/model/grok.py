@@ -6,13 +6,12 @@ from .family import ModelFamily
 
 
 class Groks(ModelFamily):
-    G2 = "g2"
-    G4 = "g4"
-    G41N = "g41fn"
-    G41R = "g41f"
+    G43 = "g43"
     G420M = "g420"
     G420N = "g42n"
     G420R = "g42r"
+    G4 = "g4"
+    G2 = "g2"
     GCF1 = "gcf1"
 
     # LATER: implement:
@@ -26,15 +25,19 @@ class Groks(ModelFamily):
         return "x"
 
     @property
+    def target(self) -> str:
+        """Identifier for FileUploader"""
+        return "xai"
+
+    @property
     def api_name(self) -> str:
         return {
-            Groks.G2: "grok-2-image-1212",
+            Groks.G43: "grok-4.3",
+            Groks.G420M: "grok-4.20-multi-agent",
+            Groks.G420N: "grok-4.20-non-reasoning",
+            Groks.G420R: "grok-4.20-reasoning",
             Groks.G4: "grok-4",
-            Groks.G41N: "grok-4-1-fast-non-reasoning",
-            Groks.G41R: "grok-4-1-fast-reasoning",
-            Groks.G420M: "grok-4.20-multi-agent-experimental-beta-0304",
-            Groks.G420N: "grok-4.20-experimental-beta-0304-non-reasoning",
-            Groks.G420R: "grok-4.20-experimental-beta-0304-reasoning",
+            Groks.G2: "grok-2-image-1212",
             Groks.GCF1: "grok-code-fast-1",
         }[self]
 
@@ -43,22 +46,20 @@ class Groks(ModelFamily):
         """Price list depending on model"""
         # TODO: price increase for high volume prompt
         # TODO: check batch api prices and usage (half price)
-        fast: dict[str, float] = {"input": 0.2, "cached": 0.05, "output": 0.5}
         code: dict[str, float] = {"input": 0.2, "cached": 0.02, "output": 1.5}
         main: dict[str, float] = {"input": 3.0, "cached": 0.75, "output": 15}
         image: dict[str, float] = {"input": 2.0, "cached": 0, "output": 10}
-        g420: dict[str, float] = {"input": 2.0, "cached": 0.2, "output": 6}
+        # x2 for >200k
+        g43: dict[str, float] = {"input": 1.25, "cached": 0.2, "output": 2.5}
         match self:
-            case Groks.G41R | Groks.G41N:
-                return fast
             case Groks.GCF1:
                 return code
             case Groks.G4:
                 return main
             case Groks.G2:
                 return image
-            case Groks.G420M | Groks.G420N | Groks.G420R:
-                return g420
+            case Groks.G420M | Groks.G420N | Groks.G420R | Groks.G43:
+                return g43
 
     def usage_cost(self, token_usage: dict[str, int]) -> float:
         """Calculates usage from 1 response"""

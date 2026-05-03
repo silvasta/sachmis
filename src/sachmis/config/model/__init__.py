@@ -8,9 +8,9 @@ from .grok import Groks
 
 def get_all_models(with_dummy=False) -> list[ModelFamily]:
     return [
+        *([dummy for dummy in DummyFamily] if with_dummy else []),
         *[grok for grok in Groks],
         *[gemini for gemini in Geminis],
-        *([dummy for dummy in DummyFamily] if with_dummy else []),
     ]
 
 

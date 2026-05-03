@@ -39,3 +39,5 @@ class Defaults(SstDefaults):
 XAI_API_KEY=
 GEMINI_API_KEY=
 """
+    gemini: GeminiParam = Field(default_factory=GeminiParam)
+    grok: GrokParam = Field(default_factory=GrokParam)
