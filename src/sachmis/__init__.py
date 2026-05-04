@@ -1,7 +1,10 @@
 # TASK:
-# - Thunder and Fire structure
+# - Forest Rollout
+# - Tree and Sprout Selection
+# - Hardlink Registry
 # - Check structured response
-# - arboreal
+# - Thunder and fire structure
+# - Files Interface
 
 
 from importlib.metadata import PackageNotFoundError, version
