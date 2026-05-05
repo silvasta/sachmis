@@ -78,6 +78,14 @@ Models = Annotated[
     ),
 ]
 
+Sprout = Annotated[
+    bool,
+    typer.Option(
+        "--sprout",
+        "-s",
+        help="Select existing Sprout to create new branch from there",
+    ),
+]
 
 PickModel = Annotated[
     # REMOVE: not needede for fire, maybe somewhere else?

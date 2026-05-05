@@ -115,9 +115,9 @@ class Paths(SstPaths[Names, Defaults]):
         return self.camp_dir / self._names.tree_dir
 
     @PathGuard.unique(ensure_parent=True)
-    def tree_file(self, id: int, stem: str) -> Path:
+    def tree_file(self, id: int, model: str, stem: str) -> Path:
         """Error if not in base"""
-        tree_file: str = self._names.tree_file([id, stem])
+        tree_file: str = self._names.tree_file([id, model, stem])
         return self.tree_dir / tree_file
 
     @property
@@ -189,18 +189,23 @@ class Paths(SstPaths[Names, Defaults]):
 
     @PathGuard.unique
     def full_response(self, topic: str, model: str, suffix=".txt") -> Path:
-        stem: str = self._names.sprout_stem.computed(topic=topic, spec=model)
+        # NOTE: better locator?
+        stem: str = self._names.sprout_stem.computed(
+            topic=topic, locator="B", spec=model
+        )
         return self._path_from_stem(stem, suffix, self.full_response_dir)
 
-    @PathGuard.unique
+    @PathGuard.unique(ensure_parent=True)
     def prompt_file(
-        self, topic: str, suffix: str = ".md", root_dir: Path | None = None
+        self,
+        topic: str,
+        locator: str,
+        root_dir: Path | None = None,
+        suffix: str = ".md",
     ) -> Path:
-        # TASK: create nested relative path
-        # TODO: check locator, needed? how to compose name best?
-        """New prompt file name after usage"""
+        """New prompt file name after usage and move"""
         prompt_stem: str = self._names.sprout_stem.computed(
-            topic=topic, spec="prompt"
+            locator=locator, spec="prompt", topic=topic
         )
         return self._path_from_stem(prompt_stem, suffix, root_dir)
 
@@ -210,7 +215,7 @@ class Paths(SstPaths[Names, Defaults]):
         suffix: str = suffix if suffix.startswith(".") else f".{suffix}"
         return (root_dir or Path.cwd()) / f"{stem}{suffix}"
 
-    @PathGuard.unique
+    @PathGuard.unique(ensure_parent=True)
     def answer_file(
         self,
         topic: str,
@@ -219,9 +224,7 @@ class Paths(SstPaths[Names, Defaults]):
         suffix=".md",
         root_dir: Path | None = None,
     ) -> Path:
-        # TASK: create nested relative path
-        # TODO: check locator, needed? how to compose name best?
         answer_stem: str = self._names.sprout_stem.computed(
-            topic=topic, locator=locator, spec=model
+            locator=locator, spec=model, topic=topic
         )
         return self._path_from_stem(answer_stem, suffix, root_dir)

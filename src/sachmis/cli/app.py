@@ -4,7 +4,7 @@ import sys
 import typer
 from loguru import logger
 
-IS_COMPLETION: bool = (
+IS_COMPLETION: bool = (  # TEST: is this actually useful/necessary?
     "_SACHMIS_COMPLETE" in os.environ
     or "--show-completion" in sys.argv
     or "--install-completion" in sys.argv
@@ -49,7 +49,7 @@ app.command()(command.models)
 # app.command()(command.roles)
 
 # nested
-app.add_typer(subapp.biome)  # IDEA: or make this as setup, the 2 below to show
+app.add_typer(subapp.biome)
 app.add_typer(subapp.forest)
 # app.add_typer(subapp.tree) # NEXT: change to tree handler?
 app.add_typer(subapp.files)

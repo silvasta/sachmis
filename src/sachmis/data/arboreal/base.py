@@ -59,6 +59,11 @@ class Arboreal(BaseModel):
     def n_children(self) -> int:
         raise NotImplementedError
 
+    @property
+    def stat(self):
+        """Short representation for printable statistics"""
+        return f"{self.__class__.__name__}: {self.local_created_at}"
+
 
 class ArborealTracker(BaseModel):
     """Lightweight reference to track and write registry members,
@@ -215,7 +220,7 @@ class ArborealDisk[ArboT: Arboreal](Arboreal):
 
         if not file.exists():
             logger.error(f"No {name.lower()} at target location: {file}")
-            raise ArborealFileMissingError(arboreal=name, file_path=file)
+            raise ArborealFileMissingError(arboreal=name, file=file)
 
         instance: Self = cls.model_validate_json(file.read_text())
 

@@ -40,6 +40,16 @@ def model_from_unique(model_unique: str) -> ModelFamily | None:
     return model
 
 
+def parse_raw_models(raw_models: list[str]) -> list[ModelFamily]:
+    """Parse all models, ignore raw_models that fail parsing"""
+    return [
+        parsed_model
+        for model_unique in raw_models
+        if (parsed_model := model_from_unique(model_unique))  #
+        is not None
+    ]
+
+
 if __name__ == "__main__":
     """Just to play around"""
     tests = [

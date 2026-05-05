@@ -46,13 +46,16 @@ def roles():  # TODO: create "new role" function (somewhere else)
 
 
 @logger_catch
-def config_details():
+def config_details(save: bool = False):
     """Print config to Console, so far just dotenv_path"""
     # MOVE: to silvasta? yes! some basic stats
     config: SachmisConfig = get_config()
 
+    # TODO: save settings? load updates from json? or push updates down to json?
     # REFACTOR: create subapp, config management etc
     printer(config.compose_setup_param())  # LATER: show selection of paths
     printer(config.settings)
     printer(config.paths.dot_env)  # LATER: show selection of paths
     printer(config.master_setting_file)  # LATER: show selection of paths
+    if save:
+        config.save_settings()

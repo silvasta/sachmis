@@ -8,20 +8,18 @@ class SproutName(ParsedName):
     def _load_predefined_keys(cls) -> list[str]:
         return [
             "dom",
-            "spec",
             "locator",
+            "spec",
             "topic",
         ]
 
     # TEST: swap keys, what happens?
 
-    def computed(
-        self, topic: str = "", locator: str = "", spec: str = ""
-    ) -> str:
+    def computed(self, topic: str, locator: str, spec: str) -> str:
         values: list[str] = [
             str(day_count()),
-            spec,
             locator,
+            spec,
             slugify(topic, delim="-"),
         ]
         return self(values)
@@ -55,7 +53,7 @@ class Names(SstNames):
     prompt: str = "prompt.md"
 
     # Patterns
-    tree_file: ParsedName = ParsedName(pattern="t_{id}_{stem}.json")
+    tree_file: ParsedName = ParsedName(pattern="t_{id}_{model}_{stem}.json")
     sprout_stem: SproutName = SproutName.with_predefined_keys()
 
     remotes: StyledName = StyledName.parse_style(

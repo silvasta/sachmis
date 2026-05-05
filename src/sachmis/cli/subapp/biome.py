@@ -102,6 +102,7 @@ def stat():
 
     to_print: list[str] = []
     for forest in forests:
+        # TODO: SimpleTree with nice statistics!
         name: str = forest.path.parent.parent.name
         to_print.append(f"[bold black on white]{name}[/] - {forest.path}")
 
@@ -112,7 +113,7 @@ def stat():
     printer.path_exists_table([forest.path for forest in forests])
 
 
-# TASK: commands
+# TASK: more commands:
 # - repair?
 # - write all forest and trees to 1 folder?
 

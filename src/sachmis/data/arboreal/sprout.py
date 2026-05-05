@@ -5,7 +5,6 @@ from typing import Self
 from loguru import logger
 from pydantic import Field, model_validator
 
-from sachmis.config import SachmisConfig, get_config
 from sachmis.exceptions import (
     SproutResponseExistsError,
     SproutResponseMissingError,
@@ -159,19 +158,10 @@ class Sprout(Arboreal):
             raise SproutResponseMissingError("Attach Response first!")
         return self.response
 
-    def answer_path(self, root_dir: Path | None = None) -> Path:
-        config: SachmisConfig = get_config()
-
-        return config.paths.answer_file(
-            self.prompt.topic,
-            locator=f"{self.sprout_locator}",
-            model=self.model,
-            root_dir=root_dir,
-        )
-
-    def answer_path_and_write(self, root_dir: Path | None) -> Path:
-        if self.response is None:
-            raise SproutResponseMissingError("Nothing to write!")
-        path: Path = self.answer_path(root_dir)
-        path.write_text(self.response.content)
-        return path
+    # REMOVE: ??
+    # def answer_path_and_write(self, root_dir: Path | None) -> Path:
+    #     if self.response is None:
+    #         raise SproutResponseMissingError("Nothing to write!")
+    #     path: Path = self.answer_path(root_dir)
+    #     path.write_text(self.response.content)
+    #     return path

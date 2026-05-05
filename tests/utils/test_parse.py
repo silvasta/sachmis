@@ -5,11 +5,7 @@ import pytest
 from sachmis.config.model import Geminis, Groks, ModelFamily
 from sachmis.utils.parse import model_from_unique
 
-
-# IMPORTANT: make this available for all
-# - define in config.model
 all_families: list[type[ModelFamily]] = [
-    # PLUG: family for test
     Geminis,
     Groks,
 ]

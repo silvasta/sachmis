@@ -30,7 +30,7 @@ sachmis = "sachmis.cli.app:main"
 
 
 [tool.sachmis.logging]
-level = "INFO"
+level = "WARNING"
 file_name = "sachmis.log"
 log_dir = "logs"
 rotation = "10 MB"

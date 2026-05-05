@@ -21,13 +21,6 @@ class Prompt(BaseModel):
     def slug_topic(self):
         return slugify(self.topic)
 
-    def get_path(self, root_dir: Path | None = None) -> Path:
-        config: SachmisConfig = get_config()
-        return config.paths.prompt_file(
-            topic=self.slug_topic,
-            root_dir=root_dir,  # PARAM: nested!
-        )
-
     @classmethod
     def load_from_path(
         cls, path: Path | None = None, topic: str | None = None

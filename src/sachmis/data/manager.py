@@ -1,12 +1,14 @@
+from collections import defaultdict
 from itertools import product
 from pathlib import Path
-from typing import Self
+from typing import Any, Self
 
 from loguru import logger
 from sstcore import PathGuard
 from sstcore.data import SstFile
 
 from ..config import SachmisConfig, get_config
+from ..config.model import ModelFamily
 from ..exceptions import (
     ArborealError,
     ArborealFileExistsError,
@@ -14,6 +16,7 @@ from ..exceptions import (
     SachmisError,
 )
 from ..exceptions.data import DataManagerRuntimeError
+from ..utils.parse import parse_raw_models
 from .arboreal import ArborealTracker, Biome, Forest, Sprout, Tree
 from .files import CampManager, UploadFile
 from .prompt import Prompt
@@ -29,6 +32,7 @@ class DataManager:
 
     _extracted_sprouts: dict[str, ArborealTracker] = {}
     _answer_file_paths: list[Path] = []
+    _write_dir_name: str = ""
 
     # MOVE: to sprout: role as something like Role(SstFile)
     _role_path: Path | None = None
@@ -218,40 +222,130 @@ class DataManager:
     ### --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
     ### --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
+    def scan_dir_for_models(self):
+        """Scan file system for existing conversation"""
+        config: SachmisConfig = get_config()
+
+        self._scanned_models: dict[str, list[dict[str, str]]] = defaultdict(
+            list
+        )
+        self._next_fs_locator: int = 0
+
+        if Path.cwd() == config.paths.base_dir:
+            logger.debug("located in top folder, attach 0")
+            self._write_dir_name: str = self.prompt.topic  # IDEA: tree name?
+            return
+
+        for path in Path.cwd().glob("*.md"):
+            try:
+                parts: dict[str, str] = config.names.sprout_stem(path.stem)
+            except ValueError:
+                continue
+            if (model_unique := parts["spec"]) == "prompt":
+                continue
+            self._scanned_models[model_unique].append(parts)
+
+        for model, files in self._scanned_models.items():
+            for name_parts in files:
+                locator_num = int(name_parts["locator"])
+                if locator_num >= self._next_fs_locator:
+                    self._next_fs_locator: int = locator_num + 1
+            logger.debug(f"default attach to {locator_num=} of {model=}")
+
+    def parse_scanned_models(self) -> list[ModelFamily]:
+        return parse_raw_models(list(self._scanned_models.keys()))
+
+    def neighbours_formated(self, model_name: str) -> dict[str, str]:
+        sprouts: list[dict[str, str]] = self._scanned_models[model_name]
+
+        def _format(sprout: dict[str, str]) -> str:
+            return f"{model_name} - {sprout['locator']} - {sprout['topic']}"
+
+        return {sprout["locator"]: _format(sprout) for sprout in sprouts}
+
+    def set_file_system_locator(self, locator: str, model_name: str):
+        config: SachmisConfig = get_config()
+
+        locations: list[dict[str, str]] = self._scanned_models[model_name]
+        for location in locations:
+            if location["locator"] == locator:
+                name_parts: dict[str, str] = location
+                break
+        else:
+            raise SachmisDataError(f"Failed to find {locator=}")
+
+        sub_locator = 1
+
+        for path in Path.cwd().glob(f"_{locator}*_{model_name}"):
+            _dom, loc, _spec, _topic = config.names.sprout_stem(path.stem)
+            splitted: list[str] = loc.split(".")  # PARAM: symbol for locator
+            if splitted[0] != locator and len(splitted) != 2:
+                raise SachmisDataError(f"Bad locator: {loc} for {locator}")
+            if sub_locator <= (existing_sub := int(splitted[1])):
+                sub_locator: int = existing_sub + 1
+
+            # TODO: other name
+            new_locator: str = f"{name_parts['locator']}.{sub_locator}"
+            name_parts["locator"] = new_locator
+
+        self._write_dir_name: str = config.names.sprout_stem(name_parts)
+        self._next_fs_locator: int = 1
+
+    def set_model_subdir(self, model_name: str):
+
+        match len(paths := list(Path.cwd().glob(f"_{model_name}_"))):
+            case 0:
+                raise SachmisDataError("No path to create Model subgroup")
+            case 1:
+                model_path: Path = paths[0]
+            case _:
+                raise SachmisDataError(
+                    "Multiple paths to create Model subgroup"
+                )
+        self._write_dir_name: str = model_path.stem
+        self._next_fs_locator: int = 1
+
     ### --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
     ### --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
-    def _move_or_write_prompt(self):
-
-        # TASK: file rollout
-        new_prompt_path: Path = self.prompt.get_path(root_dir=Path.cwd())
+    def _move_and_write_prompt(self, prompt_path: Path):
+        config: SachmisConfig = get_config()
 
         if self._input_prompt_path is None:
-            new_prompt_path.write_text(self.prompt.text)
+            prompt_path.write_text(self.prompt.text)
         else:
             PathGuard.rotate(
-                source=self._input_prompt_path,
-                target=new_prompt_path,
-                reset=True,
+                source=self._input_prompt_path, target=prompt_path, reset=True
             )
-        self._answer_file_paths.append(new_prompt_path)
-        logger.debug(f"prompt moved: {new_prompt_path=}")
+            if self._write_dir_name:
+                prompt_path.with_name(config.names.prompt).touch()
+
+        logger.debug(f"prompt moved: {prompt_path=}")
 
     def handle_response(self, sprout: Sprout):
         """So far: write when desired, later handle filetree | other.."""
+        config: SachmisConfig = get_config()
 
         if sprout.response is None:
             logger.error(f"Can't process empty response of {sprout=}")
             return
 
-        # TASK: file rollout
+        path_args: dict[str, Any] = {
+            "topic": sprout.prompt.slug_topic,
+            "locator": f"{self._next_fs_locator}",
+            "root_dir": (Path.cwd() / self._write_dir_name),
+        }
 
-        if not self._prompt_written:
-            self._move_or_write_prompt()
-            self._prompt_written = True
-
-        answer_path: Path = sprout.answer_path_and_write(root_dir=Path.cwd())
-        logger.info("answer")
+        answer_path: Path = config.paths.answer_file(
+            model=sprout.model, **path_args
+        )
+        answer_path.write_text(sprout.response.content)
         self._answer_file_paths.append(answer_path)
 
-        logger.debug(f"written to: {answer_path=}")
+        if not self._prompt_written:
+            prompt_path: Path = config.paths.prompt_file(**path_args)
+            self._move_and_write_prompt(prompt_path)
+            self._answer_file_paths.append(prompt_path)
+            self._prompt_written = True
+
+        logger.info(f"Response written to: {answer_path=}")

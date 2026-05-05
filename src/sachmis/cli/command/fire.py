@@ -11,8 +11,13 @@ from ...core.model import Model
 from ...data import DataManager
 from ...data.files import CampManager, UploadFile
 from ...exceptions.data import DataManagerRuntimeError
-from ...tui.selector import file_selector, model_selector, role_selector
-from ...utils.parse import model_from_unique
+from ...tui.selector import (
+    file_selector,
+    linear_selector,
+    model_selector,
+    role_selector,
+)
+from ...utils.parse import parse_raw_models
 from ...utils.print import printer
 from .. import args
 
@@ -25,6 +30,7 @@ DEBUG = True
 def fire(
     # Arguments
     models: args.Models = None,
+    sprout: args.Sprout = False,
     # Options for task selection
     pick_role: args.PickRole = True,
     files: sargs.Files = None,
@@ -44,8 +50,9 @@ def fire(
 
     with DataManager(biome=True, forest=True) as data:
         data.load_prompt()
+        data.scan_dir_for_models()
 
-        models: list[ModelFamily] = _prepare_model_args(models)
+        models: list[ModelFamily] = _prepare_model_args(data, models, sprout)
         agents: list[Model] = cap.load_models(data, models)
 
         files: list[UploadFile] = _prepare_file_args(
@@ -133,28 +140,39 @@ def confirm_fire(data: DataManager, models: list[Model]) -> bool:
 
 # MOVE: _prepare... to args?
 def _prepare_model_args(
+    data: DataManager,
     models: list[str] | None,
+    sprout: bool = False,
     with_dummy=DEBUG,
 ) -> list[ModelFamily]:
 
     printer.title("Preparing Models...")
 
-    models: list[str] = models or model_selector(
-        multi_select=True, with_dummy=with_dummy
-    )
-    selected_models: list[ModelFamily] = [
-        parsed_model
-        for model_unique in models
-        if (parsed_model := model_from_unique(model_unique))  #
-        is not None
-    ]
-    logger.debug(f"loading {len(selected_models)=}")
+    if models and (parsed_models := parse_raw_models(models)):
+        logger.debug(f"loading {len(parsed_models)=}")
+        printer.md(f"...{len(parsed_models)} selected for pipeline")
+        return parsed_models
 
-    printer.md(f"...{len(selected_models)} selected for pipeline")
+    match len(existing_models := data.parse_scanned_models()):
+        case 0:
+            return model_selector(multi_select=True, with_dummy=with_dummy)
+        case 1:
+            selected_model: ModelFamily = existing_models[0]
+            model_name: str = selected_model.unique
+            if sprout:  # LATER: dataclass for sprout_folder_locator
+                sprouts: dict[str, str] = data.neighbours_formated(model_name)
+                if locator := linear_selector(sprouts):
+                    data.set_file_system_locator(locator[0], model_name)
+        case _:
+            selected_model: ModelFamily = model_selector(
+                # FAIL for multiple same models...
+                existing_models,
+                multi_select=False,
+                with_dummy=with_dummy,
+            )[0]
+            data._write_dir_name = data.prompt.topic
 
-    # NEXT: empty list for no select == continue from last sprout?
-
-    return selected_models
+    return [selected_model]
 
 
 # MOVE: _prepare... to args?

@@ -44,7 +44,8 @@ def stat():
 
     for tree in trees:
         loaded_tree: Tree = Tree.read_mode(tree.path)
-        printer(loaded_tree)
+        # TODO: SimpleTree with nice statistics!
+        printer(tree.path.name, loaded_tree.stat)
 
 
 if __name__ == "__main__":
