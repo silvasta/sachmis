@@ -38,7 +38,7 @@ class Names(SstNames):
     # Global file system - Home / Biome
     setting_file: str = "sachmis_config.json"
     biome_file: str = "biome.json"
-    response_dir: str = "full_respone"
+    response_dir: str = "full_response"
 
     # Global and Local
     role_dir: str = "Roles"

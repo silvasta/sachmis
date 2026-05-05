@@ -87,7 +87,7 @@ class Sprout(Arboreal):
     # - lost, unknown failure
 
     @model_validator(mode="after")
-    def enforce_consistency(self) -> "Sprout":
+    def enforce_consistency(self) -> Self:
         """Check if crashed during runtime or API call"""
 
         if self.response is not None and self.completed_at is None:
@@ -99,12 +99,12 @@ class Sprout(Arboreal):
 
     @property
     def has_started(self) -> bool:
-        """Returns started_at avaliable but not Response avaliable"""
+        """Returns started_at available but not Response available"""
         return self.started_at is not None and self.completed_at is None
 
     @property
     def has_finished(self) -> bool:
-        """Check if Response and completed_at date avaliable"""
+        """Check if Response and completed_at date available"""
         return self.completed_at is not None and self.response is not None
 
     @property
@@ -118,7 +118,7 @@ class Sprout(Arboreal):
         return False
 
     ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
-    ### -- Sprout - Custom Functions and Atributes
+    ### -- Sprout - Custom Functions and Attributes
     ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
 
     # Sprout created in Tree, detached, Tree closed, Sprout in Model

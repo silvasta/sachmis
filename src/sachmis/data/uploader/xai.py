@@ -36,7 +36,7 @@ class XaiUploader(FileUploader):
         logger.info("xAI Client loaded")
 
     def _fetch_all_files(self) -> list[Any]:
-        """Load all avaliable files from remote registry"""
+        """Load all available files from remote registry"""
         # WARN: how is this refreshed here at second load?
         files: Any = self.client.files.list()
         return files.data  # NOTE: why data?

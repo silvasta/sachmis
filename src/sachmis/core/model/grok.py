@@ -129,5 +129,5 @@ class Grok(Model):
             self.model.usage_cost(token_usage=usage)
             return True
         except Exception as e:
-            logger.error(f"Usage calculcation {self.model.unique}: {e}")
+            logger.error(f"Usage calculation {self.model.unique}: {e}")
             return False

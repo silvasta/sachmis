@@ -20,7 +20,7 @@ config: SachmisConfig = get_config()
 
 @dataclass
 class CompareResult:
-    """Data container for files splitted by local or remote status"""
+    """Data container for files split by local or remote status"""
 
     intersection_identifier: set[str]
     only_local_identifier: set[str]
@@ -73,9 +73,9 @@ class FileUploader(ABC):
 
     @abstractmethod
     def _fetch_all_files(self) -> list[Any]:
-        """Load all avaliable files from remote registry"""
+        """Load all available files from remote registry"""
 
-    # REFACTOR: naem to something like: ensure local synced
+    # REFACTOR: name to something like: ensure local synced
     def upload_local_file(self, file: UploadFile, ensure_after_upload=False):
         """Check and ensure that file is uploaded"""
 
@@ -135,7 +135,7 @@ class FileUploader(ABC):
         """Upload 1 file and attach remote state to UploadFile"""
 
     def show_all_files(self):
-        """Show all avaliable files on remote"""
+        """Show all available files on remote"""
 
         printer.title(f"Fetching files from: {self.print_name}")
         remote_files: list[Any] = self._fetch_all_files()

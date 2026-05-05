@@ -14,7 +14,7 @@ custom_theme: dict[str, str] = {
 
 class SachmisPrinter(Printer):
     def path_exists_table(self, paths: list[Path], title=None, header="Path"):
-        """load base paths from file, check existance, print result"""
+        """load base paths from file, check existence, print result"""
 
         # NEXT: candidate for silvasta.printer
 
@@ -31,7 +31,7 @@ class SachmisPrinter(Printer):
     def model_table(
         self, models: list[ModelFamily], title=None, show_header=True
     ):
-        """load base paths from file, check existance, print result"""
+        """load base paths from file, check existence, print result"""
 
         table = Table(title=title, show_header=show_header)
         table.add_column("Unique")

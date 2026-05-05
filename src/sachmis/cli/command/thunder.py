@@ -62,7 +62,7 @@ def thunder(
 
     data.load_prompt()
 
-    speed_reader = "You are an expert in reading and summarizing lecture material about machine learning fast and efficiant"
+    speed_reader = "You are an expert in reading and summarizing lecture material about machine learning fast and efficient"
     data.load_system_role(role_text=speed_reader)
     logger.info(f"{speed_reader=}")
 

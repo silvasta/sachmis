@@ -11,5 +11,5 @@ class PromptError(ValueError, SachmisDataError):  # TEST: ValueError?
 class DataManagerRuntimeError(RuntimeError, SachmisDataError):
     def __init__(self, message=None):
         if message is None:
-            message = "Required Data not avaliable within this setup!"
+            message = "Required Data not available within this setup!"
         super().__init__(message)

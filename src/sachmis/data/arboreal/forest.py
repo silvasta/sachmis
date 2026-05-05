@@ -84,7 +84,7 @@ class Forest(ArborealDisk[Tree]):
         tree_id: int = self._next_instance_id
         tree_file: Path = config.paths.tree_file(id=tree_id, stem=tree_stem)
 
-        # LATER: save as option? save after succesful loading it
+        # LATER: save as option? save after successful loading it
         new_tree.save_state(tree_file, lock_required=False)
 
         return self.attach_tree(
@@ -118,7 +118,7 @@ class Forest(ArborealDisk[Tree]):
         # ]
 
     ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
-    ### -- Forest - Custom Functions and Atributes
+    ### -- Forest - Custom Functions and Attributes
     ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
 
     @classmethod

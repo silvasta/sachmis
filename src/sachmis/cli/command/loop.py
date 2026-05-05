@@ -9,4 +9,4 @@ def loop():
     # TASK: pipeline for multiple prompts
     # - reuse previous responses
     # - ultimate reasoning
-    printer.md("the loop is startig!")
+    printer.md("the loop is starting!")

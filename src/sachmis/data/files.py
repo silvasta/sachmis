@@ -89,7 +89,7 @@ class UploadFile(SstFile):
         return self.remote_states.get(target)
 
     def has_remote(self, target: str) -> bool:
-        """Check if remote state for 'target' is avaliable"""
+        """Check if remote state for 'target' is available"""
         return self.find_remote(target) is not None
 
     def get_remote_state(self, target: str) -> RemoteState:
@@ -97,7 +97,7 @@ class UploadFile(SstFile):
         logger.debug(f"extracting for {target=}")
         if (remote_state := self.remote_states.get(target)) is None:
             logger.warning(f"{self.remotes_plain}")
-            raise AttributeError(f"No remote state for {target} avaliable!")
+            raise AttributeError(f"No remote state for {target} available!")
         return remote_state
 
     def remove_remote(self, target: str) -> RemoteState | None:

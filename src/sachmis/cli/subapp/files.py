@@ -119,7 +119,7 @@ def clear(xai: Xai = False, google: Google = False):
 @logger_catch
 def delete():
     """Delete single file(s) in remote registry"""
-    # TASK: create selecton method
+    # TASK: create selection method
     # - xai just needs .id
     # - google just needs .name
     # - picker for all online/local files would work as well

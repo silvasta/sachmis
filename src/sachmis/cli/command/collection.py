@@ -42,7 +42,7 @@ def models():  # TODO: rich table, statistics
 @logger_catch
 def roles():  # TODO: create "new role" function (somewhere else)
     # TASK: where to place? solve together with local|global role
-    printer.danger("not avaliable")
+    printer.danger("not available")
 
 
 @logger_catch

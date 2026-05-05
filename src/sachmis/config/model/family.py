@@ -5,7 +5,7 @@ from enum import Enum, EnumMeta
 
 # REFACTOR: Use csv/pyandtic instead of Enum?
 # - needs factory for Enum or Literal for typer XXX already changed!
-# - still nice with Enum, match and validatoin
+# - still nice with Enum, match and validation
 # - maybe basemodel just for usage?
 
 
@@ -19,7 +19,7 @@ class AbstractEnum(ABCMeta, EnumMeta):
 class ModelFamily(Enum, metaclass=AbstractEnum):
     """Define general properties for models of all companies"""
 
-    # IMPORTANT: make 1 word target identifier, eiter as Company Enum or ...
+    # IMPORTANT: make 1 word target identifier, either as Company Enum or ...
     # TASK: load family from csv
     # - load including prices, status=Active etc,
     # check file-analyzer for template pydantic read/write

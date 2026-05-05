@@ -41,7 +41,10 @@ requires = ["uv_build>=0.10.10,<0.11.0"]
 build-backend = "uv_build"
 
 [dependency-groups]
-dev = ["pytest>=9.0.2"]
+dev = ["pre-commit>=4.6.0", "pytest>=9.0.3", "ruff>=0.15.12", "ty>=0.0.34"]
+
+[project.urls]
+Repository = "https://github.com/silvasta/sachmis"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -56,7 +59,7 @@ select = [
   "F",  # F: Pyflakes
   "I",  # I: isort (import sorting)
   "UP", # UP: pyupgrade (modernize syntax)
-  "B",  # B: flake8-bugbear (finds likely bugs) 
+  "B",  # B: flake8-bugbear (finds likely bugs)
   "N",  # N: pep8-naming
 ]
 ignore = [

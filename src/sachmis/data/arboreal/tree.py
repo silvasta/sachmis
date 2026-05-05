@@ -89,14 +89,14 @@ class Tree(ArborealDisk[Sprout]):
     # - filter invalid sprouts
 
     ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
-    ### -- Tree - Custom Functions and Atributes
+    ### -- Tree - Custom Functions and Attributes
     ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
 
     @classmethod
     def create_with_sprout(
         cls, model: str, prompt: Prompt, tree_stem: str = ""
     ) -> Self:
-        """Create new Tree wich only exist with exatly 1 Sprout (with own Sprouts >=0)"""
+        """Create new Tree with single Sprout attached"""
         sprout: Sprout = Sprout(
             model=model,
             prompt=prompt,  # TODO: empty prompt or so?

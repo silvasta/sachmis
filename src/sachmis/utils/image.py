@@ -27,7 +27,9 @@ def load_b64_and_encode(input_image_path: Path) -> str | None:
 
 def encode_image(image_path: Path) -> str:
     with open(image_path, "rb") as image_file:
-        encoded_string: str = base64.b64encode(image_file.read()).decode("utf-8")
+        encoded_string: str = base64.b64encode(image_file.read()).decode(
+            "utf-8"
+        )
     logger.info(f"Encoded image: {image_path.name}")
     return encoded_string
 
@@ -36,7 +38,9 @@ def decode_b64_and_write(base64_string: str, output_image_path: Path) -> bool:
     """Check base64 string image, send to write or skip"""
     try:
         if output_image_path.exists():
-            raise FileExistsError(f"Already file located at: {output_image_path=}")
+            raise FileExistsError(
+                f"Already file located at: {output_image_path=}"
+            )
         # TODO: check if base64_string is proper
         decode_image(base64_string, output_image_path)
         return True

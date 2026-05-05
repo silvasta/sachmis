@@ -36,7 +36,7 @@ class GoogleUploader(FileUploader):
         logger.info("Google Client loaded")
 
     def _fetch_all_files(self) -> list[Any]:
-        """Load all avaliable files from remote registry"""
+        """Load all available files from remote registry"""
         # WARN: how is this refreshed here?
         # - load client again?
         return self.client.files.list()

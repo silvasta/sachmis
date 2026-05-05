@@ -47,7 +47,7 @@ class Model(ABC):
 
     @abstractmethod
     def _load_client(self, *args, **kwargs):
-        """Complete authentification and create Client object"""
+        """Complete authentication and create Client object"""
 
     @property
     def prompt(self) -> Prompt:

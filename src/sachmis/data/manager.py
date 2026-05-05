@@ -104,13 +104,13 @@ class DataManager:
             if issubclass(exception_type, ArborealError):
                 logger.error(f"Context: {exception_value=}")
                 logger.warning("State not saved!")
-                # Surpress exception (after handling it here)
+                # Suppress exception (after handling it here)
                 return True
 
             if issubclass(exception_type, SachmisError):
                 logger.error(f"SachmisError: {exception_value}")
                 logger.warning("State not saved!")
-                # Surpress exception (after handling it here)
+                # Suppress exception (after handling it here)
                 return True
 
             logger.warning("State not saved!")

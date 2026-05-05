@@ -168,7 +168,7 @@ class ArborealRegistry[ArboT: Arboreal](BaseModel):
     def attach(
         self, instance: ArboT, path: Path, local_id: int
     ) -> ArborealTracker:
-        """Add instance to runtime registry, create and add reference tracker to writtten registry"""
+        """Add instance to runtime registry, create and add reference tracker to written registry"""
         uid: str = instance.unique_id
 
         logger.debug(instance)
@@ -293,7 +293,7 @@ class ArborealDisk[ArboT: Arboreal](Arboreal):
     def _attach(
         self, instance: ArboT, path: Path, local_id: int | None = None
     ) -> ArborealTracker:
-        """Add instance to runtime registry, create and add reference tracker to writtten registry"""
+        """Add instance to runtime registry, create and add reference tracker to written registry"""
 
         self.registry.confirm_not_already_added(instance.unique_id)
 
