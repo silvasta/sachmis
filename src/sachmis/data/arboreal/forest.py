@@ -1,7 +1,11 @@
 from pathlib import Path
 from typing import Self
 
+from loguru import logger
+from pydantic import Field
 from sstcore.data import SstFileRegistry
+
+from sachmis.exceptions import SachmisDataError
 
 from ...config import SachmisConfig, get_config
 from ..files import CampManager, UploadRegistry
@@ -17,6 +21,10 @@ class Forest(ArborealDisk[Tree]):
 
     files: UploadRegistry
     images: SstFileRegistry
+
+    sprouts: dict[str, set[Path]] = Field(
+        default_factory=dict
+    )  # tree-id : sprout location on filesystem
 
     ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
     ### -- Arboreal - Access to Members
@@ -51,19 +59,30 @@ class Forest(ArborealDisk[Tree]):
     def unique_tree_ids(self) -> list[str]:
         return [t.unique_id for t in self.registry.all_trackers]
 
-    def find_tree_by_unique_id(self, id: str) -> Tree | None:
-        return self.registry.find_member(id)
+    def find_tree_by_unique_id(self, id: str) -> ArborealTracker | None:
+        return self.registry.find_tracker(id)
 
     # TODO: Tree or Tracker?
 
     def find_tree_by_local_id(self, id: str) -> ArborealTracker | None:
         return self.registry.find_tracker_by_local_id(id)
 
-    def provide_tree(
-        self, model: str, prompt: Prompt, info_from_data: str = ""
-    ) -> ArborealTracker:
-        # NEXT: proper strategy, when to attach or how to find branch
-        return self.attach_new_tree(model, prompt)
+    def provide_tree(self, previous_sprout: Path) -> ArborealTracker:
+        for tree_id, paths in self.sprouts.items():
+            if previous_sprout in paths:
+                if tracker := self.find_tree_by_unique_id(tree_id):
+                    return tracker
+        logger.error(f"{previous_sprout=}")
+        logger.error(self.sprouts)
+        raise SachmisDataError(f"No Tree in Forest for: {previous_sprout=}")
+
+    def attach_sprout_paths(self, tree_id: str, sprout_path: Path):
+        if tree_id not in self.sprouts:
+            logger.info("Forest tracks Sprout from new Tree")
+            self.sprouts[tree_id]: set[Path] = set()
+        if sprout_path in self.sprouts.get(tree_id, {}):
+            logger.error("Attaching douplicated path to Forest")
+        self.sprouts[tree_id].add(sprout_path)
 
     def attach_tree(
         self, tree: Tree, tree_file: Path, local_id: int
@@ -74,7 +93,7 @@ class Forest(ArborealDisk[Tree]):
         """Create new Tree with initial Sprout"""
         config: SachmisConfig = get_config()
 
-        tree_stem: str = prompt.topic
+        tree_stem: str = prompt.slug_topic
         new_tree: Tree = Tree.create_with_sprout(
             # TODO: empty prompt or so?
             model=model,

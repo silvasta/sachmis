@@ -37,10 +37,13 @@ def load_models(data: DataManager, models: list[ModelFamily]) -> list[Model]:
     with Forest.edit_mode(data.forest_file) as forest:
         logger.info("Load Forest and extract Trees")
         for model in models:
-            tree_tracker.append(  # NEXT: info from data, find existing Tree
-                forest.provide_tree(model=model.unique, prompt=data.prompt)
+            tree_tracker.append(
+                forest.attach_new_tree(model=model.unique, prompt=data.prompt)
+                if data._next_fs_locator == 0
+                else forest.provide_tree(previous_sprout=data._previous_sprout)
             )
         data.load_camp(forest)
+
     logger.info("Trees extracted, close and unlock Forest during task")
 
     sprouts: list[Sprout] = []
@@ -48,10 +51,11 @@ def load_models(data: DataManager, models: list[ModelFamily]) -> list[Model]:
     for model, tracker in zip(models, tree_tracker, strict=True):
         sprout: Sprout = Tree.extract_sprout(
             tree_file=tracker.path,
-            sprout_locator="LOC",  # NEXT: info from data, find Sprout Location
+            previous_sprout=data._previous_sprout,
             model=model.unique,
             prompt=data.prompt,
         )
+        data.track_extracted_sprout(sprout, tree_tracker=tracker)
         logger.debug(f"extracted from Tree: {sprout.unique_id=}")
         sprouts.append(sprout)
 

@@ -1,4 +1,4 @@
-# TASK: for v0.4.0
+#  TASK: for v0.4.0
 # - Extended Forest Rollout
 # - Arboreal as SimpleTree
 # - Structured response
@@ -6,11 +6,6 @@
 # - Files Interface
 # - Image Loading
 # - Thunder
-
-# TASK: for v0.4.0b1
-# - Tree and Sprout Selection
-# - Check structured response
-# - Fire
 
 from importlib.metadata import PackageNotFoundError, version
 

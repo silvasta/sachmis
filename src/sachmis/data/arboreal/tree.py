@@ -3,7 +3,8 @@ from typing import Self
 
 from loguru import logger
 
-from ...exceptions import SproutRegistryError
+from ...config import SachmisConfig, get_config
+from ...exceptions import SachmisDataError, SproutRegistryError
 from ..prompt import Prompt
 from ..response import Response
 from .base import ArborealDisk, ArborealTracker
@@ -114,30 +115,65 @@ class Tree(ArborealDisk[Sprout]):
 
         return tree
 
-    def provide_sprout(
-        self, sprout_locator: str, model: str, prompt: Prompt
-    ) -> Sprout:
-        logger.warning(f"SO FAR: ignoring {sprout_locator=}")
-        sprout_parent: Sprout = self.sprout  # PARAM:
-        return self.attach_new_sprout(  # NEXT: find proper sprout
-            existing_sprout=sprout_parent, model=model, prompt=prompt
-        )
-
     @classmethod
     def extract_sprout(
-        cls, tree_file: Path, sprout_locator: str, model: str, prompt: Prompt
+        cls,
+        tree_file: Path,
+        previous_sprout: Path | None,
+        model: str,
+        prompt: Prompt,
     ) -> Sprout:
         """Just quickly open the Tree, extract new uncompleted sprout, later load and add completed"""
 
         logger.info("Loading Tree to extract new Sprout")
 
         with cls.edit_mode(tree_file) as tree:
-            new_sprout: Sprout = tree.provide_sprout(
-                sprout_locator, model=model, prompt=prompt
+            if previous_sprout is None:
+                existing: Sprout = tree.sprout
+            else:  # TEST: fails?
+                existing: Sprout = tree.provide_sprout(
+                    previous_sprout, model=model, prompt=prompt
+                )
+            new_sprout: Sprout = tree.attach_new_sprout(
+                existing_sprout=existing, model=model, prompt=prompt
             )
             new_sprout.set_extracted()
 
         return new_sprout
+
+    def provide_sprout(
+        self, previous_sprout: Path, model: str, prompt: Prompt
+    ) -> Sprout:
+        config: SachmisConfig = get_config()
+
+        _dom, _locator, _spec, topic = config.names.sprout_stem(
+            previous_sprout.stem
+        ).values()
+        print(_dom)
+        print(_locator)
+        print(topic)
+        if _spec != model:
+            raise SachmisDataError(f"Incompatible: {_spec=} and {model=}")
+
+        sprout: Sprout = self.find_sprout_py_path_parts(
+            self.sprout, model, topic
+        )
+        return self.attach_new_sprout(
+            existing_sprout=sprout, model=model, prompt=prompt
+        )
+
+    def find_sprout_py_path_parts(
+        self, sprout: Sprout, model: str, topic: str
+    ) -> Sprout:
+        """Recursive function, try to match model and topic"""
+        if sprout.model == model and sprout.prompt.slug_topic == topic:
+            return sprout
+        for s in sprout.sprouts:
+            try:
+                return self.find_sprout_py_path_parts(s, model, topic)
+            except SproutRegistryError:
+                pass  # raise only for top-level sprout
+        raise SproutRegistryError(f"Missing sprout of {model}! {topic=}")
 
     @classmethod
     def reattach_sprout(cls, tree_file: Path, sprout: Sprout):

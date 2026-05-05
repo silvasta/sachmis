@@ -31,7 +31,8 @@ class DataManager:
     _uploader: dict[str, RemoteUploader] = {}
 
     _extracted_sprouts: dict[str, ArborealTracker] = {}
-    _answer_file_paths: list[Path] = []
+    _result_file_paths: dict[Path, str] = {}
+    _previous_sprout: Path | None = None
     _write_dir_name: str = ""
 
     # MOVE: to sprout: role as something like Role(SstFile)
@@ -55,9 +56,9 @@ class DataManager:
         return self._prompt
 
     @property
-    def answer_file_paths(self) -> list[Path]:
+    def result_file_paths(self) -> list[Path]:
         """Get the current state of the answer file paths"""
-        return self._answer_file_paths
+        return list(self._result_file_paths.keys())
 
     def get_uploader(self, target: str) -> RemoteUploader:
         if target not in self._uploader:
@@ -126,6 +127,9 @@ class DataManager:
         if self._needs_biome and self._full_responses:
             self._attach_new_full_responses_to_biome()
 
+        if self._needs_forest and self._result_file_paths:
+            self._attach_sprout_paths_to_forest()
+
         # TASK: Data finish?
 
         logger.info("DataManager: Clean Exit")
@@ -144,10 +148,13 @@ class DataManager:
         self._extracted_sprouts[sprout.unique_id] = tree_tracker
         logger.debug(f"linked: {tree_tracker.path.name}, {sprout.unique_id=} ")
 
-    def _attach_sprout_to_tree(self, sprout: Sprout):
+    def _attach_sprout_to_tree(self, sprout: Sprout) -> str:
         logger.debug("attaching final sprout back to tree")
-        tracker: ArborealTracker = self._extracted_sprouts[sprout.unique_id]
+        tracker: ArborealTracker = self._extracted_sprouts.pop(
+            sprout.unique_id
+        )
         Tree.reattach_sprout(tree_file=tracker.path, sprout=sprout)
+        return tracker.unique_id
 
     def _attach_new_full_responses_to_biome(self):
         if not self._needs_biome:
@@ -160,6 +167,15 @@ class DataManager:
             # LATER: clear _full_responses?
 
         logger.info(f"Attached {len(self._full_responses)} files to Biome")
+
+    def _attach_sprout_paths_to_forest(self):
+        if not self._needs_forest:
+            raise ArborealError("Invalid call for data with forest=False")
+
+        with Forest.edit_mode(self.forest_file) as forest:
+            for sprout_path, tree_id in self._result_file_paths.items():
+                forest.attach_sprout_paths(tree_id, sprout_path)
+        logger.info(f"Sprout paths to Forest: {len(self._result_file_paths)}")
 
     def _add_temporary_full_response(self, text: str, path: Path) -> None:
 
@@ -250,6 +266,7 @@ class DataManager:
                 locator_num = int(name_parts["locator"])
                 if locator_num >= self._next_fs_locator:
                     self._next_fs_locator: int = locator_num + 1
+                    self._previous_sprout = self._path_from_parts(name_parts)
             logger.debug(f"default attach to {locator_num=} of {model=}")
 
     def parse_scanned_models(self) -> list[ModelFamily]:
@@ -263,6 +280,10 @@ class DataManager:
 
         return {sprout["locator"]: _format(sprout) for sprout in sprouts}
 
+    def _path_from_parts(self, name_parts: dict[str, str]) -> Path:
+        config: SachmisConfig = get_config()
+        return Path.cwd() / f"{config.names.sprout_stem(name_parts)}.md"
+
     def set_file_system_locator(self, locator: str, model_name: str):
         config: SachmisConfig = get_config()
 
@@ -273,6 +294,8 @@ class DataManager:
                 break
         else:
             raise SachmisDataError(f"Failed to find {locator=}")
+
+        self._previous_sprout: Path = self._path_from_parts(name_parts)
 
         sub_locator = 1
 
@@ -302,6 +325,7 @@ class DataManager:
                 raise SachmisDataError(
                     "Multiple paths to create Model subgroup"
                 )
+        self._previous_sprout: Path = model_path
         self._write_dir_name: str = model_path.stem
         self._next_fs_locator: int = 1
 
@@ -335,17 +359,18 @@ class DataManager:
             "locator": f"{self._next_fs_locator}",
             "root_dir": (Path.cwd() / self._write_dir_name),
         }
-
         answer_path: Path = config.paths.answer_file(
             model=sprout.model, **path_args
         )
         answer_path.write_text(sprout.response.content)
-        self._answer_file_paths.append(answer_path)
+
+        tree_id: str = self._attach_sprout_to_tree(sprout)
+        self._result_file_paths[answer_path] = tree_id
+
+        logger.info(f"Response written to: {answer_path=}")
 
         if not self._prompt_written:
             prompt_path: Path = config.paths.prompt_file(**path_args)
             self._move_and_write_prompt(prompt_path)
-            self._answer_file_paths.append(prompt_path)
+            self._result_file_paths[prompt_path] = tree_id
             self._prompt_written = True
-
-        logger.info(f"Response written to: {answer_path=}")
