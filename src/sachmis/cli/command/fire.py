@@ -160,7 +160,7 @@ def _prepare_model_args(
             selected_model: ModelFamily = existing_models[0]
             model_name: str = selected_model.unique
             if sprout:  # LATER: dataclass for sprout_folder_locator
-                sprouts: dict[str, str] = data.neighbours_formated(model_name)
+                sprouts: dict[str, str] = data.neighbours_formatted(model_name)
                 if locator := linear_selector(sprouts):
                     data.set_file_system_locator(locator[0], model_name)
         case _:

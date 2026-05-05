@@ -272,7 +272,7 @@ class DataManager:
     def parse_scanned_models(self) -> list[ModelFamily]:
         return parse_raw_models(list(self._scanned_models.keys()))
 
-    def neighbours_formated(self, model_name: str) -> dict[str, str]:
+    def neighbours_formatted(self, model_name: str) -> dict[str, str]:
         sprouts: list[dict[str, str]] = self._scanned_models[model_name]
 
         def _format(sprout: dict[str, str]) -> str:
@@ -301,10 +301,10 @@ class DataManager:
 
         for path in Path.cwd().glob(f"_{locator}*_{model_name}"):
             _dom, loc, _spec, _topic = config.names.sprout_stem(path.stem)
-            splitted: list[str] = loc.split(".")  # PARAM: symbol for locator
-            if splitted[0] != locator and len(splitted) != 2:
+            split: list[str] = loc.split(".")  # PARAM: symbol for locator
+            if split[0] != locator and len(split) != 2:
                 raise SachmisDataError(f"Bad locator: {loc} for {locator}")
-            if sub_locator <= (existing_sub := int(splitted[1])):
+            if sub_locator <= (existing_sub := int(split[1])):
                 sub_locator: int = existing_sub + 1
 
             # TODO: other name
