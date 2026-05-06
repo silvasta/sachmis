@@ -149,9 +149,9 @@ class Tree(ArborealDisk[Sprout]):
         _dom, _locator, _spec, topic = config.names.sprout_stem(
             previous_sprout.stem
         ).values()
-        print(_dom)
-        print(_locator)
-        print(topic)
+
+        logger.debug(f"{model=}: {previous_sprout=}")
+
         if _spec != model:
             raise SachmisDataError(f"Incompatible: {_spec=} and {model=}")
 

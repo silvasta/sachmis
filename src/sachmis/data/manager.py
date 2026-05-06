@@ -30,14 +30,34 @@ class DataManager:
     _prompt: Prompt | None = None
     _uploader: dict[str, RemoteUploader] = {}
 
+    _role_path: Path | None = None
+    _role: str | None = None  # MOVE: to sprout, something like Role(SstFile)
+
     _extracted_sprouts: dict[str, ArborealTracker] = {}
     _result_file_paths: dict[Path, str] = {}
-    _previous_sprout: Path | None = None
-    _write_dir_name: str = ""
 
-    # MOVE: to sprout: role as something like Role(SstFile)
-    _role_path: Path | None = None
-    _role: str | None = None
+    _previous_sprout: dict[str, Path | None] = {}
+    _next_fs_locator: dict[str, int] = {}
+    _write_dir_name: str = ""
+    # _start_from_root = True
+
+    def previous_sprout(self, model: str) -> Path | None:
+        """Get previous_sprout according to filesystem scan"""
+        if not self._previous_sprout:
+            return None
+        if model not in self._previous_sprout:
+            logger.error(f"{model=}, paths: {self._previous_sprout}")
+            raise SachmisDataError(f"Folder scan for {model=} invalid!")
+        return self._previous_sprout.get(model)
+
+    def filesystem_locator(self, model: str) -> int:
+        """Get next locator, calculated from CWD scan"""
+        if not self._next_fs_locator:
+            return 0
+        if model not in self._next_fs_locator:
+            logger.error(f"{model=}, locators: {self._next_fs_locator}")
+            raise SachmisDataError(f"Folder scan for {model=} invalid!")
+        return self._next_fs_locator[model]
 
     @property
     def role_name(self) -> str:  # MOVE: together with role stuff
@@ -245,11 +265,11 @@ class DataManager:
         self._scanned_models: dict[str, list[dict[str, str]]] = defaultdict(
             list
         )
-        self._next_fs_locator: int = 0
 
         if Path.cwd() == config.paths.base_dir:
             logger.debug("located in top folder, attach 0")
             self._write_dir_name: str = self.prompt.topic  # IDEA: tree name?
+            # self._start_from_root = True
             return
 
         for path in Path.cwd().glob("*.md"):
@@ -262,12 +282,15 @@ class DataManager:
             self._scanned_models[model_unique].append(parts)
 
         for model, files in self._scanned_models.items():
+            self._next_fs_locator[model] = 0
             for name_parts in files:
                 locator_num = int(name_parts["locator"])
-                if locator_num >= self._next_fs_locator:
-                    self._next_fs_locator: int = locator_num + 1
-                    self._previous_sprout = self._path_from_parts(name_parts)
-            logger.debug(f"default attach to {locator_num=} of {model=}")
+                if locator_num >= self._next_fs_locator[model]:
+                    self._next_fs_locator[model] = locator_num + 1
+                    self._previous_sprout[model] = self._path_from_parts(
+                        name_parts
+                    )
+            logger.debug(f"regular attach to {model=} after {locator_num=}")
 
     def parse_scanned_models(self) -> list[ModelFamily]:
         return parse_raw_models(list(self._scanned_models.keys()))
@@ -290,12 +313,13 @@ class DataManager:
         locations: list[dict[str, str]] = self._scanned_models[model_name]
         for location in locations:
             if location["locator"] == locator:
+                logger.debug(f"{model_name=}: {location=}")
                 name_parts: dict[str, str] = location
                 break
         else:
             raise SachmisDataError(f"Failed to find {locator=}")
 
-        self._previous_sprout: Path = self._path_from_parts(name_parts)
+        self._previous_sprout[model_name] = self._path_from_parts(name_parts)
 
         sub_locator = 1
 
@@ -312,7 +336,7 @@ class DataManager:
             name_parts["locator"] = new_locator
 
         self._write_dir_name: str = config.names.sprout_stem(name_parts)
-        self._next_fs_locator: int = 1
+        self._next_fs_locator[model_name] = 1
 
     def set_model_subdir(self, model_name: str):
 
@@ -325,9 +349,9 @@ class DataManager:
                 raise SachmisDataError(
                     "Multiple paths to create Model subgroup"
                 )
-        self._previous_sprout: Path = model_path
+        self._previous_sprout[model_name] = model_path
         self._write_dir_name: str = model_path.stem
-        self._next_fs_locator: int = 1
+        self._next_fs_locator[model_name] = 1
 
     ### --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
     ### --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
@@ -356,7 +380,7 @@ class DataManager:
 
         path_args: dict[str, Any] = {
             "topic": sprout.prompt.slug_topic,
-            "locator": f"{self._next_fs_locator}",
+            "locator": f"{self._next_fs_locator[sprout.model]}",
             "root_dir": (Path.cwd() / self._write_dir_name),
         }
         answer_path: Path = config.paths.answer_file(

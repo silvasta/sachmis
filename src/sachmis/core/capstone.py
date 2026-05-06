@@ -39,8 +39,8 @@ def load_models(data: DataManager, models: list[ModelFamily]) -> list[Model]:
         for model in models:
             tree_tracker.append(
                 forest.attach_new_tree(model=model.unique, prompt=data.prompt)
-                if data._next_fs_locator == 0
-                else forest.provide_tree(previous_sprout=data._previous_sprout)
+                if (previous := data.previous_sprout(model.unique)) is None
+                else forest.provide_tree(previous_sprout=previous)
             )
         data.load_camp(forest)
 
@@ -51,7 +51,7 @@ def load_models(data: DataManager, models: list[ModelFamily]) -> list[Model]:
     for model, tracker in zip(models, tree_tracker, strict=True):
         sprout: Sprout = Tree.extract_sprout(
             tree_file=tracker.path,
-            previous_sprout=data._previous_sprout,
+            previous_sprout=data.previous_sprout(model.unique),
             model=model.unique,
             prompt=data.prompt,
         )

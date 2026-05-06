@@ -1,3 +1,4 @@
+from sstcore import PathGuard
 import time
 import uuid
 from collections.abc import Iterator
@@ -318,7 +319,23 @@ class ArborealDisk[ArboT: Arboreal](Arboreal):
             return False
         return True
 
-    # TASK: prune missing?
+    def remove_tracker(self, path: Path):
+        pass
+
+    def prune_tracker_with_missing_paths(self) -> list[ArborealTracker]:
+        """Delete tracker with missing files at path, True for pruned"""
+
+        deleted: list[ArborealTracker] = []
+
+        if missing := self.registry.tracker_with_invalid_paths:
+            logger.warning("Found Tracker with missing paths")
+
+            for tracker in missing:
+                self.registry.trackers.pop(tracker.unique_id)
+                logger.debug(f"removed: {tracker.path.name}")
+                deleted.append(tracker)
+
+        return deleted
 
     def _check_tracker_paths_unique(self) -> bool:
         """Detect tracker with missing files at path"""
