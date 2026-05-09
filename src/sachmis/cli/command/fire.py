@@ -80,7 +80,7 @@ def fire(
         printer.lines(
             header="Paths of generated Files",
             title=data.prompt.topic,
-            lines=data.result_file_paths,
+            lines=data.result_files(),
         )
 
     logger.info("All processes finished")

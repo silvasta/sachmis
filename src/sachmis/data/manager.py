@@ -57,8 +57,15 @@ class DataManager:
 
     @property
     def result_file_paths(self) -> list[Path]:
-        """Get the current state of the answer file paths"""
+        """Get absolute answer file paths"""
         return list(self._result_file_paths.keys())
+
+    def result_files(self, root_dir: Path | None = None) -> list[Path]:
+        """Get relative answer file paths"""
+        return list(
+            PathGuard.relative(target=path, root=root_dir)
+            for path in self.result_file_paths
+        )
 
     def get_uploader(self, target: str) -> RemoteUploader:
         if target not in self._uploader:
