@@ -39,46 +39,12 @@ class DataManager:
     _role_path: Path | None = None
     _role: str | None = None
 
-    @property
-    def role_name(self) -> str:  # MOVE: together with role stuff
-        return self._role_path.name if self._role_path else "role from text"
-
-    @property
-    def camp(self) -> CampManager:
-        if self._camp is None:
-            raise DataManagerRuntimeError
-        return self._camp
-
-    @property
-    def prompt(self) -> Prompt:
-        if self._prompt is None:
-            raise DataManagerRuntimeError("No prompt loaded...")
-        return self._prompt
-
-    @property
-    def result_file_paths(self) -> list[Path]:
-        """Get absolute answer file paths"""
-        return list(self._result_file_paths.keys())
-
-    def result_files(self, root_dir: Path | None = None) -> list[Path]:
-        """Get relative answer file paths"""
-        return list(
-            PathGuard.relative(target=path, root=root_dir)
-            for path in self.result_file_paths
-        )
-
-    def get_uploader(self, target: str) -> RemoteUploader:
-        if target not in self._uploader:
-            self._uploader[target] = create_uploader(target)
-        return self._uploader[target]
-
-    def __init__(self, biome=False, forest=False, camp=False):
-        """Define at init what is required: Biome, Forest, inside Camp"""
+    def __init__(self, biome=False, forest=False):
+        """Setup and check required: Biome, Forest"""
         config: SachmisConfig = get_config()
 
         self._needs_biome: bool = biome
         self._needs_forest: bool = forest
-        self._needs_inside_camp: bool = camp
 
         if self._needs_biome:
             try:
@@ -94,14 +60,12 @@ class DataManager:
             self.forest_file: Path = config.paths.forest_file
             logger.debug(f"forest: {self.forest_file}")
 
-        if self._needs_inside_camp:
-            self.camp_dir: Path = config.paths.camp_dir_as_parent
-            logger.debug(f"camp: {self.camp_dir}")
-
     def __enter__(self) -> Self:
         logger.info("DataManager: Load data in Context")
 
-        # TASK: Data start?
+        # NEXT: Data start?
+        self.load_camp()  # context
+        self.load_rollout()  # context
 
         return self
 
@@ -381,3 +345,39 @@ class DataManager:
             self._move_and_write_prompt(prompt_path)
             self._result_file_paths[prompt_path] = tree_id
             self._prompt_written = True
+
+    ### --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+    ### --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+
+    @property
+    def role_name(self) -> str:  # MOVE: together with role stuff
+        return self._role_path.name if self._role_path else "role from text"
+
+    @property
+    def camp(self) -> CampManager:
+        if self._camp is None:
+            raise DataManagerRuntimeError
+        return self._camp
+
+    @property
+    def prompt(self) -> Prompt:
+        if self._prompt is None:
+            raise DataManagerRuntimeError("No prompt loaded...")
+        return self._prompt
+
+    @property
+    def result_file_paths(self) -> list[Path]:
+        """Get absolute answer file paths"""
+        return list(self._result_file_paths.keys())
+
+    def result_files(self, root_dir: Path | None = None) -> list[Path]:
+        """Get relative answer file paths"""
+        return list(
+            PathGuard.relative(target=path, root=root_dir)
+            for path in self.result_file_paths
+        )
+
+    def get_uploader(self, target: str) -> RemoteUploader:
+        if target not in self._uploader:
+            self._uploader[target] = create_uploader(target)
+        return self._uploader[target]
