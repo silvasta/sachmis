@@ -9,7 +9,6 @@ from sachmis.config.defaults import ModelParam
 from ...config import SachmisConfig, get_config
 from ...config.model import ModelFamily
 from ...data import DataManager, Prompt, Response
-from ...data.arboreal import Sprout
 from ...utils.print import printer
 
 config: SachmisConfig = get_config()
@@ -24,14 +23,12 @@ class Model(ABC):
         self,
         model: ModelFamily,
         data: DataManager,
-        sprout: Sprout,
         param: ModelParam | None = None,
     ):
         logger.debug(f"Loading {model.api_name}")
 
         self.model: ModelFamily = model
         self.data: DataManager = data
-        self.sprout: Sprout = sprout
         self.param: ModelParam = self._load_param(param)
 
         logger.debug(f"Model ({self.__class__.__name__}) connected with Data")

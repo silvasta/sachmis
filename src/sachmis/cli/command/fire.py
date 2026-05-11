@@ -6,14 +6,13 @@ from sstcore.data import SstFile
 
 from ...config import SachmisConfig, get_config
 from ...config.model import ModelFamily
-from ...core import capstone as cap
+from ...core import capstone
 from ...core.model import Model
 from ...data import DataManager
 from ...data.files import CampManager, UploadFile
 from ...exceptions.data import DataManagerRuntimeError
 from ...tui.selector import (
     file_selector,
-    linear_selector,
     model_selector,
     role_selector,
 )
@@ -30,7 +29,7 @@ DEBUG = True
 def fire(
     # Arguments
     models: args.Models = None,
-    sprout: args.Sprout = False,
+    # sprout: args.Sprout = False,
     # Options for task selection
     pick_role: args.PickRole = True,
     files: sargs.Files = None,
@@ -44,56 +43,49 @@ def fire(
 ):
     """Prepare models with local prompt and Fire"""
 
-    # INFO: start data context here because of priority of execution:
-    # - loading models and prompt before picking files and images
-    # - model/prompt failures should not cause unnecessary picks
-
-    with DataManager(biome=True, forest=True) as data:
-        data.load_prompt()
-        data.scan_dir_for_models()
-
-        models: list[ModelFamily] = _prepare_model_args(data, models, sprout)
-        agents: list[Model] = cap.load_models(data, models)
+    with capstone.Fire() as session:
+        models: list[ModelFamily] = _prepare_model_args(session.data, models)
+        agents: list[Model] = session.load_models(models)
 
         files: list[UploadFile] = _prepare_file_args(
-            data.camp, files, pick_file
+            session.data.camp, files, pick_file
         )
-        data.load_files(files)
+        session.data.load_files(files)
 
         images: list[SstFile] = _prepare_image_args(
-            data.camp, images, pick_image
+            session.data.camp, images, pick_image
         )
-        data.load_images(images)
+        session.data.load_images(images)
 
         role: Path | None = _prepare_role(pick_role)
-        data.load_role(role)
+        session.data.load_role(role)
 
-        if not direct_fire and not confirm_fire(data, agents):
+        if not direct_fire and not confirm_fire(agents, session.data):
             return
 
-        logger.info("Ready to fire")
+        logger.info("Ready to Fire")
 
-        cap.launch_models(agents, use_async, dry_run)
+        session.launch(use_async, dry_run)
 
         printer.success("Models finished to run, storing data, au revoir!")
 
         printer.lines(
             header="Paths of generated Files",
-            title=data.prompt.topic,
-            lines=data.result_files(),
+            title=session.data.prompt.topic,
+            lines=session.data.result_files(),
         )
 
     logger.info("All processes finished")
 
 
-def confirm_fire(data: DataManager, models: list[Model]) -> bool:
+def confirm_fire(models: list[Model], data: DataManager) -> bool:
 
     printer.success(
         "Summary of Release",
     )
 
     printer.title(f"Prompt - {data.prompt.topic}")
-    printer.md(data.prompt.text)
+    printer.md(data.prompt.content)
 
     printer.lines_with_len(
         name="Models",
@@ -138,11 +130,9 @@ def confirm_fire(data: DataManager, models: list[Model]) -> bool:
     return fire
 
 
-# MOVE: _prepare... to args?
 def _prepare_model_args(
     data: DataManager,
     models: list[str] | None,
-    sprout: bool = False,
     with_dummy=DEBUG,
 ) -> list[ModelFamily]:
 
@@ -153,25 +143,20 @@ def _prepare_model_args(
         printer.md(f"...{len(parsed_models)} selected for pipeline")
         return parsed_models
 
-    match len(existing_models := data.parse_scanned_models()):
+        # TASK: multimodel, new tree structure
+    match len(model_info := data.model_info.models):
         case 0:
             return model_selector(multi_select=True, with_dummy=with_dummy)
         case 1:
-            selected_model: ModelFamily = existing_models[0]
-            model_name: str = selected_model.unique
-            if sprout:  # LATER: dataclass for sprout_folder_locator
-                sprouts: dict[str, str] = data.neighbours_formatted(model_name)
-                if locator := linear_selector(sprouts):
-                    data.set_file_system_locator(locator[0], model_name)
+            selected_model: ModelFamily = model_info[0].model
         case _:
             selected_model: ModelFamily = model_selector(
-                # FAIL for multiple same models...
-                existing_models,
+                models=data.model_info.model_enums,
                 multi_select=False,
                 with_dummy=with_dummy,
             )[0]
-            data._write_dir_name = data.prompt.topic
 
+            # NEXT: attach model info
     return [selected_model]
 
 

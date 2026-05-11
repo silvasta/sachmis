@@ -3,23 +3,59 @@ from typing import Self
 
 from boltons.strutils import slugify
 from loguru import logger
-from pydantic import BaseModel, Field
+from pydantic import Field
 
-from ..config import SachmisConfig, get_config
-from ..exceptions import PromptError
-from .files import SstFile, UploadFile
+from ...config import SachmisConfig, get_config
+from ...exceptions import PromptError
+from ..files import Conversation, ConversationTreeNode, SstFile, UploadFile
 
 
-class Prompt(BaseModel):
-    topic: str
-    text: str
+class PromptTreeNode(ConversationTreeNode):
+    pass
+
+
+class Prompt(Conversation):
     files: list[UploadFile] = Field(default_factory=list)
     images: list[SstFile] = Field(default_factory=list)
     # TODO: role as something like Role(SstFile)
 
-    @property
-    def slug_topic(self):
-        return slugify(self.topic)
+    ancestor: Conversation | tuple[Conversation] | None = None
+    # TODO: len(successor) > 0
+    successor: list[Conversation] = Field(default_factory=list)
+
+    def _get_ancestor(self) -> Conversation | tuple[Conversation] | None:
+        return self.ancestor
+
+    def n_ancestor(self) -> int:
+        if (ancestor := self.ancestor) is None:
+            return 0
+        if not isinstance(ancestor, tuple):
+            return 1
+        return len(ancestor)
+
+    def single_ancestor(self) -> Conversation | None:
+        if isinstance(self.ancestor, tuple):
+            return None
+        return self.ancestor
+
+    def _get_successor(self) -> list[Conversation]:
+        if not self.successor:
+            raise PromptError("Prompt must have at least 1 successor")
+        return self.successor
+
+    def _compose_stem(self) -> str:
+        config: SachmisConfig = get_config()
+        return config.names.sprout_stem.computed(
+            locator=f"{self.local_id}",
+            spec="prompt",
+            topic=self.slug_topic,
+        )
+
+    def rollout_path(self, root_dir: Path | None = None) -> Path:
+        config: SachmisConfig = get_config()
+        return config.paths.prompt_file(
+            prompt_stem=self._compose_stem(), root_dir=root_dir
+        )
 
     @classmethod
     def load_from_path(
@@ -39,6 +75,7 @@ class Prompt(BaseModel):
     ) -> Self:
         """Load new Prompt from text and generate topic"""
         config: SachmisConfig = get_config()
+
         logger.info("Preparing Prompt from text input")
 
         if not prompt_text:
@@ -47,7 +84,11 @@ class Prompt(BaseModel):
         topic: str = (
             topic or cls.extract_topic(prompt_text) or config.defaults.topic
         )
-        prompt: Prompt = cls(topic=topic, text=prompt_text)
+        prompt: Prompt = cls(
+            topic=topic,
+            content=prompt_text,
+            local_id=-1,
+        )
         logger.info(f"Prompt loaded with: {topic=}")
 
         return prompt

@@ -53,7 +53,7 @@ class Names(SstNames):
     prompt: str = "prompt.md"
 
     # Patterns
-    tree_file: ParsedName = ParsedName(pattern="t_{id}_{model}_{stem}.json")
+    tree_file: ParsedName = ParsedName(pattern="t_{id}_{stem}.json")
     sprout_stem: SproutName = SproutName.with_predefined_keys()
 
     remotes: StyledName = StyledName.parse_style(

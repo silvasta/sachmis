@@ -18,6 +18,22 @@ app = typer.Typer(
 attach_callback(app)
 
 
+def trees():
+    """Show statistics of active Forest"""
+    config: SachmisConfig = get_config()
+
+    active: str = "[bold]Active:[/]"
+    printer.title(f"{active} {config.paths.forest_file}", style="warning")
+
+    forest: Forest = Forest.read_mode(config.paths.forest_file)
+    trees: list[ArborealTracker] = forest.trees
+
+    for t in trees:
+        tree: Tree = Tree.read_mode(t.local_path)
+        printer.title(tree.tree_stem)
+        printer.tree_graph(tree.sample_conversation_tree())
+
+
 @app.command()
 @logger_catch
 def stat():

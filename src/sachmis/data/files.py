@@ -1,3 +1,5 @@
+import uuid
+from dataclasses import asdict, dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Annotated, Literal, Self
@@ -11,9 +13,118 @@ from sstcore.data import (
     SstFile,
     SstFileRegistry,
 )
+from sstcore.utils import SimpleTreeNode
+
+from sachmis.exceptions import SachmisDataError
 
 from ..config import SachmisConfig, get_config
 from ..utils.print import printer
+
+
+class ConversationTreeNode(SimpleTreeNode):
+    pass
+
+
+@dataclass
+class TreeNodeArgs:
+    name: str
+    id: str
+
+
+class Conversation(BaseModel):  # TODO: better name
+    unique_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    local_id: int  # -1 for not set, starting at 1, for Prompt: 0 == root
+
+    topic: str
+    content: str
+
+    @property
+    def tree_node_args(self) -> TreeNodeArgs:
+        return TreeNodeArgs(name=self._compose_stem(), id=self.unique_id)
+
+    @property
+    def tree_node_dict(self) -> dict:
+        return asdict(self.tree_node_args)
+
+    def get_ancestor(
+        self, unique_id: str | None = None
+    ) -> Conversation | None:
+        """Direct ancestor, id for Prompt that answers on multiple Responses,
+        Response has always 1, Prompt: None -> root, 1 regular, multiple: use id!"""
+        if (ancestor := self._get_ancestor()) is None:
+            return None
+        if isinstance(ancestor, tuple):
+            for father in ancestor:
+                if father.unique_id == unique_id:
+                    ancestor: Conversation = father
+                    break
+            else:
+                raise SachmisDataError(f"{self.desc}: Invalid {unique_id=}")
+        self._check_if_class_swiched(ancestor)
+        return ancestor
+
+    def as_tree_node(
+        self, branches: list[ConversationTreeNode] | None = None
+    ) -> ConversationTreeNode:
+        if branches is None:
+            branches: list[ConversationTreeNode] = []
+        return ConversationTreeNode(**self.tree_node_dict, branches=branches)
+
+    def _get_ancestor(self) -> Conversation | tuple[Conversation] | None:
+        raise NotImplementedError
+
+    def _check_if_class_swiched(self, other: Conversation):
+        """Prompt -> Response -> Pro... required"""
+        if isinstance(other, own_class := self.__class__):
+            own_cls: str = own_class.__name__
+            raise SachmisDataError(f"{own_cls=} directly linke to {own_cls}")
+
+    def get_successor(self) -> list[Conversation]:
+        """Direct ancestors, Prompt must have tuple with minimum 1 element,
+        Response is growing list that can be empty"""
+        for successor in (successors := self._get_successor()):
+            self._check_if_class_swiched(successor)
+        return successors
+
+    def find_successor(self, unique_id: str) -> Conversation | None:
+        for successor in self.get_successor():
+            if successor.unique_id == unique_id:
+                return successor
+
+    def _get_successor(self) -> list[Conversation]:
+        raise NotImplementedError
+
+    def single_ancestor(self) -> Conversation | None:
+        raise NotImplementedError
+
+    @property
+    def desc(self):
+        return f"{self.__class__.__name__} {self.local_id} with {self.topic=}"
+
+    @property
+    def slug_topic(self):  # MOVE: Model validate?
+        return slugify(self.topic)
+
+    @property
+    def stem(self) -> str:
+        if self.local_id == -1:
+            logger.error("Access to stem without valid local_id")
+        return self._compose_stem()
+
+    def _compose_stem(self):
+        raise NotImplementedError
+
+    def write(self, root_dir: Path | None = None) -> Path:
+        """Rollout to FileSystem"""
+        if self.local_id == -1:
+            raise SachmisDataError("Write requires assigned local_id!")
+        path: Path = self.rollout_path(root_dir)
+        path.write_text(self.content)
+        logger.info(f"{self.__class__.__name__} wrote to: {path=}")
+        return path
+
+    def rollout_path(self, root_dir: Path | None = None) -> Path:
+        raise NotImplementedError
 
 
 class UploadState(BaseModel):

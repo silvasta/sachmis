@@ -59,6 +59,7 @@ class ArborealRegistry[ArboT: Arboreal](BaseModel):
 
     def get_tracker(self, uuid: str) -> ArborealTracker:
         if not (tracker := self.find_tracker(uuid)):
+            # LATER: def raise_missing? prefilled text?
             raise ArborealRegistryMissingError(
                 parent=self.__class__.__name__,
                 child=ArboT.__name__,
@@ -83,7 +84,7 @@ class ArborealRegistry[ArboT: Arboreal](BaseModel):
             logger.warning(f"{len(local_ids)=} but {self.n_trackers=})")
         return local_ids
 
-    def find_tracker_by_local_id(self, id: str) -> ArborealTracker | None:
+    def find_tracker_by_local_id(self, id: int) -> ArborealTracker | None:
         for tracker in self.all_trackers:
             if id == tracker.local_id:
                 return tracker
@@ -163,6 +164,7 @@ class Arboreal[ArboT: Arboreal](BaseModel):
     # Safety toggle, set this or save_state(lock_required=True)
     _has_lock: bool = PrivateAttr(default=False)
 
+    # REMOVE: for Tree? New derived class? Ignore?
     registry: ArborealRegistry[ArboT] = Field(
         default_factory=ArborealRegistry, init=False, repr=False
     )
@@ -193,6 +195,11 @@ class Arboreal[ArboT: Arboreal](BaseModel):
             local_id=local_id,
             local_path=path,
         )
+
+    @property
+    def child_info(self):  # LATER: improve
+        """Usef for Biome and Forest, override for Tree!"""
+        return f"{self.registry.n_trackers} {ArboT.__name__}s"
 
     def _next_instance_id(self) -> int:
         self.local_counter += 1
@@ -267,22 +274,16 @@ class Arboreal[ArboT: Arboreal](BaseModel):
 
         instance: Self = cls.model_validate_json(file.read_text())
 
-        logger.info(
-            f"{name} loaded with {instance.registry.n_trackers} {ArboT.__name__}s"
-        )
+        logger.info(f"{name} loaded with {instance.child_info}s")
         return instance
 
     def save_state(self, file: Path, *, lock_required=True) -> None:
-        name: str = self.__class__.__name__
+        logger.info(f"Save {(arbo := self.__class__.__name__)} to json")
 
         if lock_required and not self._has_lock:
-            raise ArborealError(f"FileLock required to write {name}!")
-
-        logger.info(f"Save {name} to json")
+            raise ArborealError(f"FileLock required to write {arbo}!")
 
         self.touch()
         file.write_text(self.model_dump_json())
 
-        logger.info(
-            f"{name} saved with {self.registry.n_trackers} {ArboT.__name__}s"
-        )
+        logger.info(f"{arbo} saved with {self.child_info}")

@@ -1,25 +1,20 @@
-from collections import defaultdict
 from itertools import product
 from pathlib import Path
-from typing import Any, Self
+from typing import Self
 
 from loguru import logger
 from sstcore import PathGuard
 from sstcore.data import SstFile
 
+from sachmis.data import Response
+from sachmis.data.rollout import FileRollout, ModelInfo
+
 from ..config import SachmisConfig, get_config
-from ..config.model import ModelFamily
-from ..exceptions import (
-    ArborealError,
-    ArborealFileExistsError,
-    SachmisDataError,
-    SachmisError,
-)
+from ..exceptions import ArborealError, ArborealFileExistsError, SachmisError
 from ..exceptions.data import DataManagerRuntimeError
-from ..utils.parse import parse_raw_models
-from .arboreal import ArborealTracker, Biome, Forest, Sprout, Tree
+from .arboreal import ArborealTracker, Biome, Forest
+from .conversation.prompt import Prompt
 from .files import CampManager, UploadFile
-from .prompt import Prompt
 from .uploader import RemoteUploader, create_uploader
 
 
@@ -29,11 +24,11 @@ class DataManager:
     _camp: CampManager | None = None
     _prompt: Prompt | None = None
     _uploader: dict[str, RemoteUploader] = {}
+    _model_info: ModelInfo | None = None
 
     _extracted_sprouts: dict[str, ArborealTracker] = {}
-    _result_file_paths: dict[Path, str] = {}
+    _result_file_paths: list[Path] = []
     _previous_sprout: Path | None = None
-    _write_dir_name: str = ""
 
     # MOVE: to sprout: role as something like Role(SstFile)
     _role_path: Path | None = None
@@ -64,8 +59,6 @@ class DataManager:
         logger.info("DataManager: Load data in Context")
 
         # NEXT: Data start?
-        self.load_camp()  # context
-        self.load_rollout()  # context
 
         return self
 
@@ -98,8 +91,8 @@ class DataManager:
         if self._needs_biome and self._full_responses:
             self._attach_new_full_responses_to_biome()
 
-        if self._needs_forest and self._result_file_paths:
-            self._attach_sprout_paths_to_forest()
+        # if self._needs_forest and self._result_file_paths:
+        #     self._attach_sprout_paths_to_forest()
 
         # TASK: Data finish?
 
@@ -107,25 +100,6 @@ class DataManager:
 
         # Propagate exception to caller
         return False
-
-    def track_extracted_sprout(
-        self, sprout: Sprout, tree_tracker: ArborealTracker
-    ):
-        if not self._needs_forest:
-            raise ArborealError("Invalid call for data with forest=False")
-        if sprout.unique_id in self._extracted_sprouts:
-            raise SachmisDataError("Sprout ID already in registry")
-
-        self._extracted_sprouts[sprout.unique_id] = tree_tracker
-        logger.debug(f"linked: {tree_tracker.path.name}, {sprout.unique_id=} ")
-
-    def _attach_sprout_to_tree(self, sprout: Sprout) -> str:
-        logger.debug("attaching final sprout back to tree")
-        tracker: ArborealTracker = self._extracted_sprouts.pop(
-            sprout.unique_id
-        )
-        Tree.reattach_sprout(tree_file=tracker.path, sprout=sprout)
-        return tracker.unique_id
 
     def _attach_new_full_responses_to_biome(self):
         if not self._needs_biome:
@@ -138,15 +112,6 @@ class DataManager:
             # LATER: clear _full_responses?
 
         logger.info(f"Attached {len(self._full_responses)} files to Biome")
-
-    def _attach_sprout_paths_to_forest(self):
-        if not self._needs_forest:
-            raise ArborealError("Invalid call for data with forest=False")
-
-        with Forest.edit_mode(self.forest_file) as forest:
-            for sprout_path, tree_id in self._result_file_paths.items():
-                forest.attach_sprout_paths(tree_id, sprout_path)
-        logger.info(f"Sprout paths to Forest: {len(self._result_file_paths)}")
 
     def _add_temporary_full_response(self, text: str, path: Path) -> None:
 
@@ -171,8 +136,14 @@ class DataManager:
 
         return self._prompt
 
-    def load_camp(self, forest: Forest):
+    def load_camp(self):
+        config: SachmisConfig = get_config()
+        forest: Forest = Forest.read_mode(config.paths.forest_file)
+        # WARN:
         self._camp: CampManager = forest.provide_camp()
+
+    def load_rollout(self):  # TODO:
+        self.rollout = FileRollout()
 
     def load_files(self, files: list[UploadFile], ensure_after_upload=True):
         """Assumes valid local data files, pushes to Remotes"""
@@ -209,142 +180,35 @@ class DataManager:
     ### --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
     ### --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
-    def scan_dir_for_models(self):
-        """Scan file system for existing conversation"""
-        config: SachmisConfig = get_config()
-
-        self._scanned_models: dict[str, list[dict[str, str]]] = defaultdict(
-            list
-        )
-        self._next_fs_locator: int = 0
-
-        if Path.cwd() == config.paths.base_dir:
-            logger.debug("located in top folder, attach 0")
-            self._write_dir_name: str = self.prompt.topic  # IDEA: tree name?
-            return
-
-        for path in Path.cwd().glob("*.md"):
-            try:
-                parts: dict[str, str] = config.names.sprout_stem(path.stem)
-            except ValueError:
-                continue
-            if (model_unique := parts["spec"]) == "prompt":
-                continue
-            self._scanned_models[model_unique].append(parts)
-
-        for model, files in self._scanned_models.items():
-            for name_parts in files:
-                locator_num = int(name_parts["locator"])
-                if locator_num >= self._next_fs_locator:
-                    self._next_fs_locator: int = locator_num + 1
-                    self._previous_sprout = self._path_from_parts(name_parts)
-            logger.debug(f"default attach to {locator_num=} of {model=}")
-
-    def parse_scanned_models(self) -> list[ModelFamily]:
-        return parse_raw_models(list(self._scanned_models.keys()))
-
-    def neighbours_formatted(self, model_name: str) -> dict[str, str]:
-        sprouts: list[dict[str, str]] = self._scanned_models[model_name]
-
-        def _format(sprout: dict[str, str]) -> str:
-            return f"{model_name} - {sprout['locator']} - {sprout['topic']}"
-
-        return {sprout["locator"]: _format(sprout) for sprout in sprouts}
-
-    def _path_from_parts(self, name_parts: dict[str, str]) -> Path:
-        config: SachmisConfig = get_config()
-        return Path.cwd() / f"{config.names.sprout_stem(name_parts)}.md"
-
-    def set_file_system_locator(self, locator: str, model_name: str):
-        config: SachmisConfig = get_config()
-
-        locations: list[dict[str, str]] = self._scanned_models[model_name]
-        for location in locations:
-            if location["locator"] == locator:
-                name_parts: dict[str, str] = location
-                break
-        else:
-            raise SachmisDataError(f"Failed to find {locator=}")
-
-        self._previous_sprout: Path = self._path_from_parts(name_parts)
-
-        sub_locator = 1
-
-        for path in Path.cwd().glob(f"_{locator}*_{model_name}"):
-            _dom, loc, _spec, _topic = config.names.sprout_stem(path.stem)
-            split: list[str] = loc.split(".")  # PARAM: symbol for locator
-            if split[0] != locator and len(split) != 2:
-                raise SachmisDataError(f"Bad locator: {loc} for {locator}")
-            if sub_locator <= (existing_sub := int(split[1])):
-                sub_locator: int = existing_sub + 1
-
-            # TODO: other name
-            new_locator: str = f"{name_parts['locator']}.{sub_locator}"
-            name_parts["locator"] = new_locator
-
-        self._write_dir_name: str = config.names.sprout_stem(name_parts)
-        self._next_fs_locator: int = 1
-
-    def set_model_subdir(self, model_name: str):
-
-        match len(paths := list(Path.cwd().glob(f"_{model_name}_"))):
-            case 0:
-                raise SachmisDataError("No path to create Model subgroup")
-            case 1:
-                model_path: Path = paths[0]
-            case _:
-                raise SachmisDataError(
-                    "Multiple paths to create Model subgroup"
-                )
-        self._previous_sprout: Path = model_path
-        self._write_dir_name: str = model_path.stem
-        self._next_fs_locator: int = 1
-
     ### --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
     ### --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
-    def _move_and_write_prompt(self, prompt_path: Path):
+    def _rotate_prompt(self, dir: Path | None = None) -> Path:
+        # MOVE: FileRollout
         config: SachmisConfig = get_config()
-
         if self._input_prompt_path is None:
-            prompt_path.write_text(self.prompt.text)
+            prompt_path: Path = self.prompt.write(dir)
         else:
+            prompt_path: Path = self.prompt.rollout_path()
             PathGuard.rotate(
                 source=self._input_prompt_path, target=prompt_path, reset=True
             )
-            if self._write_dir_name:
+            if dir:
                 prompt_path.with_name(config.names.prompt).touch()
-
         logger.debug(f"prompt moved: {prompt_path=}")
+        return prompt_path
 
-    def handle_response(self, sprout: Sprout):
+    def handle_response(self, response: Response):
         """So far: write when desired, later handle filetree | other.."""
-        config: SachmisConfig = get_config()
-
-        if sprout.response is None:
-            logger.error(f"Can't process empty response of {sprout=}")
-            return
-
-        path_args: dict[str, Any] = {
-            "topic": sprout.prompt.slug_topic,
-            "locator": f"{self._next_fs_locator}",
-            "root_dir": (Path.cwd() / self._write_dir_name),
-        }
-        answer_path: Path = config.paths.answer_file(
-            model=sprout.model, **path_args
-        )
-        answer_path.write_text(sprout.response.content)
-
-        tree_id: str = self._attach_sprout_to_tree(sprout)
-        self._result_file_paths[answer_path] = tree_id
-
-        logger.info(f"Response written to: {answer_path=}")
 
         if not self._prompt_written:
-            prompt_path: Path = config.paths.prompt_file(**path_args)
-            self._move_and_write_prompt(prompt_path)
-            self._result_file_paths[prompt_path] = tree_id
+            self._result_file_paths.append(self._rotate_prompt())
             self._prompt_written = True
+
+        answer_path: Path = response.write()
+        self._result_file_paths.append(answer_path)
+        logger.info(f"Response written to: {answer_path=}")
+        # IMPORTANT: load Tree!
 
     ### --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
     ### --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
@@ -366,9 +230,15 @@ class DataManager:
         return self._prompt
 
     @property
+    def model_info(self) -> ModelInfo:
+        if self._model_info is None:
+            raise DataManagerRuntimeError
+        return self._model_info
+
+    @property
     def result_file_paths(self) -> list[Path]:
         """Get absolute answer file paths"""
-        return list(self._result_file_paths.keys())
+        return self._result_file_paths
 
     def result_files(self, root_dir: Path | None = None) -> list[Path]:
         """Get relative answer file paths"""

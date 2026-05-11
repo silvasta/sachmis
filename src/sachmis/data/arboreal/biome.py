@@ -5,71 +5,14 @@ from pydantic import Field
 from sstcore.data.files import SstFile
 
 from ...data.files import CampManager
-from .base import ArborealDisk, ArborealTracker
+from .base import Arboreal, ArborealTracker
 from .forest import Forest
 
 
-class Biome(ArborealDisk[Forest]):
-    """Global Master Forest, registry for entire content"""
+class Biome(Arboreal[Forest]):
+    """Global Master Forest, Registry for entire Content"""
 
     responses: list[SstFile] = Field(default_factory=list)
-
-    ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
-    ### -- Arboreal - Access to Members
-    ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
-
-    @property
-    def n_forest(self) -> int:
-        return self.n_children
-
-    @property
-    def forests(self) -> list[ArborealTracker]:
-        """Serialized part of registry with UUID and ArborealTracker"""
-        return self.registry.all_trackers
-
-    @property
-    def loaded_forests(self) -> list[Forest]:
-        return self.registry.all_members
-
-    @property
-    def missing_forests(self) -> list[ArborealTracker]:
-        return self.registry.tracker_with_invalid_paths
-
-    def n_trees(self) -> int:
-        return sum(forest.n_trees for forest in self.loaded_forests)
-
-    def n_sprouts(self) -> int:
-        return sum(forest.n_sprouts for forest in self.loaded_forests)
-
-    def attach_forest(
-        self, forest: Forest, forest_file: Path
-    ) -> ArborealTracker:
-        return self._attach(forest, forest_file)
-
-    def attach_new_forest(
-        self, forest_file: Path, camp: CampManager | None = None
-    ) -> ArborealTracker:
-        camp: CampManager = camp or CampManager()
-
-        new_forest: Forest = Forest.with_camp(camp)
-        new_forest.save_state(forest_file, lock_required=False)
-
-        return self.attach_forest(forest=new_forest, forest_file=forest_file)
-
-    ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
-    ### -- Biome - Health checks, maybe -> ArborealDisk?
-    ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
-
-    def health_check(self):
-        # LATER: check other problems that will occur
-        # - handle cases that occur often specific, heal/repair
-        if all(
-            (
-                self._check_tracker_paths_exist(),
-                self._check_tracker_paths_unique(),
-            )
-        ):
-            logger.info("Biome ok")
 
     ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
     ### -- Biome - Custom Functions
@@ -86,3 +29,67 @@ class Biome(ArborealDisk[Forest]):
         response: SstFile = SstFile(local_path=Path(path.name))
 
         self.responses.append(response)
+
+    ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
+    ### -- Arboreal - Access to Members
+    ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
+
+    @property
+    def n_forest(self) -> int:
+        return self.registry.n_trackers
+
+    @property
+    def forests(self) -> list[ArborealTracker]:
+        """Serialized part of registry with UUID and ArborealTracker"""
+        return self.registry.all_trackers
+
+    @property
+    def missing_forests(self) -> list[ArborealTracker]:
+        return self.registry.tracker_with_invalid_paths()
+
+    # TODO:
+    # def n_trees(self) -> int:
+    #     return sum(forest.n_trees for forest in self.loaded_forests)
+
+    # TODO:
+    # def n_sprouts(self) -> int:
+    #     return sum(forest.n_sprouts for forest in self.loaded_forests)
+
+    def attach_new_forest(
+        self, forest_file: Path, save=True
+    ) -> ArborealTracker:
+        new_forest: Forest = self._setup_forest()
+        if save:
+            new_forest.save_state(forest_file, lock_required=False)
+        return self.attach_forest(forest=new_forest, forest_file=forest_file)
+
+    def _setup_forest(self) -> Forest:
+        camp: CampManager = CampManager()  # REMOVE:
+        new_forest: Forest = Forest.with_camp(camp)  # NEXT: adapt
+        return new_forest
+
+    def attach_forest(
+        self, forest: Forest, forest_file: Path, local_id: int | None = None
+    ) -> ArborealTracker:
+        if local_id is None:
+            local_id: int = self._next_instance_id()
+
+        return self.registry.attach(
+            arbo=forest, path=forest_file, local_id=local_id
+        )
+
+    ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
+    ### -- Biome - Health checks, maybe -> ArborealDisk?
+    ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
+
+    def health_check(self):
+        no_issues: bool = all(  # Get True for check fine
+            (
+                self.registry.check_tracker_paths_exist(),
+                self.registry.check_tracker_paths_unique(),
+            )
+        )
+        if no_issues:
+            logger.info("Biome ok")
+
+    # LATER: other cases, heal and repair?

@@ -73,6 +73,9 @@ class Paths(SstPaths[Names, Defaults]):
             raise NotInForestError
         return root
 
+    def cwd_relative_to_base_dir(self) -> Path:
+        return PathGuard.relative(target=Path.cwd(), root=self.base_dir)
+
     @property
     def in_forest(self) -> bool:
         try:
@@ -115,9 +118,9 @@ class Paths(SstPaths[Names, Defaults]):
         return self.camp_dir / self._names.tree_dir
 
     @PathGuard.unique(ensure_parent=True)
-    def tree_file(self, id: int, model: str, stem: str) -> Path:
+    def tree_file(self, id: int, stem: str) -> Path:
         """Error if not in base"""
-        tree_file: str = self._names.tree_file([id, model, stem])
+        tree_file: str = self._names.tree_file([id, stem])
         return self.tree_dir / tree_file
 
     @property
@@ -198,15 +201,11 @@ class Paths(SstPaths[Names, Defaults]):
     @PathGuard.unique(ensure_parent=True)
     def prompt_file(
         self,
-        topic: str,
-        locator: str,
-        root_dir: Path | None = None,
+        prompt_stem: str,
         suffix: str = ".md",
+        root_dir: Path | None = None,
     ) -> Path:
         """New prompt file name after usage and move"""
-        prompt_stem: str = self._names.sprout_stem.computed(
-            locator=locator, spec="prompt", topic=topic
-        )
         return self._path_from_stem(prompt_stem, suffix, root_dir)
 
     def _path_from_stem(
@@ -217,14 +216,6 @@ class Paths(SstPaths[Names, Defaults]):
 
     @PathGuard.unique(ensure_parent=True)
     def answer_file(
-        self,
-        topic: str,
-        locator: str,
-        model: str,
-        suffix=".md",
-        root_dir: Path | None = None,
+        self, answer_stem, suffix=".md", root_dir: Path | None = None
     ) -> Path:
-        answer_stem: str = self._names.sprout_stem.computed(
-            locator=locator, spec=model, topic=topic
-        )
         return self._path_from_stem(answer_stem, suffix, root_dir)
