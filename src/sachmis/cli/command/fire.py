@@ -144,19 +144,18 @@ def _prepare_model_args(
         return parsed_models
 
         # TASK: multimodel, new tree structure
-    match len(model_info := data.model_info.models):
+    match len(scanned_models := data.models_in_folder):
         case 0:
             return model_selector(multi_select=True, with_dummy=with_dummy)
         case 1:
-            selected_model: ModelFamily = model_info[0].model
+            selected_model: ModelFamily = scanned_models[0]
         case _:
             selected_model: ModelFamily = model_selector(
-                models=data.model_info.model_enums,
+                models=scanned_models,
                 multi_select=False,
                 with_dummy=with_dummy,
-            )[0]
+            )[0]  # TASK: multi output, bipart tree
 
-            # NEXT: attach model info
     return [selected_model]
 
 

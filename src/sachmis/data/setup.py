@@ -84,14 +84,16 @@ def create_new_base(base_name: str | None = None):
 
             forest_file: Path = config.paths.forest_file
 
-        with Biome.edit_mode(config.paths.biome_file) as biome:
-            forest_tracker: ArborealTracker = biome.attach_new_forest(
-                forest_file, camp
-            )
+            with Biome.edit_mode(config.paths.biome_file) as biome:
+                forest_tracker: ArborealTracker = biome.attach_new_forest(
+                    forest_file, camp
+                )
 
     except Exception as error:  # clean up in any case
         logger.error("Failed to create base!")
         shutil.rmtree(base_dir)
         raise error
 
-    logger.info(f"New Base Created: {forest_tracker=}")
+    logger.info(
+        f"New Base Created: {forest_tracker=}"
+    )  # TODO: stat print instead of full tracker

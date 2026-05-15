@@ -1,5 +1,4 @@
 from itertools import cycle
-from pathlib import Path
 
 from rich.table import Table
 from sstcore.utils import Printer
@@ -13,21 +12,6 @@ custom_theme: dict[str, str] = {
 
 
 class SachmisPrinter(Printer):
-    def path_exists_table(self, paths: list[Path], title=None, header="Path"):
-        """load base paths from file, check existence, print result"""
-
-        # NEXT: candidate for silvasta.printer
-
-        table = Table(title=title)
-        table.add_column("Status", justify="center")
-        table.add_column(header, style="cyan")
-
-        for path in paths:
-            status: str = "✅" if path.exists() else ""
-            table.add_row(status, str(path))
-
-        self(table)
-
     def model_table(
         self, models: list[ModelFamily], title=None, show_header=True
     ):

@@ -6,8 +6,9 @@ from loguru import logger
 from sstcore import PathGuard
 from sstcore.data import SstFile
 
+from sachmis.config.model import ModelFamily
 from sachmis.data import Response
-from sachmis.data.rollout import FileRollout, ModelInfo
+from sachmis.data.rollout import FileRollout
 
 from ..config import SachmisConfig, get_config
 from ..exceptions import ArborealError, ArborealFileExistsError, SachmisError
@@ -24,7 +25,7 @@ class DataManager:
     _camp: CampManager | None = None
     _prompt: Prompt | None = None
     _uploader: dict[str, RemoteUploader] = {}
-    _model_info: ModelInfo | None = None
+    _rollout: FileRollout | None = None
 
     _extracted_sprouts: dict[str, ArborealTracker] = {}
     _result_file_paths: list[Path] = []
@@ -74,13 +75,15 @@ class DataManager:
                 logger.error(f"Context: {exception_value=}")
                 logger.warning("State not saved!")
                 # Suppress exception (after handling it here)
-                return True
+                # return True
+                return False  # FIX:
 
             if issubclass(exception_type, SachmisError):
                 logger.error(f"SachmisError: {exception_value}")
                 logger.warning("State not saved!")
                 # Suppress exception (after handling it here)
-                return True
+                # return True
+                return False  # FIX:
 
             logger.warning("State not saved!")
 
@@ -142,8 +145,8 @@ class DataManager:
         # WARN:
         self._camp: CampManager = forest.provide_camp()
 
-    def load_rollout(self):  # TODO:
-        self.rollout = FileRollout()
+    def load_rollout(self):  # TASK:
+        self._rollout = FileRollout()
 
     def load_files(self, files: list[UploadFile], ensure_after_upload=True):
         """Assumes valid local data files, pushes to Remotes"""
@@ -205,6 +208,8 @@ class DataManager:
             self._result_file_paths.append(self._rotate_prompt())
             self._prompt_written = True
 
+        # TODO: attach response to prompt
+
         answer_path: Path = response.write()
         self._result_file_paths.append(answer_path)
         logger.info(f"Response written to: {answer_path=}")
@@ -230,10 +235,10 @@ class DataManager:
         return self._prompt
 
     @property
-    def model_info(self) -> ModelInfo:
-        if self._model_info is None:
-            raise DataManagerRuntimeError
-        return self._model_info
+    def models_in_folder(self) -> list[ModelFamily]:
+        if self._rollout is None:
+            raise DataManagerRuntimeError("File rollout not available...")
+        return self._rollout.model_info.model_enums
 
     @property
     def result_file_paths(self) -> list[Path]:

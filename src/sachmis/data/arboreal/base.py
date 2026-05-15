@@ -197,9 +197,9 @@ class Arboreal[ArboT: Arboreal](BaseModel):
         )
 
     @property
-    def child_info(self):  # LATER: improve
-        """Usef for Biome and Forest, override for Tree!"""
-        return f"{self.registry.n_trackers} {ArboT.__name__}s"
+    def child_info(self):  # TODO: improve, override in subclass!
+        """Used for Biome and Forest, override for Tree!"""
+        return f"{self.registry.n_trackers} {ArboT.__name__}"
 
     def _next_instance_id(self) -> int:
         self.local_counter += 1

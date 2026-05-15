@@ -210,9 +210,9 @@ class Fire(AbstractContextManager):
         self.data: DataManager = self.stack.enter_context(
             DataManager(biome=True, forest=True)
         )
-        self.data.load_prompt()
-        self.data.load_camp()  # context
-        self.data.load_rollout()  # context
+        self.data.load_prompt()  # NEXT: context
+        self.data.load_camp()  # NEXT: context
+        self.data.load_rollout()  # NEXT: context
         return self
 
     def load_models(self, models: list[ModelFamily]) -> list[Model]:

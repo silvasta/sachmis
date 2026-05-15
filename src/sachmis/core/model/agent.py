@@ -5,6 +5,7 @@ from typing import Any
 from loguru import logger
 
 from sachmis.config.defaults import ModelParam
+from sachmis.exceptions import SachmisDataError
 
 from ...config import SachmisConfig, get_config
 from ...config.model import ModelFamily
@@ -18,6 +19,7 @@ class Model(ABC):
     """Framework + every execution will be done from method here"""
 
     _raw_response: Any | None = None
+    _response: Response | None = None
 
     def __init__(
         self,
@@ -29,6 +31,7 @@ class Model(ABC):
 
         self.model: ModelFamily = model
         self.data: DataManager = data
+        self.prompt: Prompt = self.data.prompt  # TODO: overhand?
         self.param: ModelParam = self._load_param(param)
 
         logger.debug(f"Model ({self.__class__.__name__}) connected with Data")
@@ -47,12 +50,10 @@ class Model(ABC):
         """Complete authentication and create Client object"""
 
     @property
-    def prompt(self) -> Prompt:
-        return self.sprout.prompt
-
-    @property
-    def response(self) -> Response | None:
-        return self.sprout.response
+    def response(self) -> Response:
+        if self._response is None:
+            raise SachmisDataError("Response not already arrived...")
+        return self._response
 
     @abstractmethod
     def _prepare_chat(self, *args, **kwargs):
@@ -62,7 +63,7 @@ class Model(ABC):
         logger.info("Start assembling prompt")
         self.attach_role()
         logger.debug("role attached")
-        self._attach_prompt(prompt=self.sprout.load_prompt_text())
+        self._attach_prompt(prompt=self.prompt.content)
         logger.debug("prompt attached")
         self._attach_images()
         logger.debug("images attached")

@@ -10,10 +10,6 @@ type SachmisConfig = ConfigManager[Settings, Names, Defaults, Paths]
 
 _config_instance: SachmisConfig | None = None
 
-# WARN: when is this saving??
-# use some update function
-# .touch() with a datestamp
-
 
 def get_config() -> SachmisConfig:
     global _config_instance
@@ -27,7 +23,5 @@ def get_config() -> SachmisConfig:
             write_new_master_setting_file_if_missing=True,
         )
         logger.info("ConfigManager setup completed")
-    else:
-        logger.debug("provide cached config")
 
     return _config_instance

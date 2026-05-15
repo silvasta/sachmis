@@ -124,6 +124,11 @@ class Paths(SstPaths[Names, Defaults]):
         return self.tree_dir / tree_file
 
     @property
+    @PathGuard.file(default_content="", raise_error=True)
+    def input_prompt(self) -> Path:
+        return Path.cwd() / self._names.prompt
+
+    @property
     @PathGuard.dir
     def file_dir(self):
         return self.camp_dir / self._names.file_dir

@@ -9,7 +9,7 @@ from sachmis.data.arboreal import ArborealTracker, Forest, Tree
 from sachmis.data.conversation.response import Response
 
 from ..config import SachmisConfig, get_config
-from ..utils.parse import parse_raw_models
+from ..utils import parse_raw_models, printer
 
 
 @dataclass
@@ -43,6 +43,10 @@ class FileRollout(FileSystemManager):
         )
         logger.info("setup complete")
         self.model_info: ModelInfo = self.scan_models()
+
+        printer.danger("ModelInfo")
+        printer(self.model_info)  # REMOVE:
+        printer.danger("ModelInfo")
 
     def scan_models(self) -> ModelInfo:
         if not (tracker := self.find_tree()):

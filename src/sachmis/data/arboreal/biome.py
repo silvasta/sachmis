@@ -64,8 +64,9 @@ class Biome(Arboreal[Forest]):
         return self.attach_forest(forest=new_forest, forest_file=forest_file)
 
     def _setup_forest(self) -> Forest:
-        camp: CampManager = CampManager()  # REMOVE:
-        new_forest: Forest = Forest.with_camp(camp)  # NEXT: adapt
+        # TASK: how to insert,handle,modify campp???
+        camp: CampManager = CampManager()
+        new_forest: Forest = Forest.with_camp(camp)
         return new_forest
 
     def attach_forest(
