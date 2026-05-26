@@ -27,14 +27,23 @@ class Tree(Arboreal):
     ### -- Tree - Custom Functions and Attributes
     ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
 
-    def find_conversation_by_stem(
-        self, stem: str | list[str]
-    ) -> ConversationBag:
-        for prompt in self.prompts.values():
-            if prompt.stem == stem:
-                logger.debug(f"found {prompt.desc}")
-                return prompt
-        logger.warning(f"failed for: {stem=}")
+    def find_conversation_by_stem(self, stems: list[str]) -> ConversationBag:
+        result = ConversationBag(
+            prompts=[
+                prompt
+                for stem in stems
+                for prompt in self.prompts.values()
+                if prompt.stem == stem
+            ],
+            responses=[
+                response
+                for stem in stems
+                for response in self.responses.values()
+                if response.stem == stem
+            ],
+        )
+        result.log_and_print()
+        return result
 
     @classmethod
     def with_prompt(

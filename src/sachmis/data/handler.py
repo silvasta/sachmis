@@ -43,6 +43,14 @@ class FileHandler:
                 self._tree_tracker_from_tree: ArborealTracker[Tree] = tracker
 
     @property
+    def existing_conversations(self) -> list[str]:
+        return [
+            path.stem
+            for path in self.existing_prompts_at_cwd
+            + self.existing_responses_at_cwd
+        ]
+
+    @property
     def tree_tracker(self) -> ArborealTracker:
         if self._tree_tracker_from_tree:
             logger.info("Providing Tree Tracker extracted from Tree")
@@ -53,7 +61,7 @@ class FileHandler:
         raise DataRuntimeError("No Tracker Loaded!")
 
     def attach_prompt(self, prompt: Prompt):
-        if config.defaults.log_and_print.data_handler_prompt.printer:
+        if config.defaults.log_and_print.data_prompt_attach.printer:
             printer(prompt)
         self.prompt: Prompt = prompt
         logger.debug(f"Prompt attached to: {self.__class__.__name__}")

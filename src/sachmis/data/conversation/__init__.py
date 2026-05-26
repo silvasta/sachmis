@@ -16,7 +16,7 @@ class ConversationBag:  # MOVE: to own module if it grows even more
     """Container for Prompts and Responses"""
 
     prompts: list[Prompt] = field(default_factory=list)
-    responses: list[Prompt] = field(default_factory=list)
+    responses: list[Response] = field(default_factory=list)
 
     @property
     def n_prompts(self):

@@ -5,6 +5,8 @@ from typing import Self
 
 from loguru import logger
 
+from sachmis.data.conversation import ConversationBag
+
 from ..config import SachmisConfig, get_config
 from ..config.model import Geminis, Groks, ModelFamily
 from ..config.model.dummy import DummyFamily
@@ -152,6 +154,12 @@ class ExtractFromTree(AbstractContextManager):
             self.tracker: ArborealTracker = tree.sample_tracker(
                 path, local_id=data.handler.tree_tracker.local_id
             )
+            cwd_conversations: ConversationBag = (
+                tree.find_conversation_by_stem(
+                    stems=data.handler.existing_conversations
+                )
+            )
+            cwd_conversations.log_and_print()
             # TODO: attach prompt, extract
             # TODO: previous_sprout
             # TODO: find prompt ancestor
