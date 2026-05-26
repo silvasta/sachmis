@@ -10,6 +10,7 @@ from ...config.defaults import GrokParam, ModelParam
 from ...config.model import Groks
 from ...data.files import XaiUploadState
 from ...exceptions import SachmisDataError
+from .. import retry
 from .agent import Model
 
 
@@ -62,6 +63,9 @@ class Grok(Model):
         self.chat.append(user(prompt))
 
     def _attach_images(self):
+        # TASK: check image input again, base64 still needed?
+        # - create structure to collect used images
+        # - input images/FILES from file/pick/list/folder?
         for i in self.prompt.images:
             # FIX: apply base64 transform
             self.chat.append(
@@ -87,10 +91,8 @@ class Grok(Model):
             else:
                 logger.warning(f"Failed: {upload_file=}")
 
-    # @retry( # IMPORTANT: retry
-    #     stop=stop_after_attempt(config.defaults.tenacity.max_attempts),
-    #     wait=wait_exponential(**config.defaults.tenacity.wait_exponential),
-    #     # TODO: before_sleep=before_sleep_log(logger, logging.WARNING))
+    # AI: is there any issu with using this like that?
+    @retry.rich_style()
     def _get_response(self):
         response: Response = self.chat.sample()
         return response

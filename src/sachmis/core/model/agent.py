@@ -3,16 +3,36 @@ from pathlib import Path
 from typing import Any
 
 from loguru import logger
-
-from sachmis.config.defaults import ModelParam
-from sachmis.exceptions import SachmisDataError
+from tenacity import (
+    Retrying,
+    before_sleep_log,
+    # retry,
+    stop_after_attempt,
+    wait_exponential,
+)
 
 from ...config import SachmisConfig, get_config
+from ...config.defaults import ModelParam, TenacityDefaults
 from ...config.model import ModelFamily
-from ...data import DataManager, Prompt, Response
+from ...data import DataManager
+from ...data.conversation import Response, ResponseData
+from ...exceptions import SachmisDataError
 from ...utils.print import printer
+from .. import retry
 
 config: SachmisConfig = get_config()
+
+
+# def retry_tenacity():
+#     """Test 1"""
+#     td: TenacityDefaults = config.defaults.tenacity
+#
+#     return retry(
+#         stop=stop_after_attempt(td.max_attempts),
+#         wait=wait_exponential(**td.wait_exponential),
+#         before_sleep=before_sleep_log(logger, log_level=20),
+#         reraise=True,
+#     )
 
 
 class Model(ABC):
@@ -31,7 +51,6 @@ class Model(ABC):
 
         self.model: ModelFamily = model
         self.data: DataManager = data
-        self.prompt: Prompt = self.data.prompt  # TODO: overhand?
         self.param: ModelParam = self._load_param(param)
 
         logger.debug(f"Model ({self.__class__.__name__}) connected with Data")
@@ -63,7 +82,7 @@ class Model(ABC):
         logger.info("Start assembling prompt")
         self.attach_role()
         logger.debug("role attached")
-        self._attach_prompt(prompt=self.prompt.content)
+        self._attach_prompt(prompt=self.data.handler.prompt.content)
         logger.debug("prompt attached")
         self._attach_images()
         logger.debug("images attached")
@@ -71,9 +90,9 @@ class Model(ABC):
         logger.debug("files attached")
 
     def attach_role(self):
-        if role := self.data._role:
-            self._attach_role(role)
-            logger.debug(f"using role: {self.data.role_name}")
+        if role := self.data.handler.prompt.role:
+            self._attach_role(role.content)
+            logger.debug(f"using role: {role.name}")
         else:
             logger.debug("using no role")
 
@@ -87,24 +106,47 @@ class Model(ABC):
 
     @abstractmethod
     def _attach_images(self):
-        # TASK: check image input again, base64 still needed?
-        # - create structure to collect used images
-        # - input images/FILES from file/pick/list/folder?
         pass
 
     @abstractmethod
     def _attach_files(self):
         pass
 
-    def fire(self):
-        """Release prompt and process response"""
-
+    def fire_retry(self):
+        """Test 2"""
         logger.info("Fire")
-        self.sprout.set_started()
-        self._raw_response: Any = self._get_response()
+
+        td: TenacityDefaults = config.defaults.tenacity
+
+        retryer = Retrying(
+            stop=stop_after_attempt(td.max_attempts),
+            wait=wait_exponential(**td.wait_exponential),
+            before_sleep=before_sleep_log(logger, log_level=2),
+            reraise=True,
+        )
+        for attempt in retryer:
+            with attempt:
+                self._raw_response: Any = self._get_response()
 
         logger.info("Got response, start processing...")
         self.process_response()
+
+    def fire(self):
+        """Release prompt and process response"""
+        logger.info("Fire")
+
+        self._count = 0
+        self.get_response()
+        logger.info("Got response, start processing...")
+
+        self.process_response()
+
+    # AI: is there any issu with using this like that?
+    @retry.relaxed()
+    def get_response(self):
+        self._count += 1  # AI: is there a better trick?
+        logger.debug(f"Start of try {self._count}")
+        self._raw_response: Any = self._get_response()
 
     @abstractmethod
     def _get_response(self):
@@ -115,7 +157,7 @@ class Model(ABC):
         full_response: str = self._extract_full_response()
 
         full_response_path: Path = config.paths.full_response(
-            topic=self.prompt.topic, model=self.model.unique
+            topic=self.data.handler.prompt.topic, model=self.model.unique
         )
         self.data._add_temporary_full_response(
             text=full_response, path=full_response_path
@@ -134,16 +176,16 @@ class Model(ABC):
         if not self._calculate_usage_cost(usage):
             printer(usage)
 
-        response = Response(
-            full_response=full_response_path,
-            id=response_id,
+        response: ResponseData = ResponseData.from_model(
             content=content,
+            model=self.model.unique,
+            remote_id=response_id,
             usage=usage,
+            full_response=full_response_path,
+            topic=self.data.handler.prompt.topic,
         )
-        self.sprout.attach_response(response)
+        self.data.handle_response(response)
         logger.info(f"Response processed: {self.model.unique}")
-
-        self.data.handle_response(self.sprout)
 
     @abstractmethod
     def _extract_full_response(self) -> str:

@@ -10,6 +10,7 @@ from ...config import SachmisConfig, get_config
 from ...config.defaults import GeminiParam, ModelParam
 from ...config.model import Geminis
 from ...utils.print import printer
+from .. import retry
 from .agent import Model
 
 config: SachmisConfig = get_config()
@@ -94,11 +95,8 @@ class Gemini(Model):
             else:
                 logger.warning(f"Failed: {upload_file=}")
 
-    # @retry( # LATER: retry
-    #     stop=stop_after_attempt(config.defaults.tenacity.max_attempts),
-    #     wait=wait_exponential(**config.defaults.tenacity.wait_exponential),
-    #     # TODO: before_sleep=before_sleep_log(logger, logging.WARNING)
-    # )
+    # AI: is there any issu with using this like that?
+    @retry.push_forward()
     def _get_response(self):
         response: GenerateContentResponse = (
             self.client.models.generate_content(

@@ -10,7 +10,7 @@ from ...core import capstone
 from ...core.model import Model
 from ...data import DataManager
 from ...data.files import CampManager, UploadFile
-from ...exceptions.data import DataManagerRuntimeError
+from ...exceptions.data import DataRuntimeError
 from ...tui.selector import (
     file_selector,
     model_selector,
@@ -191,7 +191,7 @@ def _prepare_file_args(
     for file in prepared_files:
         if not file.confirm_local_status(camp.files.local_root):
             # TODO: better Error
-            raise DataManagerRuntimeError(f"Failed to Import {file=}")
+            raise DataRuntimeError(f"Failed to Import {file=}")
 
     printer.md(f"...{len(prepared_files)} files selected for pipeline")
 
@@ -229,7 +229,7 @@ def _prepare_image_args(
 
     for image in prepared_images:
         if not image.confirm_local_status(camp.images.local_root):
-            raise DataManagerRuntimeError(f"Failed to Import {file=}")
+            raise DataRuntimeError(f"Failed to Import {file=}")
 
     printer.md(f"...{len(prepared_images)} images selected for pipeline")
 

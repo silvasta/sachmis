@@ -1,21 +1,22 @@
 import time
 from collections.abc import Callable
 from contextlib import AbstractContextManager, ExitStack
-from pathlib import Path
 from typing import Self
 
 from loguru import logger
 
+from ..config import SachmisConfig, get_config
 from ..config.model import Geminis, Groks, ModelFamily
 from ..config.model.dummy import DummyFamily
-from ..data import DataManager, Prompt
+from ..data import DataManager
 from ..data.arboreal import ArborealTracker, Forest, Tree
-from ..data.conversation.prompt import PromptData
 from ..data.files import CampManager
 from ..data.handler import FileRollout
 from ..utils.print import printer
 from .model import Gemini, Grok, Model
 from .model.dummy import DummyModel
+
+config: SachmisConfig = get_config()
 
 
 def match_family(model, data, **kwargs) -> Model:
@@ -112,56 +113,69 @@ def launch_dry_run_async(models: list[Model]):
 
 
 class ExtractFromForest(AbstractContextManager):
-    def __init__(
-        self, forest_file: Path, tree_id: int, raw_prompt: PromptData
-    ):
+    def __init__(self, data: DataManager):
 
-        with Forest.edit_mode(forest_file) as forest:
-            self.tracker: ArborealTracker = forest.sample_tracker(forest_file)
-            self.tree_tracker: ArborealTracker = forest.provide_tree(
-                tree_id, raw_prompt
+        logger.debug("Loading Forest...")
+        with Forest.edit_mode(path := data.forest_file) as forest:
+            self.tracker: ArborealTracker = forest.sample_tracker(path)
+            tree_tracker: ArborealTracker = forest.provide_tree(
+                data.handler.tree_id, data.handler.raw_prompt
             )
-            # TODO: find prompt ancestor
+            data.handler.attach_tracker(
+                tracker=tree_tracker, extracted_from="forest"
+            )
             self.camp: CampManager = forest.get_camp()
-
-        self.path: Path = forest_file
+            data.attach_camp(self.camp)
+        logger.debug("Data extracted - Forest closed")
 
     def __exit__(self, exc_type, _exc_val, _exc_tb):
+        logger.debug("...Forest Extractor 󱢗")
         if exc_type is not None:
             logger.warning(f"Task failed with {exc_type.__name__}")
-            return False
+            return config.defaults.context.forest_error.swallow
 
-        with Forest.edit_mode(self.path) as forest:
-            printer(forest)
-            # TODO: return Camp
-            # TODO: confirm Tree
+        logger.debug("Loading Forest...")
+        with Forest.edit_mode(self.tracker.path) as forest:
+            forest.attach_camp_back_by_mirror(self.camp)
+            # LATER: confirm Tree, maybe after first response is written
 
-        return False
+        logger.debug("Forest closed - Data transfered back")
+        return config.defaults.context.forest_end.swallow
 
 
 class ExtractFromTree(AbstractContextManager):
-    def __init__(self, tree_file: Path):
+    def __init__(self, data: DataManager):
+        self.data: DataManager = data
 
-        with Tree.edit_mode(tree_file) as tree:
-            self.tracker: ArborealTracker = tree.sample_tracker(tree_file)
+        logger.debug("Loading Tree...")
+        with Tree.edit_mode(path := data.handler.tree_tracker.path) as tree:
+            self.tracker: ArborealTracker = tree.sample_tracker(
+                path, local_id=data.handler.tree_tracker.local_id
+            )
             # TODO: attach prompt, extract
             # TODO: previous_sprout
+            # TODO: find prompt ancestor
 
-        self.path: Path = tree_file
+        logger.debug("Data extracted - Tree closed")
+        data.handler.attach_tracker(
+            tracker=self.tracker, extracted_from="forest"
+        )
 
     def __exit__(self, exc_type, _exc_val, _exc_tb):
+        logger.debug("...Tree Extractor ")
         if exc_type is not None:
             logger.warning(f"Task failed with {exc_type.__name__}")
-            return False
+            return config.defaults.context.tree_error.swallow
 
-        with Tree.edit_mode(self.path) as tree:
+        logger.debug("Loading Tree...")
+        with Tree.edit_mode(self.tracker.path) as tree:
             printer(tree)
             # TODO: modify Prompt
             # TODO: attach Response
             # TODO: test consistency?
-            self.prompt: Prompt = tree.root_prompt  # WARN:
 
-        return False
+        logger.debug("Tree closed - Data transfered back")
+        return config.defaults.context.tree_end.swallow
 
 
 class Fire(AbstractContextManager):
@@ -174,22 +188,18 @@ class Fire(AbstractContextManager):
         self.data: DataManager = self.stack.enter_context(
             DataManager(biome=True, forest=True)
         )
-        self.rollout = FileRollout()  # MOVE: maybe into data
+        self.data.attach_handler(FileRollout())
 
         self.forest_handler: ExtractFromForest = self.stack.enter_context(
-            ExtractFromForest(
-                self.data.forest_file,
-                tree_id=self.rollout.tree_id,
-                raw_prompt=self.rollout.load_raw_prompt(),
-            )
+            ExtractFromForest(self.data)
         )
         logger.info("Forest Extractor stacked to Context")
-        self.data.attach_camp(self.forest_handler.camp)
 
         self.tree_handler: ExtractFromTree = self.stack.enter_context(
-            ExtractFromTree(tree_file=self.forest_handler.tree_tracker.path)
+            ExtractFromTree(data=self.data)
         )
         logger.info("Tree Extractor stacked to Context")
+
         self.data.attach_prompt(self.tree_handler.prompt)
         self.rollout.attach_prompt(self.tree_handler.prompt)
 
