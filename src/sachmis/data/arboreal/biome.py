@@ -4,7 +4,6 @@ from loguru import logger
 from pydantic import Field
 from sstcore.data.files import SstFile
 
-from ...data.files import CampManager
 from .base import Arboreal, ArborealTracker
 from .forest import Forest
 
@@ -55,28 +54,24 @@ class Biome(Arboreal[Forest]):
     # def n_sprouts(self) -> int:
     #     return sum(forest.n_sprouts for forest in self.loaded_forests)
 
-    def attach_new_forest(
-        self, forest_file: Path, save=True
-    ) -> ArborealTracker:
-        new_forest: Forest = self._setup_forest()
-        if save:
-            new_forest.save_state(forest_file, lock_required=False)
-        return self.attach_forest(forest=new_forest, forest_file=forest_file)
+    def attach_new_forest(self, forest_file: Path) -> ArborealTracker:
+        local_id: int = self._next_instance_id()
+        new_forest: Forest = self._setup_forest(forest_file, local_id)
+        new_forest.save_state(forest_file, lock_required=False)
 
-    def _setup_forest(self) -> Forest:
-        # TASK: how to insert,handle,modify campp???
-        camp: CampManager = CampManager()
-        new_forest: Forest = Forest.with_camp(camp)
-        return new_forest
+        return self.attach_forest(
+            forest=new_forest, forest_file=forest_file, local_id=local_id
+        )
+
+    def _setup_forest(self, forest_file: Path, local_id: int) -> Forest:
+        return Forest.with_camp(path=forest_file, local_id=local_id)
 
     def attach_forest(
-        self, forest: Forest, forest_file: Path, local_id: int | None = None
+        self, forest: Forest, forest_file: Path, local_id: int
     ) -> ArborealTracker:
-        if local_id is None:
-            local_id: int = self._next_instance_id()
 
         return self.registry.attach(
-            arbo=forest, path=forest_file, local_id=local_id
+            arboreal=forest, path=forest_file, local_id=local_id
         )
 
     ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###

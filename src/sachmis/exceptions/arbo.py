@@ -35,23 +35,11 @@ class ArborealRegistryDuplicateError(KeyError, ArborealError):
         super().__init__(msg)
 
 
-class SproutResponseExistsError(AttributeError, ArborealError):
-    """Response already exists in Sprout runtime data"""
-
-    # MOVE: SachmisDataError?
-    def __init__(self, unique_id: str):
-        msg = f"Cannot override existing response for Sprout: {unique_id=}"
+class ArborealTrackerError(AttributeError, ArborealError):
+    def __init__(self, message=None, arbo_to_track=None):
+        if message:
+            msg: str = message
+        else:
+            arbo_to_track: str = arbo_to_track or "ArboT"
+            msg = f"Tracker diverged from {arbo_to_track=}"
         super().__init__(msg)
-
-
-class SproutResponseMissingError(KeyError, ArborealError):
-    """Response in already 'growed' Sprout missing"""
-
-    # MOVE: SachmisDataError?
-    def __init__(self, unique_id: str):
-        msg = f"Cannot find expected response for Sprout: {unique_id=}"
-        super().__init__(msg)
-
-
-class SproutRegistryError(ValueError, ArborealError):
-    """Problem with sub-Sprouts, invalid keys etc."""

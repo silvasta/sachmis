@@ -1,13 +1,18 @@
 import time
 from collections.abc import Callable
 from contextlib import AbstractContextManager, ExitStack
+from pathlib import Path
 from typing import Self
 
 from loguru import logger
 
 from ..config.model import Geminis, Groks, ModelFamily
 from ..config.model.dummy import DummyFamily
-from ..data import DataManager
+from ..data import DataManager, Prompt
+from ..data.arboreal import ArborealTracker, Forest, Tree
+from ..data.conversation.prompt import PromptData
+from ..data.files import CampManager
+from ..data.handler import FileRollout
 from ..utils.print import printer
 from .model import Gemini, Grok, Model
 from .model.dummy import DummyModel
@@ -28,51 +33,6 @@ def match_family(model, data, **kwargs) -> Model:
         return DummyModel(model, data, **kwargs)
 
     raise ValueError(f"Unknown {model=}")
-
-
-# def load_models(data: DataManager, models: list[ModelFamily]) -> list[Model]:
-#     logger.info(f"Start of loading: {models=}")
-#
-#     tree_tracker: list[ArborealTracker] = []
-#
-#     # INFO: this will most likely change
-#     with Forest.edit_mode(data.forest_file) as forest:
-#         logger.info("Load Forest and extract Trees")
-#         for model in models:
-#             tree_tracker.append(
-#                 forest.attach_new_tree(model=model.unique, prompt=data.prompt)
-#                 if data._next_fs_locator == 0
-#                 else forest.provide_tree(previous_sprout=data._previous_sprout)
-#             )
-#         data.load_camp(forest)
-#
-#     logger.info("Trees extracted, close and unlock Forest during task")
-#
-#     sprouts: list[Sprout] = []
-#
-#     # IMPORTANT: here is the last remaining thing to solve:
-#
-#     # - Ensure any Tree that is opened gets opened and attached again
-#     # - Optional, clean up if task failed
-#     for model, tracker in zip(models, tree_tracker, strict=True):
-#         sprout: Sprout = Tree.extract_sprout(
-#             tree_file=tracker.path,
-#             previous_sprout=data._previous_sprout,
-#             model=model.unique,
-#             prompt=data.prompt,
-#         )
-#         data.track_extracted_sprout(sprout, tree_tracker=tracker)
-#         logger.debug(f"extracted from Tree: {sprout.unique_id=}")
-#         sprouts.append(sprout)
-#
-#     logger.info("Sprouts extracted, close and unlock Trees during task")
-#
-#     attached_models: list[Model] = [
-#         match_family(model, data=data, sprout=sprout)
-#         for model, sprout in zip(models, sprouts, strict=True)
-#     ]
-#
-#     return attached_models
 
 
 def launch_models(agents: list[Model], use_async=False, dry_run=False):
@@ -151,53 +111,57 @@ def launch_dry_run_async(models: list[Model]):
     asyncio.run(thunder(models))
 
 
-# class TreeConductor(AbstractContextManager):
-#     def __init__(self, data: DataManager):
-#         self.data: DataManager = data
-#         self.tracked_sprouts = []  # Memory for the 5-minute gap
-#         # NEXT: open and check trees
-#
-#     def extract_all(self, models, tree_trackers):
-#         """Phase 1: Open, extract, and close immediately."""
-#         # REMOVE:
-#         sprouts = []
-#         for model, tracker in zip(models, tree_trackers, strict=True):
-#             sprout = Tree.extract_sprout(
-#                 tree_file=tracker.path,
-#                 previous_sprout=self.data._previous_sprout,
-#                 model=model.unique,
-#                 prompt=self.data.prompt,
-#             )
-#             self.data.track_extracted_sprout(sprout, tree_tracker=tracker)
-#             logger.debug(f"extracted from Tree: {sprout.unique_id=}")
-#
-#             sprouts.append(sprout)
-#
-#             # Store the state so we know what to attach later!
-#             self.tracked_sprouts.append((tracker, sprout))
-#
-#         return sprouts
-#
-#     def __exit__(self, exc_type, exc_val, exc_tb):
-#         """Phase 2: The task finished (or crashed). Re-open and process."""
-#         if exc_type is None:
-#             # TODO: handle fail, handle new tree, hanlde existing tree
-#             logger.info("Task successful. Re-opening Trees to attach results.")
-#             for tracker, sprout in self.tracked_sprouts:
-#                 # 1. Re-open the tree file (fetching any changes from other terminals)
-#                 # 2. Attach the finished data
-#                 # 3. Close it
-#                 with Tree.edit_mode(tracker.path) as tree:
-#                     tree.attach_finished_sprout(sprout)
-#         else:
-#             logger.warning(
-#                 f"Task failed with {exc_type.__name__}. Rolling back Trees."
-#             )
-#             for tracker, sprout in self.tracked_sprouts:
-#                 # Perform any cleanup/rollback logic here if needed
-#                 pass
-#
-#         return False  # Let exceptions bubble up
+class ExtractFromForest(AbstractContextManager):
+    def __init__(
+        self, forest_file: Path, tree_id: int, raw_prompt: PromptData
+    ):
+
+        with Forest.edit_mode(forest_file) as forest:
+            self.tracker: ArborealTracker = forest.sample_tracker(forest_file)
+            self.tree_tracker: ArborealTracker = forest.provide_tree(
+                tree_id, raw_prompt
+            )
+            # TODO: find prompt ancestor
+            self.camp: CampManager = forest.get_camp()
+
+        self.path: Path = forest_file
+
+    def __exit__(self, exc_type, _exc_val, _exc_tb):
+        if exc_type is not None:
+            logger.warning(f"Task failed with {exc_type.__name__}")
+            return False
+
+        with Forest.edit_mode(self.path) as forest:
+            printer(forest)
+            # TODO: return Camp
+            # TODO: confirm Tree
+
+        return False
+
+
+class ExtractFromTree(AbstractContextManager):
+    def __init__(self, tree_file: Path):
+
+        with Tree.edit_mode(tree_file) as tree:
+            self.tracker: ArborealTracker = tree.sample_tracker(tree_file)
+            # TODO: attach prompt, extract
+            # TODO: previous_sprout
+
+        self.path: Path = tree_file
+
+    def __exit__(self, exc_type, _exc_val, _exc_tb):
+        if exc_type is not None:
+            logger.warning(f"Task failed with {exc_type.__name__}")
+            return False
+
+        with Tree.edit_mode(self.path) as tree:
+            printer(tree)
+            # TODO: modify Prompt
+            # TODO: attach Response
+            # TODO: test consistency?
+            self.prompt: Prompt = tree.root_prompt  # WARN:
+
+        return False
 
 
 class Fire(AbstractContextManager):
@@ -210,27 +174,38 @@ class Fire(AbstractContextManager):
         self.data: DataManager = self.stack.enter_context(
             DataManager(biome=True, forest=True)
         )
-        self.data.load_prompt()  # NEXT: context
-        self.data.load_camp()  # NEXT: context
-        self.data.load_rollout()  # NEXT: context
+        self.rollout = FileRollout()  # MOVE: maybe into data
+
+        self.forest_handler: ExtractFromForest = self.stack.enter_context(
+            ExtractFromForest(
+                self.data.forest_file,
+                tree_id=self.rollout.tree_id,
+                raw_prompt=self.rollout.load_raw_prompt(),
+            )
+        )
+        logger.info("Forest Extractor stacked to Context")
+        self.data.attach_camp(self.forest_handler.camp)
+
+        self.tree_handler: ExtractFromTree = self.stack.enter_context(
+            ExtractFromTree(tree_file=self.forest_handler.tree_tracker.path)
+        )
+        logger.info("Tree Extractor stacked to Context")
+        self.data.attach_prompt(self.tree_handler.prompt)
+        self.rollout.attach_prompt(self.tree_handler.prompt)
+
+        logger.success("capstone.Fire ready for session")
+
         return self
 
     def load_models(self, models: list[ModelFamily]) -> list[Model]:
         logger.info(f"Start of loading: {models=}")
 
-        # TASK: ensure all trees ready (most likely no load here)
-        # tree_conductor: TreeConductor = self.stack.enter_context(
-        #     TreeConductor(self.data)
-        # )
-
-        self.models: list[Model] = [
+        self.agentgs: list[Model] = [
             match_family(model, self.data) for model in models
         ]
-        return self.models
+        return self.agents
 
     def launch(self, use_async=False, dry_run=False):
-        """The 1-5 minute task"""
-        # This is your current cap.launch_models logic
         launch_models(self.agents, use_async, dry_run)
 
     def __exit__(self, exc_type, exc_val, exc_tb):

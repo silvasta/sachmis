@@ -1,5 +1,4 @@
-import uuid
-from dataclasses import asdict, dataclass
+import json
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Annotated, Literal, Self
@@ -13,118 +12,10 @@ from sstcore.data import (
     SstFile,
     SstFileRegistry,
 )
-from sstcore.utils import SimpleTreeNode
-
-from sachmis.exceptions import SachmisDataError
 
 from ..config import SachmisConfig, get_config
+from ..exceptions import SachmisDataError
 from ..utils.print import printer
-
-
-class ConversationTreeNode(SimpleTreeNode):
-    pass
-
-
-@dataclass
-class TreeNodeArgs:
-    name: str
-    id: str
-
-
-class Conversation(BaseModel):  # TODO: better name
-    unique_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    local_id: int  # -1 for not set, starting at 1, for Prompt: 0 == root
-
-    topic: str
-    content: str
-
-    @property
-    def tree_node_args(self) -> TreeNodeArgs:
-        return TreeNodeArgs(name=self._compose_stem(), id=self.unique_id)
-
-    @property
-    def tree_node_dict(self) -> dict:
-        return asdict(self.tree_node_args)
-
-    def get_ancestor(
-        self, unique_id: str | None = None
-    ) -> Conversation | None:
-        """Direct ancestor, id for Prompt that answers on multiple Responses,
-        Response has always 1, Prompt: None -> root, 1 regular, multiple: use id!"""
-        if (ancestor := self._get_ancestor()) is None:
-            return None
-        if isinstance(ancestor, tuple):
-            for father in ancestor:
-                if father.unique_id == unique_id:
-                    ancestor: Conversation = father
-                    break
-            else:
-                raise SachmisDataError(f"{self.desc}: Invalid {unique_id=}")
-        self._check_if_class_swiched(ancestor)
-        return ancestor
-
-    def as_tree_node(
-        self, branches: list[ConversationTreeNode] | None = None
-    ) -> ConversationTreeNode:
-        if branches is None:
-            branches: list[ConversationTreeNode] = []
-        return ConversationTreeNode(**self.tree_node_dict, branches=branches)
-
-    def _get_ancestor(self) -> Conversation | tuple[Conversation] | None:
-        raise NotImplementedError
-
-    def _check_if_class_swiched(self, other: Conversation):
-        """Prompt -> Response -> Pro... required"""
-        if isinstance(other, own_class := self.__class__):
-            own_cls: str = own_class.__name__
-            raise SachmisDataError(f"{own_cls=} directly linke to {own_cls}")
-
-    def get_successor(self) -> list[Conversation]:
-        """Direct ancestors, Prompt must have tuple with minimum 1 element,
-        Response is growing list that can be empty"""
-        for successor in (successors := self._get_successor()):
-            self._check_if_class_swiched(successor)
-        return successors
-
-    def find_successor(self, unique_id: str) -> Conversation | None:
-        for successor in self.get_successor():
-            if successor.unique_id == unique_id:
-                return successor
-
-    def _get_successor(self) -> list[Conversation]:
-        raise NotImplementedError
-
-    def single_ancestor(self) -> Conversation | None:
-        raise NotImplementedError
-
-    @property
-    def desc(self):
-        return f"{self.__class__.__name__} {self.local_id} with {self.topic=}"
-
-    @property
-    def slug_topic(self):  # MOVE: Model validate?
-        return slugify(self.topic)
-
-    @property
-    def stem(self) -> str:
-        if self.local_id == -1:
-            logger.error("Access to stem without valid local_id")
-        return self._compose_stem()
-
-    def _compose_stem(self):
-        raise NotImplementedError
-
-    def write(self, root_dir: Path | None = None) -> Path:
-        """Rollout to FileSystem"""
-        if self.local_id == -1:
-            raise SachmisDataError("Write requires assigned local_id!")
-        path: Path = self.rollout_path(root_dir)
-        path.write_text(self.content)
-        logger.info(f"{self.__class__.__name__} wrote to: {path=}")
-        return path
-
-    def rollout_path(self, root_dir: Path | None = None) -> Path:
-        raise NotImplementedError
 
 
 class UploadState(BaseModel):
@@ -228,17 +119,66 @@ class UploadRegistry(FileRegistry[UploadFile]):
         return UploadFile.with_slug_name(local_path=local_path)
 
 
+class Role(SstFile):
+    path: Path
+    content: str
+    rating: float = Field(default=5, ge=0, le=10)
+
+    @classmethod
+    def load(cls, path: Path) -> Self:
+        return cls.model_validate(json.loads(path.read_text(encoding="utf-8")))
+
+    def save(self, json_path: Path | None = None):
+        self.json_file(json_path).write_text(self.to_json(), encoding="utf-8")
+
+    def to_json(self) -> str:
+        return self.model_dump_json(exclude_defaults=False, indent=2)
+
+    def json_file(self, path: Path | None = None) -> Path:
+        if path and path.suffix == ".json":
+            return path
+        return self.path.with_suffix(".json")
+
+    @classmethod
+    def read(cls, path: Path) -> Self:
+        return cls(path=path, local_path=path, content=path.read_text())
+
+    def write(self, txt_path: Path | None = None):
+        self.txt_file(txt_path).write_text(self.content)
+
+    def txt_file(self, path: Path | None = None) -> Path:
+        if path and path.suffix == ".txt":
+            return path
+        return self.path.with_suffix(".txt")
+
+
+class RoleRegistry(FileRegistry[Role]):
+    """Registry specifically for Roles"""
+
+    def _create_local_file(self, path: Path) -> Role:
+        match path.suffix:
+            case ".txt":
+                return Role.read(path)
+            case ".json":
+                return Role.load(path)
+            case _:
+                if path.exists():
+                    raise SachmisDataError(f"Invalid suffix for Role: {path=}")
+        raise SachmisDataError(f"Path doesn't exist for Role: {path=}")
+
+
 class CampManager(FileSystemManager):
     """Manage local utilities that are not covered by the Forest"""
 
-    roles: SstFileRegistry  # TODO: Role(SstFile) with content and counter
+    # TASK: hardlink registry for git-like Code Trees
+
+    roles: RoleRegistry
     files: UploadRegistry
-    # TASK: code: (dict or list of) hardlink registry/ies
     images: SstFileRegistry
 
     def __init__(
         self,
-        roles: SstFileRegistry | None = None,
+        roles: RoleRegistry | None = None,
         files: UploadRegistry | None = None,
         images: SstFileRegistry | None = None,
     ):
@@ -252,11 +192,13 @@ class CampManager(FileSystemManager):
         self.images: SstFileRegistry = images or SstFileRegistry(
             local_root=Path(config.paths.image_dir),
         )
-        # LATER: combine with global roles, so far unused!
-        # - add some tracking of role performance
-        self.roles: SstFileRegistry = roles or SstFileRegistry(
+        self.roles: RoleRegistry = roles or RoleRegistry(
             local_root=Path(config.paths.camp_role_dir)
+            # LATER: add tracking of role performance
         )
+        new_roles: list[Role] = self.mirror_roles(paths=config.paths.role_dir)
+        printer.lines_with_len("New Roles", lines=new_roles)
+
         logger.info("setup complete")
 
     def attach_from_camp_folder(self) -> list[UploadFile]:
@@ -287,3 +229,7 @@ class CampManager(FileSystemManager):
     def mirror_images(self, paths: Path | list[Path]) -> list[SstFile]:
         """Copy images at path location into camp and registry"""
         return self.images.mirror_from_path(paths)
+
+    def mirror_roles(self, paths: Path | list[Path]) -> list[Role]:
+        """Copy images at path location into camp and registry"""
+        return self.roles.mirror_from_path(paths)

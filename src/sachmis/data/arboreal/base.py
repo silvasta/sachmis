@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Self
 
+from boltons.typeutils import classproperty
 from filelock import FileLock
 from loguru import logger
 from pydantic import BaseModel, Field, PrivateAttr, ValidationError
@@ -17,24 +18,51 @@ from ...exceptions import (
     ArborealFileMissingError,
     ArborealRegistryDuplicateError,
     ArborealRegistryMissingError,
+    DataRuntimeError,
 )
+from ...exceptions.arbo import ArborealTrackerError
 
 
 class ArborealTracker[ArboT: Arboreal](SstFile):
     """Lightweight reference to track and write registry members"""
 
+    arbo_name: str
+    path: Path
+
     unique_id: str
     local_id: int = 0
 
+    @property
+    def stat(self):
+        return f"{self.arbo_name} {self.local_id} - "
+
+    @property
+    def path_is_valid(self) -> bool:
+        if not (path := self.path).is_file():
+            logger.warning(f"No {self.arbo_name} File found at: {path=}")
+            return False
+        return True
+
     @classmethod
-    def sample(cls, arbo: ArboT, path: Path, local_id: int) -> ArborealTracker:
-        """Sample Tracker From Arboreal"""
-        # NEXT: check how to use path, as well in B,F,T
-        return ArborealTracker(
-            unique_id=arbo.unique_id,
+    def setup(
+        cls,
+        arbo_name: str,
+        path: Path,
+        unique_id: str,
+        local_id: int,
+        # LATER: local_dir (to calculate local_path)
+    ) -> Self:
+        tracker: ArborealTracker = cls(
+            unique_id=unique_id,
             local_id=local_id,
+            path=path,
             local_path=path,
+            arbo_name=arbo_name,
         )
+        if tracker.path_is_valid:
+            return tracker
+        else:
+            raise ArborealFileMissingError(arboreal=arbo_name, file=path)
 
 
 class ArborealRegistry[ArboT: Arboreal](BaseModel):
@@ -90,10 +118,10 @@ class ArborealRegistry[ArboT: Arboreal](BaseModel):
                 return tracker
 
     def attach(
-        self, arbo: ArboT, path: Path, local_id: int
+        self, arboreal: ArboT, path: Path, local_id: int
     ) -> ArborealTracker:
         """Sample Tracker from Arboreal and attach to registry"""
-        tracker: ArborealTracker = arbo.sample_tracker(
+        tracker: ArborealTracker = arboreal.sample_tracker(
             local_id=local_id, path=path
         )
         return self.add(tracker)
@@ -155,6 +183,7 @@ class ArborealRegistry[ArboT: Arboreal](BaseModel):
 class Arboreal[ArboT: Arboreal](BaseModel):
     """Common attributes of all distributed data objects"""
 
+    tracker_info: ArborealTracker
     unique_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     local_counter: int = 0
 
@@ -173,10 +202,19 @@ class Arboreal[ArboT: Arboreal](BaseModel):
         self.last_updated: datetime = datetime.now(UTC)
         return self.last_updated
 
+    @classmethod
+    @classproperty
+    def name(cls):
+        return cls.__name__
+
+    # @property # REMOVE: after test
+    # def name(self):
+    #     return self.__class__.__name__
+
     @property
     def stat(self):
         """Short representation for printable statistics"""
-        return f"{self.__class__.__name__}: {self.local_created_at}"
+        return f"{self.name} {self.tracker_info.local_id}: created at {self.local_created_at}"
 
     @property
     def local_created_at(self) -> str:
@@ -187,14 +225,52 @@ class Arboreal[ArboT: Arboreal](BaseModel):
             config.defaults.timestamp_format
         )
 
-    def sample_tracker(self, path: Path, local_id: int) -> ArborealTracker:
-        """Sample Tracker from Self Arboreal (not from registry)"""
-        # NEXT: check how to use path, as well in B,F,T
-        return ArborealTracker(
-            unique_id=self.unique_id,
-            local_id=local_id,
-            local_path=path,
+    def sample_tracker(
+        self, path: Path, local_id: int = 0, strict=True
+    ) -> ArborealTracker:
+        """Sample Tracker from Self.Arboreal (not from registry)"""
+
+        if not path.exists():
+            if strict:
+                ArborealFileMissingError(self.name, path)
+            logger.error(f"Sample Tracker with invalid {path=}")
+
+        match (id := self.tracker_info.local_id, local_id):
+            case (0, 0):
+                raise DataRuntimeError("Invalid ID: tracked_id = 0 = local_id")
+            case (0, _):
+                logger.warning(f"Use {local_id=} instead of tracker_{id=}")
+                id: int = local_id
+            case (_, 0):
+                logger.info(f"Using existing tracker_{id=}")
+            case (_, _):
+                if id == local_id:
+                    logger.info(f"Using confirmed_{id=}")
+                else:
+                    logger.warning(f"Use {local_id=} instead of tracked:{id=}")
+                    id: int = local_id
+
+        logger.debug(f"{self.name} {id}: {(uuid := self.unique_id)}")
+
+        return ArborealTracker.setup(
+            local_id=id, path=path, unique_id=uuid, arbo_name=self.name
         )
+
+    @classmethod
+    def with_tracker(cls, path: Path, local_id: int, **kwargs) -> Self:
+        """Prefill Tracker before init, update UUID afterwards"""
+        logger.info(f"Create {cls.name} {local_id}: tracker without uuid")
+
+        tracker: ArborealTracker[Self] = ArborealTracker.setup(
+            local_id=local_id, path=path, unique_id="", arbo_name=cls.name
+        )
+        instance: Self = cls(tracker_info=tracker, **kwargs)
+
+        instance.tracker_info.unique_id: str = instance.unique_id
+        instance._ensure_tracker(path)
+        logger.info(f"uuid attached: {instance.stat}")
+
+        return instance
 
     @property
     def child_info(self):  # TODO: improve, override in subclass!
@@ -202,6 +278,7 @@ class Arboreal[ArboT: Arboreal](BaseModel):
         return f"{self.registry.n_trackers} {ArboT.__name__}"
 
     def _next_instance_id(self) -> int:
+        # LATER: failed_instance_id for deleted Arbo's?
         self.local_counter += 1
         self.touch()
         logger.debug(
@@ -214,8 +291,7 @@ class Arboreal[ArboT: Arboreal](BaseModel):
     def read_mode(cls, file: Path) -> Self:
         """Check for half-written file of other process by pydantic validation"""
 
-        # PARAM: -> defaults
-        n_retry: int = 3
+        n_retry: int = 3  # PARAM: -> defaults
         delay: float = 0.1  # seconds
 
         name: str = cls.__name__
@@ -277,12 +353,39 @@ class Arboreal[ArboT: Arboreal](BaseModel):
         logger.info(f"{name} loaded with {instance.child_info}s")
         return instance
 
+    def _ensure_tracker(self, path):
+        if self._tracker_adapted(path):
+            if self._tracker_adapted(path):
+                logger.error("Tracker not ensured after 2 attempts")
+
+    def _tracker_adapted(self, path: Path):
+        # LATER: local_id from upper instance??
+        tracker: ArborealTracker = self.tracker_info
+        updated = False
+
+        if tracker.arbo_name != self.name:
+            logger.error(f"updating {tracker.arbo_name=} for {self.name}")
+            tracker.arbo_name: str = self.name
+            updated = True
+
+        if tracker.unique_id != self.unique_id:
+            logger.error(f"UUID!\n{tracker.unique_id=}\n{self.unique_id=}")
+            raise ArborealTrackerError(arbo_to_track=self.name)
+
+        if tracker.path != path:
+            logger.warning(f"updating {tracker.path=} to {path=}")
+            tracker.path: Path = path
+            updated = True
+
+        return updated
+
     def save_state(self, file: Path, *, lock_required=True) -> None:
-        logger.info(f"Save {(arbo := self.__class__.__name__)} to json")
+        logger.info(f"Save {(arbo := self.name)} to json")
 
         if lock_required and not self._has_lock:
             raise ArborealError(f"FileLock required to write {arbo}!")
 
+        self._ensure_tracker(path=file)
         self.touch()
         file.write_text(self.model_dump_json())
 

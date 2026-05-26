@@ -1,13 +1,14 @@
 from boltons.strutils import slugify
 from sstcore.config import ParsedName, SstNames, StyledName
-from sstcore.utils import day_count
+
+# from sstcore.utils import day_count
 
 
 class SproutName(ParsedName):
     @classmethod
     def _load_predefined_keys(cls) -> list[str]:
         return [
-            "dom",
+            # "dom",
             "locator",
             "spec",
             "topic",
@@ -17,7 +18,7 @@ class SproutName(ParsedName):
 
     def computed(self, topic: str, locator: str, spec: str) -> str:
         values: list[str] = [
-            str(day_count()),
+            # str(day_count()),
             locator,
             spec,
             slugify(topic, delim="-"),
@@ -25,9 +26,10 @@ class SproutName(ParsedName):
         return self(values)
 
 
-parts: list[str] = [
-    "[{style1}]{name}[/] Remotes: [{style2}]{remotes}[/]",
-]
+# REMOVE: ??
+# parts: list[str] = [
+#     "[{style1}]{name}[/] Remotes: [{style2}]{remotes}[/]",
+# ]
 
 
 class Names(SstNames):

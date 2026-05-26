@@ -73,7 +73,7 @@ class Paths(SstPaths[Names, Defaults]):
             raise NotInForestError
         return root
 
-    def cwd_relative_to_base_dir(self) -> Path:
+    def cwd_to_base_dir(self) -> Path:
         return PathGuard.relative(target=Path.cwd(), root=self.base_dir)
 
     @property
@@ -204,23 +204,13 @@ class Paths(SstPaths[Names, Defaults]):
         return self._path_from_stem(stem, suffix, self.full_response_dir)
 
     @PathGuard.unique(ensure_parent=True)
-    def prompt_file(
-        self,
-        prompt_stem: str,
-        suffix: str = ".md",
-        root_dir: Path | None = None,
+    def conversation_file(
+        self, stem: str, suffix: str = ".md", root_dir: Path | None = None
     ) -> Path:
-        """New prompt file name after usage and move"""
-        return self._path_from_stem(prompt_stem, suffix, root_dir)
+        return self._path_from_stem(stem, suffix, root_dir)
 
     def _path_from_stem(
         self, stem: str, suffix: str, root_dir: Path | None = None
     ) -> Path:
         suffix: str = suffix if suffix.startswith(".") else f".{suffix}"
         return (root_dir or Path.cwd()) / f"{stem}{suffix}"
-
-    @PathGuard.unique(ensure_parent=True)
-    def answer_file(
-        self, answer_stem, suffix=".md", root_dir: Path | None = None
-    ) -> Path:
-        return self._path_from_stem(answer_stem, suffix, root_dir)

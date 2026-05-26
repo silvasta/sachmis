@@ -6,26 +6,12 @@ from loguru import logger
 from pydantic import Field
 from sstcore.exceptions import NotImplementedDispatchError
 
-from sachmis.data.files import Conversation, ConversationTreeNode
-
 from ...exceptions import PromptError
-from ..conversation.prompt import Prompt
+from ..conversation import ConversationBag
+from ..conversation.base import Conversation, build_conversation_tree
+from ..conversation.prompt import Prompt, PromptData
 from ..conversation.response import Response
 from .base import Arboreal
-
-
-def recursive_conversation_tree(
-    current_sprout: Conversation,
-) -> ConversationTreeNode:
-
-    branch_nodes: list[ConversationTreeNode] = []
-
-    for next_branch in current_sprout.get_successor():
-        if not next_branch.get_successor():
-            return current_sprout.as_tree_node()
-        branch_nodes.append(recursive_conversation_tree(next_branch))
-
-    return current_sprout.as_tree_node(branch_nodes)
 
 
 class Tree(Arboreal):
@@ -33,60 +19,71 @@ class Tree(Arboreal):
 
     root_prompt: Prompt
     tree_stem: str
-    # LATER: local_id
 
     prompts: dict[str, Prompt] = Field(default_factory=dict)
-    # TODO: model validate, n_prompts >=1
     responses: dict[str, Response] = Field(default_factory=dict)
 
     ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
     ### -- Tree - Custom Functions and Attributes
     ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
 
-    def sample_conversation_tree(self):
-        return recursive_conversation_tree(current_sprout=self.root_prompt)
-
-    def find_prompt_by_stem(self, stem: str) -> Prompt | None:
+    def find_conversation_by_stem(
+        self, stem: str | list[str]
+    ) -> ConversationBag:
         for prompt in self.prompts.values():
-            if prompt._compose_stem() == stem:
+            if prompt.stem == stem:
                 logger.debug(f"found {prompt.desc}")
                 return prompt
-
-    def find_response_by_stem(self, stem: str) -> Response | None:
-        for response in self.responses.values():
-            if response._compose_stem() == stem:
-                logger.debug(f"found {response.desc}")
-                return response
-        logger.debug(f"failed for: {stem=}")
+        logger.warning(f"failed for: {stem=}")
 
     @classmethod
-    def create(cls, prompt: Prompt, tree_stem: str = "") -> Self:
+    def with_prompt(
+        cls,
+        prompt: PromptData,
+        tree_file: Path,
+        local_id: int,
+        tree_stem: str = "",
+    ) -> Self:
         """Create new Tree with single Sprout attached"""
-        tree_stem: str = tree_stem or prompt.slug_topic
-        tree: Self = cls(root_prompt=prompt, tree_stem=tree_stem)
+        prompt: Prompt = Prompt.upgrade_from_raw(
+            raw_prompt=prompt, local_id=local_id, ancestor=None
+        )
+        tree: Self = cls.with_tracker(
+            path=tree_file,
+            local_id=local_id,
+            root_prompt=prompt,
+            tree_stem=tree_stem or prompt.slug_topic,
+        )
         tree.prompts[prompt.unique_id] = prompt
-        logger.debug(f"Created:{tree.desc}")
+        logger.debug(f"Created: {tree.desc}")
+
         return tree
 
     @singledispatchmethod
     def attach(self, target: Prompt | Response):
+        # NEXT:
         raise NotImplementedDispatchError(target.desc)
 
     @attach.register
     def _(self, target: Prompt):
+        # NEXT:
         """Ensure Ancestor have new added target in Successor"""
         # TODO: some checks specific on Prompt?
         self._confirm_ancestor(target, self.prompts)
         logger.debug(f"Ancestor of Prompt confirmed: {target.desc}")
 
     @attach.register
+    # NEXT:
     def _(self, target: Response):
         # TODO: some checks specific on Response?
         self._confirm_ancestor(target, self.responses)
         logger.debug(f"Ancestor of Response confirmed: {target.desc}")
 
     def _confirm_ancestor(self, target: Conversation, registry: dict):
+        # NEXT:
         """Ensure Ancestor have new added target in Successor"""
+
+        # TASK: confirm
 
         logger.debug(f"Confirming ancestor: {target.desc}")
 
@@ -106,12 +103,16 @@ class Tree(Arboreal):
 
     @classmethod
     def file_attach(cls, file: Path, target: Prompt | Response):
+        # NEXT:
         logger.info("Loading Tree to attach Response")
 
         with cls.edit_mode(file) as tree:
             tree.attach(target)
 
         logger.info("All information submitted, Tree closed")
+
+    def sample_conversation_tree(self):
+        return build_conversation_tree(root_sprout=self.root_prompt)
 
     ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
     ### -- Arboreal - Access to Members
@@ -131,7 +132,7 @@ class Tree(Arboreal):
 
     @property
     def desc(self):
-        return f"{self.__class__.__name__}: {self.tree_stem}"
+        return f"{self.name}: {self.tree_stem}"
 
     ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
     ### -- TODO: Health Check
