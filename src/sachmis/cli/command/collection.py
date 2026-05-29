@@ -1,4 +1,4 @@
-from sstcore.cli import logger_catch
+from sstcore.cli import logger_catch, sargs
 
 from ...config import SachmisConfig, get_config
 from ...config.model import Geminis, Groks, get_all_models
@@ -46,16 +46,13 @@ def roles():  # TODO: create "new role" function (somewhere else)
 
 
 @logger_catch
-def config_details(save: bool = False):
-    """Print config to Console, so far just dotenv_path"""
-    # MOVE: to silvasta? yes! some basic stats
-    config: SachmisConfig = get_config()
-
-    # TODO: save settings? load updates from json? or push updates down to json?
-    # REFACTOR: create subapp, config management etc
-    printer(config.compose_setup_param())  # LATER: show selection of paths
+def config_details(write_config: sargs.Write = False):
+    """Print config to Console, optional override the json settings"""
+    config: SachmisConfig = get_config()  # TODO: better selection
+    printer(config.compose_setup_param())
     printer(config.settings)
-    printer(config.paths.dot_env)  # LATER: show selection of paths
-    printer(config.master_setting_file)  # LATER: show selection of paths
-    if save:
+    printer(config.paths.dot_env)
+    printer(config.master_setting_file)
+
+    if write_config:
         config.save_settings()

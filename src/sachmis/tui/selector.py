@@ -67,7 +67,9 @@ def role_selector(roles: list[Path]) -> Path | None:
 
 
 def linear_selector[T](
-    items: dict[T, str] | list[T] | set[T], multiselect=False
+    # MOVE: sstcore
+    items: dict[T, str] | list[T] | set[T],
+    multiselect=False,
 ) -> list[T] | None:
 
     tui = ListSelectorApp(items=items, multi_select=multiselect)
