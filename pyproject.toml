@@ -29,20 +29,12 @@ sstcore = { path = "/home/silvan/Code/sstcore/latest", editable = true }
 [project.scripts]
 sachmis = "sachmis.cli.app:main"
 
-
-[tool.sachmis.logging]
-level = "DEBUG"
-file_name = "sachmis.log"
-log_dir = "logs"
-rotation = "10 MB"
-retention = "1 week"
-
 [build-system]
 requires = ["uv_build>=0.10.10,<0.11.0"]
 build-backend = "uv_build"
 
 [dependency-groups]
-dev = ["pre-commit>=4.6.0", "pytest>=9.0.3", "ruff>=0.15.12", "ty>=0.0.34"]
+dev = ["pre-commit>=4.6.0", "pytest>=9.0.3", "ruff>=0.15.12", "ty>=0.0.40"]
 
 [project.urls]
 Repository = "https://github.com/silvasta/sachmis"
