@@ -7,6 +7,7 @@ class ArborealFileMissingError(FileNotFoundError, ArborealError):
     """Raised when an Arboreal file (for now, JSON) is missing"""
 
     def __init__(self, arboreal: str, file: Path):
+        self.file = file
         msg = f"No {arboreal} found at target location: {file}"
         super().__init__(msg)
 
@@ -24,6 +25,7 @@ class ArborealRegistryMissingError(KeyError, ArborealError):
     """Raised when an ID is not found in an object's internal registry"""
 
     def __init__(self, parent: str, child: str, missing_id: str):
+        self.missing_id = missing_id
         msg = f"{parent} registry has no {child} with: {missing_id=}"
         super().__init__(msg)
 
@@ -32,6 +34,7 @@ class ArborealRegistryDuplicateError(KeyError, ArborealError):
     """Raised when an ID is already attached in an Arboreals internal registry"""
 
     def __init__(self, parent: str, child: str, duplicated_id: str):
+        self.missing_id = duplicated_id
         msg = f"{parent} registry already has {child} with: {duplicated_id=}"
         super().__init__(msg)
 

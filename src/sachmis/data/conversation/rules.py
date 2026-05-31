@@ -1,7 +1,7 @@
 from enum import StrEnum, auto
 
 
-class PromptTypes(StrEnum):  # IMPORTANT: PromptEdges?
+class PromptTransitionRules(StrEnum):
     REGULAR = auto()
     ROOT = auto()
     MULTI = auto()
@@ -13,48 +13,49 @@ class PromptTypes(StrEnum):  # IMPORTANT: PromptEdges?
             self.MULTI: "Special Prompt with at least 1 symmetric mux-demux ancestor",
         }[self]
 
-    def explain(self) -> str:
+    @classmethod
+    def explain(cls) -> str:
         return """Prompt: Number of inputs always constant, usually 1.
         Number of ancestors usually constant (Resend exactly same Prompt).
         Special Prompt has multiple fathers and for each father 1 grandchild.
         Internally stores the information to bridge Pre/Post Responses.
         """
 
-    def valid_ancestor(self, response: ResponseTypes) -> bool:
+    def valid_ancestor(self, response: ResponseTransitionRules) -> bool:
         match self:
             case self.REGULAR:
                 return response in {
-                    ResponseTypes.REGULAR,
-                    ResponseTypes.BACKWARD,
+                    ResponseTransitionRules.REGULAR,
+                    ResponseTransitionRules.BACKWARD,
                 }
             case self.MULTI:
                 return response in {
-                    ResponseTypes.FORWARD,
-                    ResponseTypes.BIDIRECT,
+                    ResponseTransitionRules.FORWARD,
+                    ResponseTransitionRules.BIDIRECT,
                 }
             case self.ROOT:
                 return False
 
-    def valid_successor(self, response: ResponseTypes) -> bool:
+    def valid_successor(self, response: ResponseTransitionRules) -> bool:
         match self:
             case self.REGULAR:
                 return response in {
-                    ResponseTypes.REGULAR,
-                    ResponseTypes.FORWARD,
+                    ResponseTransitionRules.REGULAR,
+                    ResponseTransitionRules.FORWARD,
                 }
             case self.ROOT:  # same as regular
                 return response in {
-                    ResponseTypes.REGULAR,
-                    ResponseTypes.FORWARD,
+                    ResponseTransitionRules.REGULAR,
+                    ResponseTransitionRules.FORWARD,
                 }
             case self.MULTI:
                 return response in {
-                    ResponseTypes.BIDIRECT,
-                    ResponseTypes.BACKWARD,
+                    ResponseTransitionRules.BIDIRECT,
+                    ResponseTransitionRules.BACKWARD,
                 }
 
 
-class ResponseTypes(StrEnum):  # IMPORTANT: ResponseEdges?
+class ResponseTransitionRules(StrEnum):
     REGULAR = auto()
     FORWARD = auto()
     BACKWARD = auto()
@@ -68,50 +69,52 @@ class ResponseTypes(StrEnum):  # IMPORTANT: ResponseEdges?
             self.BIDIRECT: "Response with q1 predecessor, q2 ancestor 1 grand(child and father)",
         }[self]
 
-    def explain(self) -> str:
-        return """Response: Number of inputs always constant, usually 1.
+    @classmethod
+    def explain(cls) -> str:
+        return """
+        Response: Number of inputs always constant, usually 1.
         Number of ancestors usually growing (Continue on Successful Response).
         Forward Demux Response with q siblings: all point forward to same Prompt.
         Backward Mux Response with q siblings: all pointed backwards from same Prompt.
         Bidirect Response is when Forward and Backward (independent) happens in same Response.
         """
 
-    def valid_ancestor(self, prompt: PromptTypes) -> bool:
+    def valid_ancestor(self, prompt: PromptTransitionRules) -> bool:
         match self:
             case self.REGULAR:
                 return prompt in {
-                    PromptTypes.REGULAR,
-                    PromptTypes.ROOT,
+                    PromptTransitionRules.REGULAR,
+                    PromptTransitionRules.ROOT,
                 }
             case self.FORWARD:
                 return prompt in {
-                    PromptTypes.REGULAR,
-                    PromptTypes.ROOT,
+                    PromptTransitionRules.REGULAR,
+                    PromptTransitionRules.ROOT,
                 }
             case self.BACKWARD:
                 return prompt in {
-                    PromptTypes.MULTI,
+                    PromptTransitionRules.MULTI,
                 }
             case self.BIDIRECT:
                 return prompt in {
-                    PromptTypes.MULTI,
+                    PromptTransitionRules.MULTI,
                 }
 
-    def valid_successor(self, prompt: PromptTypes) -> bool:
+    def valid_successor(self, prompt: PromptTransitionRules) -> bool:
         match self:
             case self.REGULAR:
                 return prompt in {
-                    PromptTypes.REGULAR,
+                    PromptTransitionRules.REGULAR,
                 }
             case self.FORWARD:
                 return prompt in {
-                    PromptTypes.MULTI,
+                    PromptTransitionRules.MULTI,
                 }
             case self.BACKWARD:
                 return prompt in {
-                    PromptTypes.REGULAR,
+                    PromptTransitionRules.REGULAR,
                 }
             case self.BIDIRECT:
                 return prompt in {
-                    PromptTypes.MULTI,
+                    PromptTransitionRules.MULTI,
                 }
