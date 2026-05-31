@@ -152,6 +152,7 @@ class ExtractFromTree(AbstractContextManager):
             self.tracker: ArborealTracker = tree.sample_tracker(
                 path, local_id=data.handler.tree_tracker.local_id
             )
+            # NEXT:
             cwd_conversations: ConversationBag = (
                 tree.find_conversation_by_stem(
                     stems=data.handler.existing_conversations
@@ -175,6 +176,7 @@ class ExtractFromTree(AbstractContextManager):
             return config.defaults.context.tree_error.swallow
 
         logger.debug("Loading Tree...")
+        # NEXT:
         with Tree.edit_mode(self.tracker.path) as tree:
             printer(tree)
             # TODO: modify Prompt
@@ -192,9 +194,11 @@ class Fire(AbstractContextManager):
 
     def __enter__(self) -> Self:
         # Push to stack, DataManager will close with FireSession
+        # NEXT:
         self.data: DataManager = self.stack.enter_context(
             DataManager(biome=True, forest=True)
         )
+        # NEXT:
         self.data.attach_handler(FileRollout())
 
         self.forest_handler: ExtractFromForest = self.stack.enter_context(

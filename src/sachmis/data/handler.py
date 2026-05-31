@@ -14,7 +14,19 @@ from .conversation import Prompt, PromptData
 
 config: SachmisConfig = get_config()
 
+# NEXT:
+# NEXT:
+# NEXT:
+# NEXT:
+# NEXT:
 
+
+# REFACTOR:
+# - in out
+#   - FileSystem in out
+#   - Automatic in out
+# - rollout file writer
+# - prompt/response handler
 class FileHandler:
     """Future interface for other tasks executed with DataManager() as data"""
 

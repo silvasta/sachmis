@@ -12,6 +12,8 @@ config: SachmisConfig = get_config()
 
 
 @dataclass
+# REMOVE:
+# NEXT:
 class ConversationBag:  # MOVE: to own module if it grows even more
     """Container for Prompts and Responses"""
 
