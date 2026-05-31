@@ -2,8 +2,6 @@ from loguru import logger
 
 from .family import ModelFamily
 
-# NEXT: Last update: 18.03.2026
-
 
 class Groks(ModelFamily):
     G43 = "g43"

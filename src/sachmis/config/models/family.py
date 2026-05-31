@@ -8,6 +8,12 @@ from enum import Enum, EnumMeta
 # - still nice with Enum, match and validation
 # - maybe basemodel just for usage?
 
+# LATER: load family from csv
+# - load including prices, status=Active etc,
+# check file-analyzer for template pydantic read/write
+
+# NEXT: update latest model
+
 
 class AbstractEnum(ABCMeta, EnumMeta):
     """This is enough to use ABC in Enum
@@ -18,11 +24,6 @@ class AbstractEnum(ABCMeta, EnumMeta):
 
 class ModelFamily(Enum, metaclass=AbstractEnum):
     """Define general properties for models of all companies"""
-
-    # IMPORTANT: make 1 word target identifier, either as Company Enum or ...
-    # TASK: load family from csv
-    # - load including prices, status=Active etc,
-    # check file-analyzer for template pydantic read/write
 
     @property
     def unique(self) -> str:

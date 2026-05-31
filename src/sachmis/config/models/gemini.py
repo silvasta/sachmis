@@ -1,7 +1,5 @@
 from .family import ModelFamily
 
-# IMPORTANT: Last update: 18.03.2026
-
 
 class Geminis(ModelFamily):
     G31 = "g3"

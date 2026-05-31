@@ -4,6 +4,7 @@ from .family import ModelFamily
 class DummyFamily(ModelFamily):
     D1 = "d1"
     D2 = "d2"
+    F34 = "f34"
 
     @property
     def unique_letter(self) -> str:
