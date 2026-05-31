@@ -56,6 +56,21 @@ class ContextParam(BaseModel):
     data_end: ContextBase = Field(default_factory=ContextBase)
 
 
+class ModelToggle(BaseModel):
+    dummy: bool = False
+    grok: bool = True
+    gemini: bool = True
+
+
+class DebugToggle(BaseModel):
+    model: ModelToggle = Field(default_factory=ModelToggle)
+
+
+class CliToggle(BaseModel):  # LATER: set all to false in auto modus
+    # TODO:  alias for type
+    data_no_biome: Literal["create", "raise", "prompt"] = "prompt"
+
+
 class LogAndPrintBase(BaseModel):
     printer: bool = False
     log: bool = True
@@ -79,8 +94,10 @@ class Defaults(SstDefaults):
     # Pipeline
     tenacity: TenacityDefaults = Field(default_factory=TenacityDefaults)
 
-    # Context
+    # toggle
+    cli: CliToggle = Field(default_factory=CliToggle)
     context: ContextParam = Field(default_factory=ContextParam)
+    debug: DebugToggle = Field(default_factory=DebugToggle)
 
     # util
     log_and_print: LogAndPrintParam = Field(default_factory=LogAndPrintParam)

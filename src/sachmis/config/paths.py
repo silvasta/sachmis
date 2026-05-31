@@ -1,3 +1,4 @@
+from contextlib import suppress
 from pathlib import Path
 from typing import Literal
 
@@ -22,6 +23,10 @@ class Paths(SstPaths[Names, Defaults]):
     """Assemble paths for project"""
 
     @property
+    def active_biome(self) -> bool:
+        return self.unconfirmed_biome_file.exists()
+
+    @property
     def biome_dir(self) -> Path:
         return self.data_home
 
@@ -31,38 +36,36 @@ class Paths(SstPaths[Names, Defaults]):
         """Current active Biome file"""
         return self._biome_file()
 
-    @property
-    def active_biome(self) -> bool:
-        return self.unconfirmed_biome_file.exists()
+    def _biome_file(self, biome_filename: str | None = None) -> Path:
+        """path constructor class"""
+        return self.biome_dir / (biome_filename or self._names.biome_file)
 
     @property
     def unconfirmed_biome_file(self) -> Path:
         """unchecked composition of path and name"""
         return self._biome_file()
 
-    def _biome_file(self, biome_filename: str | None = None) -> Path:
-        """path constructor class"""
-        return self.biome_dir / (biome_filename or self._names.biome_file)
+    @property
+    def biome_files(self) -> set[Path]:
+        # LATER: ensure better, track state
+        return set(self.biome_dir.glob("*.json"))
+
+    @property
+    def num_biome_files(self) -> int:
+        return len(self.biome_files)
 
     def new_biome_file(self, name: str) -> Path:
         """Generate new biome_file path if it not already exists"""
 
-        # Ensure it works for 'name.json' or just 'name'
         biome_filename: str = f"{name.strip('.json')}.json"
+        new_biome_file: Path = self._biome_file(biome_filename)
 
-        new_file: Path = self._biome_file(biome_filename)
+        if new_biome_file in self.biome_files:
+            raise ArborealFileExistsError("Biome", new_biome_file)
 
-        if new_file in self.biome_files:
-            raise ArborealFileExistsError("Biome", new_file)
+        logger.success(f"Created Path for new Biome: {new_biome_file=}")
 
-        logger.success(f"Created writable Path for new Biome: {new_file=}")
-
-        return new_file
-
-    @property
-    def biome_files(self) -> set[Path]:
-        # LATER: ensure no other .json in biome_dir
-        return set(self.biome_dir.glob("*.json"))
+        return new_biome_file
 
     @property
     def base_dir(self) -> Path:
@@ -73,21 +76,31 @@ class Paths(SstPaths[Names, Defaults]):
             raise NotInForestError
         return root
 
-    def cwd_to_base_dir(self) -> Path:
-        return PathGuard.relative(target=Path.cwd(), root=self.base_dir)
+    def cwd_to_base_dir(self, strict=True) -> Path:
+        """Error for outside Forest, try with strict=False for ../../path"""
+        return PathGuard.relative(
+            target=Path.cwd(), root=self.base_dir, strict=strict
+        )
 
     @property
     def in_forest(self) -> bool:
-        try:
-            _ = self.base_dir
-            return True
-        except NotInForestError:
-            return False
+        with suppress(NotInForestError):
+            logger.debug(f"Inside {self.base_dir=}")
+            if self._this_executes_only_when_base_dir_exists():
+                return True
+        return False
+
+    def _this_executes_only_when_base_dir_exists(self) -> bool:
+        """Trick the ty-pe checker and provide clear suppress"""
+        return True
 
     @property
-    @PathGuard.dir
-    def camp_dir(self) -> Path:
-        return self.base_dir / self._names.camp_dir
+    def in_camp(self) -> bool:
+        with suppress(NotInForestError):
+            logger.debug(f"Inside {self.camp_dir_as_parent=}")
+            if self._this_executes_only_when_base_dir_exists():
+                return True
+        return False
 
     @property
     def camp_dir_as_parent(self):
@@ -99,12 +112,9 @@ class Paths(SstPaths[Names, Defaults]):
         return parent
 
     @property
-    def in_camp(self) -> bool:
-        try:
-            _ = self.camp_dir_as_parent
-            return True
-        except NotInCampError:
-            return False
+    @PathGuard.dir
+    def camp_dir(self) -> Path:
+        return self.base_dir / self._names.camp_dir
 
     @property
     def forest_file(self) -> Path:
@@ -156,15 +166,12 @@ class Paths(SstPaths[Names, Defaults]):
     def role_paths(
         self, mode: Literal["all", "local", "global"] = "all"
     ) -> list[Path]:
-        return [
-            # FIX: works  that now?
-            *(self.role_dir.glob("*") if mode == "all" or "global" else []),
-            *(
-                self.camp_role_dir.glob("*")
-                if mode == "all" or "local"
-                else []
-            ),
-        ]
+        roles: list[Path] = []
+        if mode in ("all", "global"):
+            roles.extend(self.role_dir.glob("*"))
+        if mode in ("all", "local"):
+            roles.extend(self.camp_role_dir.glob("*"))
+        return roles
 
     @property
     @PathGuard.dir

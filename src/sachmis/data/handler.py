@@ -6,7 +6,7 @@ from sstcore import PathGuard
 from sstcore.data import SstFileRegistry
 
 from ..config import SachmisConfig, get_config
-from ..config.model import ModelFamily
+from ..config.models import ModelFamily
 from ..exceptions import DataRolloutError, DataRuntimeError, SachmisDataError
 from ..utils import model_from_unique, printer
 from .arboreal import ArborealTracker, Tree
@@ -21,7 +21,7 @@ class FileHandler:
     tree_id: int = 0  # root number, ids start at 1
     existing_prompts_at_cwd: list[Path] = []
     existing_responses_at_cwd: list[Path] = []
-    parsed_models: list[ModelFamily] = []
+    scanned_models: list[ModelFamily] = []
 
     _tree_tracker_from_forest: ArborealTracker | None = None
     _tree_tracker_from_tree: ArborealTracker | None = None
@@ -149,7 +149,7 @@ class FileRollout(FileHandler):
         return (
             f"Found {len(self.existing_prompts_at_cwd)} Prompts, "
             f"{len(self.existing_responses_at_cwd)} Responses "
-            f"and parsed {len(self.parsed_models)} Models."
+            f"and parsed {len(self.scanned_models)} Models."
         )
 
     def scan_folder(self):
@@ -163,7 +163,7 @@ class FileRollout(FileHandler):
                     logger.debug(f"attach to prompts: {path=}")
                 elif model := model_from_unique(spec):
                     self.existing_responses_at_cwd.append(path)
-                    self.parsed_models.append(model)
+                    self.scanned_models.append(model)
                     logger.debug(f"attach {model=} and response from: {path=}")
                 else:
                     logger.debug(f"ignoring {path=}")

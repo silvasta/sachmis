@@ -15,6 +15,7 @@ class ArborealFileExistsError(FileExistsError, ArborealError):
     """Raised when trying to create an Arboreal file that already exists"""
 
     def __init__(self, arboreal: str, file: Path):
+        self.file = file
         msg = f"Found existing {arboreal} at target location: {file}"
         super().__init__(msg)
 

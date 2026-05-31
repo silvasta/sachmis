@@ -6,44 +6,11 @@ from loguru import logger
 from sstcore.utils import PathGuard
 
 from ..config import SachmisConfig, get_config
-from ..data.files import CampManager
 from ..exceptions import ArborealFileMissingError
 from ..utils.print import printer
 from .arboreal import ArborealTracker, Biome
 
-
-def create_new_biome(name: str | None = None) -> Path:
-    # NEXT: setup automatic if not found
-    config: SachmisConfig = get_config()
-    logger.info("Create new Biome")
-
-    biome_filename: str = config.names.biome_file if name is None else name
-
-    biome_file: Path = config.paths.new_biome_file(biome_filename)
-
-    if name is None:
-        config.names.biome_file: str = biome_file.name
-        config.save_settings()  # MOVE: 3er block to config?
-        logger.info(f"Updated active Biome in Names: {biome_file=}")
-
-    Biome().save_state(file=biome_file, lock_required=False)
-
-    return biome_file
-
-
-def check_biome_files():
-    config: SachmisConfig = get_config()
-    biome_files: set[Path] = config.paths.biome_files
-
-    # MERGE: with cli.biome.select
-
-    if num_biome_files := len(biome_files) > 1:
-        logger.info(f"Found {num_biome_files=} in {config.paths.biome_dir=}")
-        for file in biome_files:
-            printer(file)
-        logger.debug(f"current status: {biome_files=}")
-    else:
-        logger.debug(f"current status: 1 {biome_files=}")
+# MOVE: Module: setup base? data handler? conductor?
 
 
 def _ensure_base_dir(base_name: str, root_dir: Path | None = None):
@@ -68,7 +35,7 @@ def create_new_base(base_name: str | None = None):
         logger.error("Check: sachmis biome {setup | show | select}")
         raise ArborealFileMissingError("Biome", biome_file)
 
-    if config.paths.in_forest:  # LATER: Forest in Forest? desired?
+    if config.paths.in_forest:
         logger.error("Already in Base! No new Forest will be created.")
         return
 
@@ -79,14 +46,13 @@ def create_new_base(base_name: str | None = None):
         with chdir(base_dir):
             PathGuard.dir(config.names.camp_dir)
             Path(config.names.prompt).touch()
-            camp: CampManager = CampManager()
             printer.success("Files and dirs ready: creating Forest now!")
 
             forest_file: Path = config.paths.forest_file
 
             with Biome.edit_mode(config.paths.biome_file) as biome:
                 forest_tracker: ArborealTracker = biome.attach_new_forest(
-                    forest_file, camp
+                    forest_file
                 )
 
     except Exception as error:  # clean up in any case
@@ -94,6 +60,6 @@ def create_new_base(base_name: str | None = None):
         shutil.rmtree(base_dir)
         raise error
 
-    logger.info(
+    logger.info(  # TODO: stat print instead of full tracker
         f"New Base Created: {forest_tracker=}"
-    )  # TODO: stat print instead of full tracker
+    )

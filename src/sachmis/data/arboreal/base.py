@@ -45,12 +45,7 @@ class ArborealTracker[ArboT: Arboreal](SstFile):
 
     @classmethod
     def setup(
-        cls,
-        arbo_name: str,
-        path: Path,
-        unique_id: str,
-        local_id: int,
-        # LATER: local_dir (to calculate local_path)
+        cls, arbo_name: str, path: Path, unique_id: str, local_id: int
     ) -> Self:
         tracker: ArborealTracker = cls(
             unique_id=unique_id,
@@ -69,7 +64,6 @@ class ArborealRegistry[ArboT: Arboreal](BaseModel):
     """Registry for data of Arboreals"""
 
     trackers: dict[str, ArborealTracker] = Field(default_factory=dict)
-    # LATER: Generalize with sstcore.FileRegistry
 
     @property
     def n_trackers(self) -> int:
@@ -87,7 +81,7 @@ class ArborealRegistry[ArboT: Arboreal](BaseModel):
 
     def get_tracker(self, uuid: str) -> ArborealTracker:
         if not (tracker := self.find_tracker(uuid)):
-            # LATER: def raise_missing? prefilled text?
+            # NEXT: def raise_missing? prefilled text?
             raise ArborealRegistryMissingError(
                 parent=self.__class__.__name__,
                 child=ArboT.__name__,
@@ -103,7 +97,7 @@ class ArborealRegistry[ArboT: Arboreal](BaseModel):
         return [
             tracker
             for tracker in self.all_trackers
-            if not tracker.local_path.exists()  # TODO: local_path? local_dir?
+            if not tracker.local_path.exists()
         ]
 
     def tracker_local_ids(self) -> set[int]:
@@ -207,10 +201,6 @@ class Arboreal[ArboT: Arboreal](BaseModel):
     def name(cls):
         return cls.__name__
 
-    # @property # REMOVE: after test
-    # def name(self):
-    #     return self.__class__.__name__
-
     @property
     def stat(self):
         """Short representation for printable statistics"""
@@ -220,7 +210,6 @@ class Arboreal[ArboT: Arboreal](BaseModel):
     def local_created_at(self) -> str:
         """Returns a human-readable string of the creation time in the system's local timezone."""
         config: SachmisConfig = get_config()
-        # LATER: time display, check -> utils, other libs (maybe arrow)
         return self.created_at.astimezone().strftime(
             config.defaults.timestamp_format
         )
@@ -257,8 +246,10 @@ class Arboreal[ArboT: Arboreal](BaseModel):
         )
 
     @classmethod
-    def with_tracker(cls, path: Path, local_id: int, **kwargs) -> Self:
+    def create_with_tracker(cls, path: Path, local_id: int, **kwargs) -> Self:
         """Prefill Tracker before init, update UUID afterwards"""
+        # LATER: context? or how to ensure runtime data loss?
+
         logger.info(f"Create {cls.name} {local_id}: tracker without uuid")
 
         tracker: ArborealTracker[Self] = ArborealTracker.setup(
@@ -266,19 +257,18 @@ class Arboreal[ArboT: Arboreal](BaseModel):
         )
         instance: Self = cls(tracker_info=tracker, **kwargs)
 
-        instance.tracker_info.unique_id: str = instance.unique_id
+        instance.tracker_info.unique_id = instance.unique_id
         instance._ensure_tracker(path)
         logger.info(f"uuid attached: {instance.stat}")
 
         return instance
 
     @property
-    def child_info(self):  # TODO: improve, override in subclass!
+    def child_info(self):
         """Used for Biome and Forest, override for Tree!"""
         return f"{self.registry.n_trackers} {ArboT.__name__}"
 
     def _next_instance_id(self) -> int:
-        # LATER: failed_instance_id for deleted Arbo's?
         self.local_counter += 1
         self.touch()
         logger.debug(
@@ -365,7 +355,7 @@ class Arboreal[ArboT: Arboreal](BaseModel):
 
         if tracker.arbo_name != self.name:
             logger.error(f"updating {tracker.arbo_name=} for {self.name}")
-            tracker.arbo_name: str = self.name
+            tracker.arbo_name = self.name
             updated = True
 
         if tracker.unique_id != self.unique_id:
@@ -374,7 +364,7 @@ class Arboreal[ArboT: Arboreal](BaseModel):
 
         if tracker.path != path:
             logger.warning(f"updating {tracker.path=} to {path=}")
-            tracker.path: Path = path
+            tracker.path = path
             updated = True
 
         return updated

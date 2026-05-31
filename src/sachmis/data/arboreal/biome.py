@@ -1,9 +1,11 @@
+from collections.abc import Callable
 from pathlib import Path
 
 from loguru import logger
 from pydantic import Field
 from sstcore.data.files import SstFile
 
+from ...config import SachmisConfig, get_config
 from .base import Arboreal, ArborealTracker
 from .forest import Forest
 
@@ -29,6 +31,36 @@ class Biome(Arboreal[Forest]):
 
         self.responses.append(response)
 
+    @classmethod
+    def with_name(cls, name: str | None = None):
+        logger.info("Create new Biome")
+        config: SachmisConfig = get_config()
+
+        biome_filename: str = config.names.biome_file if name is None else name
+        biome_file: Path = config.paths.new_biome_file(biome_filename)
+
+        # LATER: Biome Registry? Maybe while SQModel refactor
+
+        biome: Biome = cls.create_with_tracker(
+            path=biome_file, local_id=config.paths.num_biome_files + 1
+        )
+        logger.success("Biome created!")
+
+        biome.save_state(file=biome_file, lock_required=False)
+        biome.apply_to_config(biome_file)
+
+    def apply_to_config(self, biome_file: Path):
+        logger.info("Merge changes back to Settings file")
+        config: SachmisConfig = get_config()
+
+        if biome_file.name == config.names.biome_file:
+            logger.debug("path from Names already active in Biome")
+        else:
+            config.save_settings()
+            logger.info(f"Updated active Biome in Names to{biome_file.name}")
+
+        logger.success(f"{self.tracker_info.stat} Active Biome! {biome_file=}")
+
     ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
     ### -- Arboreal - Access to Members
     ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
@@ -45,14 +77,6 @@ class Biome(Arboreal[Forest]):
     @property
     def missing_forests(self) -> list[ArborealTracker]:
         return self.registry.tracker_with_invalid_paths()
-
-    # TODO:
-    # def n_trees(self) -> int:
-    #     return sum(forest.n_trees for forest in self.loaded_forests)
-
-    # TODO:
-    # def n_sprouts(self) -> int:
-    #     return sum(forest.n_sprouts for forest in self.loaded_forests)
 
     def attach_new_forest(self, forest_file: Path) -> ArborealTracker:
         local_id: int = self._next_instance_id()
@@ -78,14 +102,26 @@ class Biome(Arboreal[Forest]):
     ### -- Biome - Health checks, maybe -> ArborealDisk?
     ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
 
-    def health_check(self):
-        no_issues: bool = all(  # Get True for check fine
-            (
-                self.registry.check_tracker_paths_exist(),
-                self.registry.check_tracker_paths_unique(),
-            )
-        )
-        if no_issues:
-            logger.info("Biome ok")
+    @classmethod
+    def check_filesystem(cls) -> bool:
+        config: SachmisConfig = get_config()
 
-    # LATER: other cases, heal and repair?
+        num_biome_files: int = config.paths.num_biome_files
+        logger.info(f"Found {num_biome_files=} in {config.paths.biome_dir=}")
+
+        biome_files: set[Path] = config.paths.biome_files
+        logger.debug(f"current status: {biome_files=}")
+
+        if num_biome_files > 0:
+            return True
+        else:
+            return False
+
+    def health_check(self):
+        tests: list[Callable] = [
+            self.registry.check_tracker_paths_exist,
+            self.registry.check_tracker_paths_unique,
+            self.check_filesystem,
+        ]  # LATER: better output
+        if _no_issues := all(test_ok() for test_ok in tests):
+            logger.info("Biome ok")

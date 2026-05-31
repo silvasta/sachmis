@@ -1,19 +1,21 @@
 from itertools import product
 from pathlib import Path
-from typing import Self
+from typing import Literal, Self
 
 from loguru import logger
+from rich.prompt import Confirm
 from sstcore.data import SstFile
 
 from ..config import SachmisConfig, get_config
 from ..exceptions import (
     ArborealError,
     ArborealFileMissingError,
+    DataRuntimeError,
     SachmisError,
 )
-from ..exceptions.data import DataRuntimeError
+from ..utils import printer
 from .arboreal import Biome
-from .conversation import Prompt, ResponseData
+from .conversation import ResponseData
 from .files import CampManager, UploadFile
 from .handler import FileHandler
 from .uploader import RemoteUploader, create_uploader
@@ -60,9 +62,22 @@ class DataManager:
                 self.biome_file: Path = config.paths.biome_file
                 logger.debug(f"biome: {self.biome_file}")
             except FileNotFoundError:
-                raise ArborealFileMissingError(
-                    "Biome", config.paths._biome_file()
-                ) from None
+                # REFACTOR: out of data.manager or at least __init__
+                printer.warn("Biome File Missing")
+                Literal["create", "raise", "prompt"]
+                text = "Create New Biome from default names?"
+                strategy: str = config.defaults.cli.data_no_biome
+                if strategy == "create" or (
+                    strategy == "prompt"
+                    and Confirm.ask(prompt=text, default=True)
+                ):
+                    Biome.with_name()
+                    printer.success("DataManager Setup recovered!")
+                else:
+                    raise ArborealFileMissingError(
+                        "Biome", config.paths._biome_file()
+                    ) from None
+
             self._full_responses: list[SstFile] = []
 
         if self._needs_forest:
@@ -79,8 +94,6 @@ class DataManager:
         if exception_type is not None:
             logger.error(f"DataManager - Error: {exception_type.__name__}")
 
-            # TASK: Exception handling
-
             if issubclass(exception_type, ArborealError):
                 logger.error(f"Context: {exception_value=}")
                 logger.warning("State not saved!")
@@ -95,8 +108,6 @@ class DataManager:
 
         if self._needs_biome and self._full_responses:
             self._attach_new_full_responses_to_biome()
-
-        # TASK: Data finish?
 
         logger.info("DataManager: Clean Exit")
 
@@ -125,18 +136,10 @@ class DataManager:
         self._handler: FileHandler = handler
         logger.info(f"Attached: {handler.__class__.__name__}")
 
-    def attach_prompt(self, prompt: Prompt):
-        # WARN: remove, already in handler
-        if self.has_handler:
-            self.handler.attach_prompt(prompt)
-        else:
-            logger.warning("DataManager has no FileHandler...")
-            self._prompt: Prompt = prompt
-            logger.info(f"Prompt attached to: {self.__class__.__name__}")
-
     def attach_camp(self, camp: CampManager):
         self._camp: CampManager = camp
 
+    # MOVE: camp
     def load_files(self, files: list[UploadFile], ensure_after_upload=True):
         """Assumes valid local data files, pushes to Remotes"""
 
@@ -156,6 +159,7 @@ class DataManager:
                 logger.error(f"Upload failed {file=}, {err}")
                 # TODO: check if raise or not
 
+    # MOVE: camp
     def load_images(self, images: list[SstFile]):
         """Assumes valid local image files, pushes to Remotes"""
 
@@ -179,7 +183,9 @@ class DataManager:
 
     def handle_response(self, response: ResponseData):
         """So far: write when desired, later handle filetree | other.."""
+        # IMPORTANT: check load Tree! save intermediate?
 
+        # MOVE: handler
         if not self._prompt_written:
             self._result_file_paths.append(self._rotate_prompt())
             self._prompt_written = True
@@ -188,6 +194,5 @@ class DataManager:
 
         answer_path: Path = response.write()
         self._result_file_paths.append(answer_path)
-        logger.info(f"Response written to: {answer_path=}")
 
-        # IMPORTANT: check load Tree! save intermediate?
+        logger.info(f"Response written to: {answer_path=}")

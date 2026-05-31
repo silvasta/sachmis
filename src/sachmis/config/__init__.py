@@ -1,3 +1,4 @@
+from . import models
 from .defaults import Defaults
 from .manager import SachmisConfig, get_config
 from .names import Names
@@ -11,4 +12,5 @@ __all__: list[str] = [
     "Settings",
     "Names",
     "Defaults",
+    "models",
 ]

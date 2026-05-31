@@ -18,9 +18,7 @@ def get_config() -> SachmisConfig:
         logger.info("Setup Sachmis ConfigManager...")
 
         _config_instance = ConfigManager(
-            settings_cls=Settings,
-            paths_cls=Paths,
-            write_new_master_setting_file_if_missing=True,
+            settings_cls=Settings, paths_cls=Paths
         )
         logger.info("ConfigManager setup completed")
 
