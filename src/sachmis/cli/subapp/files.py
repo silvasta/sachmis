@@ -11,8 +11,9 @@ from ...data.uploader import FileUploader, GoogleUploader, XaiUploader
 from ...utils.print import printer
 from ..args import Google, Xai
 
-# MOVE:
 config: SachmisConfig = get_config()
+
+# NEXT: data: setup for Forest, arborefactor
 
 
 def main() -> None:
@@ -31,7 +32,6 @@ attach_callback(app)
 @logger_catch
 def load(fresh: bool = False):
     """Load files from local folder into file registry and camp folder"""
-    # NEXT: data: setup for Forest, arborefactor
     # TASK: silvasta.data.FolderScanner
     with DataManager(forest_required=True) as data:
         data.load_local_files_to_forest(clear_current_files=fresh)
@@ -41,7 +41,7 @@ def load(fresh: bool = False):
 @logger_catch
 def local():
     """Show all local files in Forest"""
-    # NEXT: data: setup for Forest, arborefactor
+
     # TODO:  filter and display desired info
 
     with DataManager(forest_required=True, save_at_exit=False) as data:
@@ -58,7 +58,6 @@ def local():
 @logger_catch
 def push(xai: Xai = False, google: Google = False, ensure=True):
     """Sync all files in Forest to remote registry"""
-    # NEXT: data: setup for Forest, arborefactor
 
     uploaders: list[FileUploader] = _prepare_uploader(xai, google)
 

@@ -5,7 +5,7 @@ from sstcore.cli import logger_catch, sargs
 from sstcore.data import SstFile
 
 from ...config import SachmisConfig, get_config
-from ...config.model import ModelFamily
+from ...config.models import ModelFamily
 from ...core import capstone
 from ...core.model import Model
 from ...data import DataManager
@@ -71,6 +71,7 @@ def fire(
 
         printer.lines(
             header="Paths of generated Files",
+            # IMPORTANT: no box around! plus nvim command
             title=session.data.prompt.topic,
             lines=session.data.result_files(),
         )
@@ -135,25 +136,21 @@ def _prepare_model_args(
     models: list[str] | None,
     with_dummy=DEBUG,
 ) -> list[ModelFamily]:
-
-    printer.title("Preparing Models...")
+    printer.title("Selecting Models...")
 
     if models and (parsed_models := parse_raw_models(models)):
-        logger.debug(f"loading {len(parsed_models)=}")
-        printer.md(f"...{len(parsed_models)} selected for pipeline")
+        printer.header(f"...{len(parsed_models)} selected for pipeline")
         return parsed_models
 
-        # TASK: multimodel, new tree structure
-    match len(scanned_models := data.models_in_folder):
+    match len(scanned_models := data.handler.scanned_models):  # TEST:
         case 0:
-            return model_selector(multi_select=True, with_dummy=with_dummy)
+            return model_selector(multi_select=True)
         case 1:
             selected_model: ModelFamily = scanned_models[0]
         case _:
             selected_model: ModelFamily = model_selector(
                 models=scanned_models,
                 multi_select=False,
-                with_dummy=with_dummy,
             )[0]  # TASK: multi output, bipart tree
 
     return [selected_model]
@@ -236,20 +233,15 @@ def _prepare_image_args(
     return prepared_images
 
 
-# MOVE: _prepare... to args?
 def _prepare_role(pick_role: bool) -> Path | None:
-
     printer.title("Preparing Role...")
 
     if pick_role:
-        roles: list[Path] = config.paths.role_paths(mode="all")
-        role: Path | None = role_selector(roles)
-    else:
-        role = None
-
-    if role:
+        roles: list[Path] = config.paths.role_paths(mode="all")  # PARAM:
+        role: Path = role_selector(roles)
         logger.info(f"Selected Role: {role.stem}")
     else:
-        logger.info("no role selected")
+        logger.info("no role selected and no picker")
+        role = None
 
     return role

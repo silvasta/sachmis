@@ -8,8 +8,6 @@ from .agent import Model
 
 config: SachmisConfig = get_config()
 
-# NEXT: models
-
 
 class DummyModel(Model):
     model: DummyFamily

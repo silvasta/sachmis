@@ -5,13 +5,11 @@ from typing import Self
 
 from loguru import logger
 
-from sachmis.data.conversation import ConversationBag
-
 from ..config import SachmisConfig, get_config
-from ..config.model import Geminis, Groks, ModelFamily
-from ..config.model.dummy import DummyFamily
+from ..config.models import DummyFamily, Geminis, Groks, ModelFamily
 from ..data import DataManager
 from ..data.arboreal import ArborealTracker, Forest, Tree
+from ..data.conversation import ConversationBag
 from ..data.files import CampManager
 from ..data.handler import FileRollout
 from ..utils.print import printer
@@ -161,6 +159,7 @@ class ExtractFromTree(AbstractContextManager):
             )
             cwd_conversations.log_and_print()
             # TODO: attach prompt, extract
+            # NEXT:
             # TODO: previous_sprout
             # TODO: find prompt ancestor
 
@@ -208,8 +207,7 @@ class Fire(AbstractContextManager):
         )
         logger.info("Tree Extractor stacked to Context")
 
-        self.data.attach_prompt(self.tree_handler.prompt)
-        self.rollout.attach_prompt(self.tree_handler.prompt)
+        self.data.handler.attach_prompt(self.tree_handler.prompt)
 
         logger.success("capstone.Fire ready for session")
 

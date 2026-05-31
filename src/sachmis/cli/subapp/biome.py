@@ -3,13 +3,13 @@ from pathlib import Path
 import typer
 from loguru import logger
 from sstcore.cli import attach_callback, logger_catch
+from sstcore.exceptions import FailedSelectionError
 from sstcore.tui import ListSelectorApp
 
 from ...cli import args
 from ...config import SachmisConfig, get_config
 from ...data.arboreal import ArborealTracker, Biome
-from ...data.setup import create_new_biome
-from ...exceptions import ArborealFileMissingError
+from ...exceptions import ArborealFileExistsError
 from ...utils.print import printer
 
 
@@ -30,11 +30,27 @@ attach_callback(app)
 def setup(name: args.Name | None = None):
     """Create new Biome with global data structure"""
     config: SachmisConfig = get_config()
-    biome_file: Path = create_new_biome(name)
 
-    config.names.biome_file: str = biome_file.name
-    config.save_settings()  # MOVE: 3er block to config?
-    logger.info(f"Updated active Biome in Names: {biome_file=}")
+    try:
+        biome: Biome = Biome.with_name(name)
+
+    except ArborealFileExistsError as error:
+        items: list[str] = [
+            f"Failed to Load Biome... {printer.red(str(error))}",
+            "Check the provided location and choose an avaliable name.",
+            f"{error.file=}",
+        ]
+        printer.scroll(items, style="danger")
+        raise
+
+    items: list[str] = [
+        f"Successfully Created {printer.green('New Biome')}!",
+        f"{biome.tracker_info.stat=}",
+    ]
+    printer.scroll(items, style="success")
+
+    printer.success("All Existing Biome Files")
+    printer.scroll(items=list(config.paths.biome_files), style="success")
 
 
 @app.command()
@@ -42,10 +58,19 @@ def setup(name: args.Name | None = None):
 def show():
     """Show all Biomes and their Files"""
     config: SachmisConfig = get_config()
-    printer.lines_with_len(
-        name="Biomes",
-        lines=list(config.paths.biome_files),
-    )
+
+    Biome.check_filesystem()
+
+    printer.danger("No Biome File found!")
+
+    printer.warn("There is only 1 Biome File, nothing to select!")
+
+    biome: Biome = Biome.read_mode(config.paths.biome_file)
+    logger.info(f"Biome Loaded {biome.n_forest=}, {biome.n_responses=}")
+
+    printer.success("All Existing Biome Files")
+    printer.scroll(items=list(config.paths.biome_files), style="success")
+
     active: str = "[bold]Active:[/]"
     printer.title(f"{active} {config.paths.biome_file}", style="warning")
 
@@ -53,47 +78,31 @@ def show():
 @app.command()
 @logger_catch
 def select():
-    """Show all Biome Files and select 1"""
+    """Show all Biome Files and select active Biome"""
     config: SachmisConfig = get_config()
-    biome_files: list[Path] = list(config.paths.biome_files)
+
     printer.lines(
-        lines=biome_files,
-        header=None,
+        lines=(biomes := list(config.paths.biome_files)),
         title="Selecting from Biome Files",
-        style="cyan",
     )
-    # MERGE: with check_biome_files
-    match len(biome_files):
-        case 0:
-            printer.danger("No Biome File found!")
-            raise ArborealFileMissingError("Biome", config.paths.biome_dir)
-        case 1:
-            printer.warn("There is only 1 Biome File, nothing to select!")
-            printer(config.paths.biome_file)
-            return
-        case _:
-            pass
-    tui = ListSelectorApp(items=biome_files, multi_select=False)
 
-    if not (selected := tui.run()):
-        printer.warn("Action cancelled by user.")
-        return
-    biome_file: Path = Path(selected[0])
+    if not (select := ListSelectorApp(items=biomes, multi_select=False).run()):
+        raise FailedSelectionError("Try better, Biomi is Important..!")
 
-    printer.success(f"Selected {biome_file}")
+    printer.success(f"Selected: {(biome_file := Path(select[0])).name}")
 
-    config.names.biome_file: str = biome_file.name
-    config.save_settings()  # MOVE: 3er block to config?
-    logger.info(f"Updated active Biome in Names: {biome_file.name=}")
+    with Biome.edit_mode(biome_file) as biome:
+        biome.apply_to_config(biome_file)
+        biome.touch()
 
 
 @app.command()
 @logger_catch
-def stat():
+def stat():  # LATER: generic for Arbo
     """Show statistics of active Biome"""
-    # LATER: generic for Arbo
     config: SachmisConfig = get_config()
 
+    printer.md("This function is not on the current state...")
     active: str = "[bold]Active:[/]"
     printer.title(f"{active} {config.paths.biome_file}", style="warning")
 
@@ -101,8 +110,7 @@ def stat():
     forests: list[ArborealTracker] = biome.forests
 
     to_print: list[str] = []
-    for forest in forests:
-        # TODO: SimpleTree with nice statistics!
+    for forest in forests:  # TODO: SimpleTree with nice statistics!
         name: str = forest.path.parent.parent.name
         to_print.append(f"[bold black on white]{name}[/] - {forest.path}")
 
@@ -112,10 +120,6 @@ def stat():
     )
     printer.path_exists_table([forest.path for forest in forests])
 
-
-# TASK: more commands:
-# - repair?
-# - write all forest and trees to 1 folder?
 
 if __name__ == "__main__":
     main()

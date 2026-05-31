@@ -34,12 +34,12 @@ app = typer.Typer(
     help="CLI for direct communication with LLMs",
     no_args_is_help=True,
 )
-attach_callback(app, param=config.compose_setup_param())
+attach_callback(app, param=config.setup_info)
 
 # core
 # app.command()(command.thunder)
 app.command()(command.fire)
-# app.command()(command.tree)  # NEXT: rename to sprout???
+# app.command()(command.tree)  # TASK: rename to sprout???
 # app.command()(command.loop)
 
 # utils
