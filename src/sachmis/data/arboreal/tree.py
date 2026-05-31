@@ -1,118 +1,52 @@
-from functools import singledispatchmethod
 from pathlib import Path
-from typing import Self
 
 from loguru import logger
 from pydantic import Field
-from sstcore.exceptions import NotImplementedDispatchError
 
-from ...exceptions import PromptError
-from ..conversation import ConversationBag
-from ..conversation.base import Conversation, build_conversation_tree
-from ..conversation.prompt import Prompt, PromptData
-from ..conversation.response import Response
+from ..conversation import ConversationDAG, Prompt, Response
 from .base import Arboreal
+from .sprout import Sprout
 
 
 class Tree(Arboreal):
     """Top element inside Forest: entry point for every conversation"""
 
-    root_prompt: Prompt
     tree_stem: str
 
     prompts: dict[str, Prompt] = Field(default_factory=dict)
     responses: dict[str, Response] = Field(default_factory=dict)
 
+    dag: ConversationDAG = Field(default_factory=dict)
+
     ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
     ### -- Tree - Custom Functions and Attributes
     ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
 
-    def find_conversation_by_stem(self, stems: list[str]) -> ConversationBag:
-        result = ConversationBag(
-            prompts=[
-                prompt
+    def find_conversation_by_stem(
+        self, stems: list[str], target_uuid: str
+    ) -> Sprout:
+        sprout_root_dag: ConversationDAG = self.dag.copy_subtree(target_uuid)
+
+        result = Sprout(
+            tree_tracker=self.tracker_info,
+            dag=sprout_root_dag,
+            prompts={
+                prompt.unique_id: prompt
                 for stem in stems
                 for prompt in self.prompts.values()
                 if prompt.stem == stem
-            ],
-            responses=[
-                response
+            },
+            responses={
+                response.unique_id: response
                 for stem in stems
                 for response in self.responses.values()
                 if response.stem == stem
-            ],
+            },
         )
-        result.log_and_print()
         return result
 
     @classmethod
-    def with_prompt(
-        cls,
-        prompt: PromptData,
-        tree_file: Path,
-        local_id: int,
-        tree_stem: str = "",
-    ) -> Self:
-        """Create new Tree with single Sprout attached"""
-        prompt: Prompt = Prompt.upgrade_from_raw(
-            raw_prompt=prompt, local_id=local_id, ancestor=None
-        )
-        tree: Self = cls.with_tracker(
-            path=tree_file,
-            local_id=local_id,
-            root_prompt=prompt,
-            tree_stem=tree_stem or prompt.slug_topic,
-        )
-        tree.prompts[prompt.unique_id] = prompt
-        logger.debug(f"Created: {tree.desc}")
-
-        return tree
-
-    @singledispatchmethod
-    def attach(self, target: Prompt | Response):
-        # NEXT:
-        raise NotImplementedDispatchError(target.desc)
-
-    @attach.register
-    def _(self, target: Prompt):
-        # NEXT:
-        """Ensure Ancestor have new added target in Successor"""
-        # TODO: some checks specific on Prompt?
-        self._confirm_ancestor(target, self.prompts)
-        logger.debug(f"Ancestor of Prompt confirmed: {target.desc}")
-
-    @attach.register
-    # NEXT:
-    def _(self, target: Response):
-        # TODO: some checks specific on Response?
-        self._confirm_ancestor(target, self.responses)
-        logger.debug(f"Ancestor of Response confirmed: {target.desc}")
-
-    def _confirm_ancestor(self, target: Conversation, registry: dict):
-        # NEXT:
-        """Ensure Ancestor have new added target in Successor"""
-
-        # TASK: confirm
-
-        logger.debug(f"Confirming ancestor: {target.desc}")
-
-        if (target_ancestor := target.single_ancestor()) is None:
-            raise PromptError(f"Ancestor not found in Prompt: {target.desc}")
-
-        if not (tree_ancestor := registry.get(target_ancestor.unique_id)):
-            raise PromptError(f"Ancestor not found in Registry: {target.desc}")
-
-        # LATER: More checks? and prompt with multi predecessors
-
-        if _target_in_tree := tree_ancestor.find_successor(target.unique_id):
-            logger.debug(f"Already in Tree: {target.desc}")
-        else:
-            registry[target.unique_id] = target
-            logger.debug(f"Added to Tree: {target.desc}")
-
-    @classmethod
     def file_attach(cls, file: Path, target: Prompt | Response):
-        # NEXT:
         logger.info("Loading Tree to attach Response")
 
         with cls.edit_mode(file) as tree:
@@ -120,8 +54,28 @@ class Tree(Arboreal):
 
         logger.info("All information submitted, Tree closed")
 
-    def sample_conversation_tree(self):
-        return build_conversation_tree(root_sprout=self.root_prompt)
+    def attach(self, target: Prompt | Response) -> None:
+        """Attach a Prompt or Response and sync it to the DAG."""
+        from ..conversation import ConversationNode
+
+        # 1. Store in the respective data dictionary
+        if isinstance(target, Prompt):
+            self.prompts[target.unique_id] = target
+            partition = "P"
+        elif isinstance(target, Response):
+            self.responses[target.unique_id] = target
+            partition = "R"
+        else:
+            raise TypeError(f"Cannot attach {type(target)} to Tree.")
+
+        # 2. Append to the DAG representation
+        node = ConversationNode(
+            id=target.unique_id,
+            partition=partition,
+            local_id=target.local_id,
+            name=target.topic if isinstance(target, Prompt) else target.model,
+        )
+        self.dag.nodes.append(node)
 
     ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
     ### -- Arboreal - Access to Members

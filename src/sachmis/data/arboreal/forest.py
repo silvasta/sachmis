@@ -7,7 +7,7 @@ from sstcore.data import FileRegistry, SstFileRegistry
 from ...config import SachmisConfig, get_config
 from ...exceptions import ArborealRegistryMissingError
 from ...utils import printer
-from ..conversation.prompt import PromptData
+from ..conversation.prompt import Prompt
 from ..files import CampManager, RoleRegistry, UploadRegistry
 from .base import Arboreal, ArborealTracker
 from .tree import Tree
@@ -37,7 +37,7 @@ class Forest(Arboreal[Tree]):
         cls, path: Path, local_id, camp: CampManager | None = None
     ) -> Self:
         camp: CampManager = camp or CampManager()
-        return cls.with_tracker(
+        return cls.create_with_tracker(
             path=path,
             local_id=local_id,
             roles=camp.roles,
@@ -69,7 +69,7 @@ class Forest(Arboreal[Tree]):
         logger.info(f"loaded {len(new)} Files from Camp {name} to Forest")
 
     def provide_tree(
-        self, tree_id: int, raw_prompt: PromptData
+        self, tree_id: int, raw_prompt: Prompt
     ) -> ArborealTracker:
 
         # LATER: attach to temp registry, confirm when task went well
@@ -105,13 +105,14 @@ class Forest(Arboreal[Tree]):
     def find_tree_by_local_id(self, id: int) -> ArborealTracker | None:
         return self.registry.find_tracker_by_local_id(id)
 
-    def attach_new_tree(self, prompt: PromptData) -> ArborealTracker:
+    def attach_new_tree(self, prompt: Prompt) -> ArborealTracker:
         """Create new Tree with initial Sprout"""
         config: SachmisConfig = get_config()
 
         tree_file: Path = config.paths.tree_file(
-            id=(tree_id := self._next_instance_id()), stem=prompt.slug_topic
+            id=(tree_id := self._next_instance_id()), stem=prompt.topic
         )
+        # FIX: tree constructor, no prompt but dag
         new_tree: Tree = self._setup_tree(prompt, tree_file, local_id=tree_id)
         new_tree.save_state(tree_file, lock_required=False)
 
@@ -120,11 +121,15 @@ class Forest(Arboreal[Tree]):
         )
 
     def _setup_tree(
-        self, prompt: PromptData, tree_file: Path, local_id: int
+        self, prompt: Prompt, tree_file: Path, local_id: int
     ) -> Tree:
-        return Tree.with_prompt(
-            prompt=prompt, tree_file=tree_file, local_id=local_id
+        """Instantiate a new Tree and initialize it with the root Prompt."""
+        tree = Tree.create_with_tracker(
+            path=tree_file, local_id=local_id, tree_stem=prompt.topic
         )
+        # Register the initial prompt to the new tree
+        tree.attach(prompt)
+        return tree
 
     def attach_tree(
         self, tree: Tree, tree_file: Path, local_id: int
@@ -139,7 +144,6 @@ class Forest(Arboreal[Tree]):
     ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
 
     # REMOVE: or adapt in CampManager
-
     def _prepare_file_registry(self, from_empty_status=False):
         # TODO: synchronize local file manager and upload file manager
         pass

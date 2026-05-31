@@ -88,7 +88,10 @@ class Biome(Arboreal[Forest]):
         )
 
     def _setup_forest(self, forest_file: Path, local_id: int) -> Forest:
-        return Forest.with_camp(path=forest_file, local_id=local_id)
+        return Forest.with_camp(
+            path=forest_file,
+            local_id=local_id,
+        )
 
     def attach_forest(
         self, forest: Forest, forest_file: Path, local_id: int
