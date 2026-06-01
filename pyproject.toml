@@ -29,7 +29,7 @@ sstcore = { path = "/home/silvan/Code/sstcore/latest", editable = true }
 # sstcore = { git = "https://github.com/silvasta/silvasta", tag = "v0.2.4b2" }
 
 [project.scripts]
-sachmis = "sachmis.cli.app:main"
+sachmis = "sachmis.__main__:main"
 
 [build-system]
 requires = ["uv_build>=0.10.10,<0.11.0"]
