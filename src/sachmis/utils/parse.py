@@ -1,7 +1,6 @@
 from loguru import logger
 
-from sachmis.config.model import Geminis, Groks, ModelFamily
-from sachmis.config.model.dummy import DummyFamily
+from ..config.models import DummyFamily, Geminis, Groks, ModelFamily
 
 
 # MOVE: as function of config.model?

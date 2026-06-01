@@ -3,8 +3,6 @@ from itertools import cycle
 from rich.table import Table
 from sstcore.utils import Printer
 
-from sachmis.config.model import ModelFamily
-
 custom_theme: dict[str, str] = {
     # "write": "bold white on green",
     # LATER: now everything gone... what could be added?
@@ -12,8 +10,18 @@ custom_theme: dict[str, str] = {
 
 
 class SachmisPrinter(Printer):
+    def show_conversation_transition_result(self, source: str, target: str):
+        text = f"{self.cyan(source)} --> {self.magenta(target)}"
+        self.header(text)
+        self.success(text)
+        self.danger(text)
+
     def model_table(
-        self, models: list[ModelFamily], title=None, show_header=True
+        self,
+        model_uniques: list[str],
+        model_api_names: list[str],
+        title=None,
+        show_header=True,
     ):
         """load base paths from file, check existence, print result"""
 
@@ -24,10 +32,10 @@ class SachmisPrinter(Printer):
 
         colors: list[str] = ["cyan", "magenta", "yellow", "green", "white"]
 
-        for model, color in zip(models, cycle(colors), strict=False):
-            table.add_row(
-                model.unique, str(model), model.api_name, style=color
-            )
+        for name, api, color in zip(
+            model_uniques, model_api_names, cycle(colors), strict=False
+        ):
+            table.add_row(name, api, style=color)
 
         self(table)
 
