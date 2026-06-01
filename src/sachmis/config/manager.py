@@ -1,5 +1,6 @@
 from loguru import logger
 from sstcore.config import ConfigManager
+from sstcore.utils.path import find_project_root
 
 from .defaults import Defaults
 from .names import Names
@@ -18,8 +19,13 @@ def get_config() -> SachmisConfig:
         logger.info("Setup Sachmis ConfigManager...")
 
         _config_instance = ConfigManager(
-            settings_cls=Settings, paths_cls=Paths
+            settings_cls=Settings,
+            paths_cls=Paths,
+            # FIX: setting_file override
+            setting_file=find_project_root() / "configs" / "setting_file.json",
         )
+
         logger.info("ConfigManager setup completed")
+        logger.error(f"Modified: {_config_instance.setting_file=}")
 
     return _config_instance

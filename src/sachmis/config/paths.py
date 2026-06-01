@@ -23,6 +23,13 @@ class Paths(SstPaths[Names, Defaults]):
     """Assemble paths for project"""
 
     @property
+    @PathGuard.dir
+    def config_home(self) -> Path:
+        # FIX: find new solution!!!
+        # FIX: find new solution!!!
+        return self.project_root
+
+    @property
     def active_biome(self) -> bool:
         return self.unconfirmed_biome_file.exists()
 
