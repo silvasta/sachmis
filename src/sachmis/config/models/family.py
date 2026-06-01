@@ -4,9 +4,8 @@ from enum import Enum, EnumMeta
 # INFO: this is the Model Param Schema for fixed external data
 
 # REFACTOR: Use csv/pyandtic instead of Enum?
-# - needs factory for Enum or Literal for typer XXX already changed!
 # - still nice with Enum, match and validation
-# - maybe basemodel just for usage?
+# - maybe basemodel just for data?
 
 # LATER: load family from csv
 # - load including prices, status=Active etc,
