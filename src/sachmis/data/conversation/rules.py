@@ -2,6 +2,11 @@ from enum import StrEnum, auto
 
 
 class PromptTransitionRules(StrEnum):
+    """Prompt: Number of inputs always constant, usually 1.
+    Number of ancestors usually constant (Resend exactly same Prompt).
+    Special Prompt has multiple fathers and for each 1 grandchild.
+    Internally stores the information to bridge Pre/Post Responses."""
+
     REGULAR = auto()
     ROOT = auto()
     MULTI = auto()
@@ -15,11 +20,7 @@ class PromptTransitionRules(StrEnum):
 
     @classmethod
     def explain(cls) -> str:
-        return """Prompt: Number of inputs always constant, usually 1.
-        Number of ancestors usually constant (Resend exactly same Prompt).
-        Special Prompt has multiple fathers and for each father 1 grandchild.
-        Internally stores the information to bridge Pre/Post Responses.
-        """
+        pass
 
     def valid_ancestor(self, response: ResponseTransitionRules) -> bool:
         match self:
@@ -56,6 +57,12 @@ class PromptTransitionRules(StrEnum):
 
 
 class ResponseTransitionRules(StrEnum):
+    """Response: Number of inputs always constant, usually 1.
+    Number of ancestors usually grows (continue on successful Response)
+    Forward Demux Response with q siblings: all point to same Prompt.
+    Backward Mux Response with q siblings: all pointed from same Prompt.
+    Bidirect Response is (independent) Forward and Backward together."""
+
     REGULAR = auto()
     FORWARD = auto()
     BACKWARD = auto()
@@ -71,13 +78,7 @@ class ResponseTransitionRules(StrEnum):
 
     @classmethod
     def explain(cls) -> str:
-        return """
-        Response: Number of inputs always constant, usually 1.
-        Number of ancestors usually growing (Continue on Successful Response).
-        Forward Demux Response with q siblings: all point forward to same Prompt.
-        Backward Mux Response with q siblings: all pointed backwards from same Prompt.
-        Bidirect Response is when Forward and Backward (independent) happens in same Response.
-        """
+        pass
 
     def valid_ancestor(self, prompt: PromptTransitionRules) -> bool:
         match self:
