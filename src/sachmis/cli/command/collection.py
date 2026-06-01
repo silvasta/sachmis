@@ -1,7 +1,20 @@
+from itertools import product
+
 from sstcore.cli import logger_catch, sargs
 
-from ...config import SachmisConfig, get_config
-from ...config.model import Geminis, Groks, get_all_models
+from sachmis.data.conversation import (
+    PromptTransitionRules,
+    ResponseTransitionRules,
+)
+
+from ...config import (
+    Geminis,
+    Groks,
+    SachmisConfig,
+    get_config,
+    model_api_names,
+    model_uniques,
+)
 from ...data.setup import create_new_base
 from ...utils.print import printer
 from .. import args
@@ -34,9 +47,33 @@ def models():  # TODO: rich table, statistics
         )
     printer.lines_with_len(
         name="All Models",
-        lines=[model.unique for model in get_all_models(with_dummy=True)],
+        lines=[model for model in model_uniques()],
     )
-    printer.model_table(get_all_models())
+    printer.model_table(model_uniques(), model_api_names())
+
+
+@logger_catch
+def rules():
+    PromptTransitionRules.explain()
+
+    for prompt, response in list(
+        product(PromptTransitionRules, ResponseTransitionRules)
+    ):
+        print(prompt)
+        print(response)
+        printer.show_conversation_transition_result(
+            printer._format(prompt), response
+        )
+
+    # printer.red(
+    #     i
+    #     for i in [
+    #         y.description(),
+    #         y.explain(),
+    #         a.explain(),
+    #         z.description(),
+    #     ]
+    # )
 
 
 @logger_catch
@@ -49,10 +86,10 @@ def roles():  # TODO: create "new role" function (somewhere else)
 def config_details(write_config: sargs.Write = False):
     """Print config to Console, optional override the json settings"""
     config: SachmisConfig = get_config()  # TODO: better selection
-    printer(config.compose_setup_param())
+    printer(config.setup_info)
     printer(config.settings)
     printer(config.paths.dot_env)
-    printer(config.master_setting_file)
+    printer(config.setting_file)
 
     if write_config:
         config.save_settings()

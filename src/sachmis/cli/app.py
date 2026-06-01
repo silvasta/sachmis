@@ -46,6 +46,7 @@ app.command()(command.fire)
 app.command()(command.init)
 app.command("config")(command.config_details)
 app.command()(command.models)
+app.command()(command.rules)
 # app.command()(command.roles)
 
 # nested

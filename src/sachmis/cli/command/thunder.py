@@ -5,7 +5,7 @@ import typer
 from loguru import logger
 from sstcore.cli.setup import logger_catch
 
-from ...config.model import Geminis, Groks, ModelFamily
+from ...config.models import Geminis, Groks, ModelFamily
 from ...core.model import Gemini, Grok, Model
 from ...data import DataManager
 from ...utils.print import printer
