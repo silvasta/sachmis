@@ -10,7 +10,7 @@ from ..config.models import ModelFamily
 from ..exceptions import DataRolloutError, DataRuntimeError, SachmisDataError
 from ..utils import model_from_unique, printer
 from .arboreal import ArborealTracker, Tree
-from .conversation import Prompt, PromptData
+from .conversation import Prompt
 
 config: SachmisConfig = get_config()
 
@@ -38,7 +38,7 @@ class FileHandler:
     _tree_tracker_from_forest: ArborealTracker | None = None
     _tree_tracker_from_tree: ArborealTracker | None = None
 
-    _raw_prompt: PromptData | None = None
+    _raw_prompt: Prompt | None = None
     _prompt: Prompt | None = None
 
     _result_file_paths: list[Path] = []
@@ -79,13 +79,13 @@ class FileHandler:
         logger.debug(f"Prompt attached to: {self.__class__.__name__}")
 
     @property
-    def raw_prompt(self) -> PromptData:
+    def raw_prompt(self) -> Prompt:
         if self._prompt:  # TODO: check if that has any drawbacks
-            logger.info("Providing Prompt insted of raw_prompt")
+            logger.info("Providing Prompt instead of raw_prompt")
             return self._prompt
         if self._raw_prompt:
             return self._raw_prompt
-        raise DataRuntimeError("PromptData and Prompt not loaded!")
+        raise DataRuntimeError("Prompt and Prompt not loaded!")
 
     @property
     def prompt(self) -> Prompt:
@@ -134,10 +134,10 @@ class FileRollout(FileHandler):
         self.scan_folder()
         logger.info(self.scan_statistics)
 
-        self._raw_prompt: PromptData = self.load_raw_prompt()
+        self._raw_prompt: Prompt = self.load_raw_prompt()
 
-    def load_raw_prompt(self) -> PromptData:
-        return PromptData.load_from_path()
+    def load_raw_prompt(self) -> Prompt:
+        return Prompt.load_from_path()
 
     @staticmethod
     def extract_tree_id() -> int:

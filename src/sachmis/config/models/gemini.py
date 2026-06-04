@@ -10,7 +10,7 @@ class Geminis(ModelFamily):
     # NOTE: Ideas
     # https://ai.google.dev/gemini-api/docs/robotics-overview
 
-    # TODO: usage calculaton
+    # TODO: usage calculation
     @property
     def unique_letter(self) -> str:
         """Used for pydantic, Models -> str -> Models and for CLI"""

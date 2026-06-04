@@ -7,7 +7,7 @@ from xai_sdk.sync.chat import Chat
 # from tenacity import retry, stop_after_attempt, wait_exponential
 from ...config import SachmisConfig, get_config
 from ...config.defaults import GrokParam, ModelParam
-from ...config.model import Groks
+from ...config.models import Groks
 from ...data.files import XaiUploadState
 from ...exceptions import SachmisDataError
 from .. import retry
@@ -91,7 +91,7 @@ class Grok(Model):
             else:
                 logger.warning(f"Failed: {upload_file=}")
 
-    # AI: is there any issu with using this like that?
+    # AI: is there any issue with using this like that?
     @retry.rich_style()
     def _get_response(self):
         response: Response = self.chat.sample()

@@ -3,6 +3,8 @@ from typing import Literal
 from pydantic import BaseModel, Field
 from sstcore.config import SstDefaults
 
+# LATER: separate Task Param and App defaults
+
 
 class TenacityDefaults(BaseModel):
     max_attempts: int = 5

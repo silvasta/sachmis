@@ -14,8 +14,6 @@ class SproutName(ParsedName):
             "topic",
         ]
 
-    # TEST: swap keys, what happens?
-
     def computed(self, topic: str, locator: str, spec: str) -> str:
         values: list[str] = [
             # str(day_count()),
@@ -24,12 +22,6 @@ class SproutName(ParsedName):
             slugify(topic, delim="-"),
         ]
         return self(values)
-
-
-# REMOVE: ??
-# parts: list[str] = [
-#     "[{style1}]{name}[/] Remotes: [{style2}]{remotes}[/]",
-# ]
 
 
 class Names(SstNames):

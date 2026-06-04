@@ -91,7 +91,7 @@ class Tree(Arboreal):
 
     @property
     def child_info(self):
-        return f"{self.n_prompts} Promts and  {self.n_responses} responses"
+        return f"{self.n_prompts} Prompts and  {self.n_responses} responses"
 
     @property
     def desc(self):

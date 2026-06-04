@@ -8,7 +8,7 @@ from sachmis.exceptions import SachmisDataError
 # from tenacity import retry, stop_after_attempt, wait_exponential
 from ...config import SachmisConfig, get_config
 from ...config.defaults import GeminiParam, ModelParam
-from ...config.model import Geminis
+from ...config.models import Geminis
 from ...utils.print import printer
 from .. import retry
 from .agent import Model
@@ -95,7 +95,7 @@ class Gemini(Model):
             else:
                 logger.warning(f"Failed: {upload_file=}")
 
-    # AI: is there any issu with using this like that?
+    # AI: is there any issue with using this like that?
     @retry.push_forward()
     def _get_response(self):
         response: GenerateContentResponse = (

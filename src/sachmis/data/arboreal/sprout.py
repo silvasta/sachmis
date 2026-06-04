@@ -9,7 +9,7 @@ class Sprout(BaseModel):
 
     tree_tracker: ArborealTracker
 
-    # and most likely (lightweigt tracker of tree that provides data)
+    # and most likely (lightweight tracker of tree that provides data)
     _graph: ArborealTracker | None = PrivateAttr(default=None)
 
     dag: ConversationDAG

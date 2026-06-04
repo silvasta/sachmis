@@ -37,7 +37,7 @@ def setup(name: args.Name | None = None):
     except ArborealFileExistsError as error:
         items: list[str] = [
             f"Failed to Load Biome... {printer.red(str(error))}",
-            "Check the provided location and choose an avaliable name.",
+            "Check the provided location and choose an available name.",
             f"{error.file=}",
         ]
         printer.scroll(items, style="danger")

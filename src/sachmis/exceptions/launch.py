@@ -21,6 +21,7 @@ class NotInCampError(FileNotFoundError, SachmisLaunchError):
             super().__init__(message)
 
 
+# MOVE: to error handling in app
 def _message_not_in(identifier) -> str:
     return (
         f"\nCurrent location not in {identifier}!"

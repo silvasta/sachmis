@@ -43,7 +43,7 @@ def rules():
         r_pr2: bool = response.valid_successor(prompt)
         if r_pr1 != r_pr2:
             printer(f"{r_pr1=}-{r_pr2=}")
-            printer.red("Inconsitent TransitionRules!")
+            printer.red("Inconsistent TransitionRules!")
 
         printer.conversation_transition_result(
             prompt,
@@ -56,7 +56,7 @@ def rules():
         r_rp2: bool = response.valid_ancestor(prompt)
         if r_rp1 != r_rp2:
             printer(f"{r_rp1=}-{r_rp2=}")
-            printer.red("Inconsitent TransitionRules!")
+            printer.red("Inconsistent TransitionRules!")
 
         printer.conversation_transition_result(
             prompt,

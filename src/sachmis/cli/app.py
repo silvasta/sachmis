@@ -1,6 +1,8 @@
 from sstcore.cli.engine import SafeTyper
 
 from ..config import SachmisConfig, get_config
+from ..exceptions import SachmisLaunchError
+from ..utils import printer
 from . import command, subapp
 
 config: SachmisConfig = get_config()
@@ -31,3 +33,8 @@ app.add_typer(subapp.forest)
 # app.add_typer(subapp.tree) # NEXT: change to tree handler?
 app.add_typer(subapp.files)
 app.add_typer(subapp.utils)
+
+
+@app.register_error(SachmisLaunchError)
+def handle_arbo(error: SachmisLaunchError):
+    printer.warn(f"{printer.red('Problem!')} {error=}")
