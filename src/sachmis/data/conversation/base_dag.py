@@ -24,7 +24,7 @@ class BipartiteDAG(BaseModel):
     edges: list[Edge] = Field(default_factory=list)
 
     _node_map: dict[str, Literal["P", "R"]] = PrivateAttr(default_factory=dict)
-    _graph: nx.DiGraph | None = PrivateAttr(default=None)
+    _graph: nx.DiGraph = PrivateAttr(default_factory=nx.DiGraph)
 
     @model_validator(mode="after")
     def validate_bipartite_dag(self) -> BipartiteDAG:
@@ -86,20 +86,20 @@ class BipartiteDAG(BaseModel):
         figsize: tuple[int, int] | None = None,
         use_graphviz: bool = False,
     ):
-        """Layered hierarchical layout – works well for 10+ layers."""
+        """Standardized visualizer using PyGraphviz layout or custom layers."""
         import matplotlib.pyplot as plt
 
+        pos = None
         if use_graphviz:
             try:
-                pos = nx.nx_agraph.graphviz_layout(self.graph, prog="dot")
-                title = "Bipartite DAG (Graphviz dot)"
+                pos = nx.nx_agraph.graphviz_layout(self._graph, prog="dot")
+                title = "Bipartite DAG (Graphviz dot Layout)"
             except Exception:
                 print(
-                    "Graphviz not available, falling back to custom layered layout."
+                    "Graphviz (pygraphviz) not available. Falling back to custom layout."
                 )
-                use_graphviz = False
 
-        if not use_graphviz:
+        if pos is None:
             levels = self._compute_levels()
             layer_nodes = defaultdict(list)
             for node, lvl in levels.items():
@@ -107,39 +107,36 @@ class BipartiteDAG(BaseModel):
 
             pos = {}
             for lvl, nodes in sorted(layer_nodes.items()):
-                # deterministic order inside each column
                 sorted_nodes = sorted(nodes)
                 n = len(sorted_nodes)
                 for i, node in enumerate(sorted_nodes):
-                    y = i - (n - 1) / 2.0  # center vertically
-                    pos[node] = (
-                        lvl * 2.0,
-                        y,
-                    )  # *2 spreads layers horizontally
+                    y = i - (n - 1) / 2.0
+                    pos[node] = (lvl * 2.0, y)
 
-            title = f"Bipartite DAG – Layered Layout ({max(levels.values()) + 1} layers)"
+            max_lvl = max(levels.values()) if levels else 0
+            title = f"Layered Layout ({max_lvl + 1} layers)"
 
         if figsize is None:
             max_x = max(x for x, _ in pos.values()) if pos else 5
-            figsize = (max(10, int(max_x * 1.4)), 9)
+            figsize = (max(10, int(max_x * 1.4)), 8)
 
         plt.figure(figsize=figsize)
         colors = [
-            "lightblue" if self._node_map.get(n) == "P" else "lightgreen"
-            for n in self.graph.nodes()
+            "skyblue" if self._node_map.get(n) == "P" else "lightgreen"
+            for n in self._graph.nodes()
         ]
         nx.draw(
-            self.graph,
+            self._graph,
             pos,
             with_labels=True,
             node_color=colors,
-            node_size=1400,
+            node_size=1500,
             arrows=True,
             arrowsize=20,
             font_size=9,
             font_weight="bold",
         )
-        plt.title(title)
+        plt.title(title, fontsize=12, fontweight="bold")
         plt.axis("off")
         plt.tight_layout()
         plt.show()
