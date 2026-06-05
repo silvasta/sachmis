@@ -1,9 +1,19 @@
 from collections.abc import Callable
+from contextlib import contextmanager
+from dataclasses import dataclass
+from enum import StrEnum, auto
 from pathlib import Path
+from typing import Self
 
 from loguru import logger
 from pydantic import Field
 from sstcore.data.files import SstFile
+
+from sachmis.exceptions import (
+    ArborealFileExistsError,
+    ArborealFileMissingError,
+)
+from sachmis.exceptions.arbo import ArborealFileError
 
 from ...config import SachmisConfig, get_config
 from .base import Arboreal, ArborealTracker
@@ -14,10 +24,6 @@ class Biome(Arboreal[Forest]):
     """Global Master Forest, Registry for entire Content"""
 
     responses: list[SstFile] = Field(default_factory=list)
-
-    ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
-    ### -- Biome - Custom Functions
-    ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
 
     @property
     def n_responses(self) -> int:
@@ -31,6 +37,53 @@ class Biome(Arboreal[Forest]):
 
         self.responses.append(response)
 
+    ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
+    ### -- Biome - Custom Functions
+    ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
+
+    @classmethod
+    @contextmanager
+    def observe(cls, obsi: BiomeObserver | None = None):
+        """Find Biomes"""
+        obsi: BiomeObserver = obsi or BiomeObserver.init()
+        config: SachmisConfig = get_config()
+        cls.log_filesystem_status()
+        try:
+            yield obsi
+            obsi.set_ok()
+
+        except ArborealFileMissingError as error:
+            cls.handle_file_error(error)
+            try:
+                match config.defaults.cli.missing_biome:
+                    case "raise":
+                        obsi.set_fail_observe()
+                        raise error
+                    case "create":
+                        cls.with_name()  # TODO: name? prompt?
+                        obsi.set_created()
+                    case "prompt":
+                        obsi.set_prompt()
+
+            except ArborealFileExistsError as error2:
+                logger.info(f"Existing {error2.arboreal} File: {error2.file=}")
+                cls.handle_file_error(error2)
+                obsi.set_fail_create()
+
+        except Exception as unexpected:
+            logger.error(f"Biome.observe got {unexpected=}")
+            obsi.set_fail_observe()
+            raise
+
+    @classmethod
+    def log_filesystem_status(cls):
+        config: SachmisConfig = get_config()
+        logger.debug("start detecting")
+        num_biome_files: int = config.paths.num_biome_files
+        logger.debug(f"found {num_biome_files=} in {config.paths.biome_dir=}")
+        biome_files: set[Path] = config.paths.biome_files
+        logger.debug(f"current status: {biome_files=}")
+
     @classmethod
     def with_name(cls, name: str | None = None):
         logger.info("Create new Biome")
@@ -38,8 +91,6 @@ class Biome(Arboreal[Forest]):
 
         biome_filename: str = config.names.biome_file if name is None else name
         biome_file: Path = config.paths.new_biome_file(biome_filename)
-
-        # LATER: Biome Registry? Maybe while SQModel refactor
 
         biome: Biome = cls.create_with_tracker(
             path=biome_file, local_id=config.paths.num_biome_files + 1
@@ -61,9 +112,23 @@ class Biome(Arboreal[Forest]):
 
         logger.success(f"{self.tracker_info.stat} Active Biome! {biome_file=}")
 
+    @classmethod
+    def handle_file_error(cls, error: ArborealFileError):
+        assert isinstance(error, ArborealFileError)
+
+        if error.arboreal != "Biome":
+            logger.error(f"Biome got {type(error)} from {error.arboreal}")
+
+        # NEXT: find structure, together with Tree,Forest, maybe in Base
+        logger.info(f"Conflicting {error.arboreal} File: {error.file=}")
+        logger.error(error)  # REMOVE:
+        logger.error(error.__class__.__name__)  # REMOVE:
+
     ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
     ### -- Arboreal - Access to Members
     ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
+
+    # LATER: Biome Registry? Maybe while SQModel refactor
 
     @property
     def n_forest(self) -> int:
@@ -105,26 +170,43 @@ class Biome(Arboreal[Forest]):
     ### -- Biome - Health checks, maybe -> ArborealDisk?
     ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
 
-    @classmethod
-    def check_filesystem(cls) -> bool:
-        config: SachmisConfig = get_config()
-
-        num_biome_files: int = config.paths.num_biome_files
-        logger.info(f"Found {num_biome_files=} in {config.paths.biome_dir=}")
-
-        biome_files: set[Path] = config.paths.biome_files
-        logger.debug(f"current status: {biome_files=}")
-
-        if num_biome_files > 0:
-            return True
-        else:
-            return False
-
-    def health_check(self):
+    def health_check(self):  # MOVE: base class
         tests: list[Callable] = [
             self.registry.check_tracker_paths_exist,
             self.registry.check_tracker_paths_unique,
-            self.check_filesystem,
         ]  # LATER: better output
         if _no_issues := all(test_ok() for test_ok in tests):
             logger.info("Biome ok")
+
+
+class BiomeStatus(StrEnum):
+    STARTED = auto()
+    OK = auto()
+    FAIL_OBSERVE = auto()
+    FAIL_CREATE = auto()
+    CREATED = auto()
+    PROMPT = auto()
+
+
+@dataclass
+class BiomeObserver:
+    result: BiomeStatus
+
+    @classmethod
+    def init(cls) -> Self:
+        return cls(BiomeStatus.STARTED)
+
+    def set_ok(self):
+        self.result: BiomeStatus = BiomeStatus.OK
+
+    def set_fail_observe(self):
+        self.result: BiomeStatus = BiomeStatus.FAIL_OBSERVE
+
+    def set_fail_create(self):
+        self.result: BiomeStatus = BiomeStatus.FAIL_CREATE
+
+    def set_created(self):
+        self.result: BiomeStatus = BiomeStatus.CREATED
+
+    def set_prompt(self):
+        self.result: BiomeStatus = BiomeStatus.PROMPT

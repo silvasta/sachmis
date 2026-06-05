@@ -3,25 +3,31 @@ from pathlib import Path
 from .base import ArborealError
 
 
-class ArborealFileMissingError(FileNotFoundError, ArborealError):
-    """Raised when an Arboreal file (for now, JSON) is missing"""
-
-    def __init__(self, arboreal: str, file: Path):
+# exceptions/arbo.py
+class ArborealFileError(ArborealError):
+    def __init__(self, msg: str, arboreal: str, file: Path):
+        self.arboreal = arboreal
         self.file = file
+        super().__init__(msg)
+
+
+class ArborealFileMissingError(ArborealFileError, FileNotFoundError):
+    def __init__(self, arboreal: str, file: Path):
         msg = f"No {arboreal} found at target location: {file}"
-        super().__init__(msg)
+        ArborealFileError.__init__(self, msg, arboreal, file)
 
 
-class ArborealFileExistsError(FileExistsError, ArborealError):
-    """Raised when trying to create an Arboreal file that already exists"""
-
+class ArborealFileExistsError(ArborealFileError, FileExistsError):
     def __init__(self, arboreal: str, file: Path):
-        self.file = file
         msg = f"Found existing {arboreal} at target location: {file}"
-        super().__init__(msg)
+        ArborealFileError.__init__(self, msg, arboreal, file)
 
 
-class ArborealRegistryMissingError(KeyError, ArborealError):
+class ArborealRegistryError(ArborealError):
+    """Specific for Registry Files"""
+
+
+class ArborealRegistryMissingError(KeyError, ArborealRegistryError):
     """Raised when an ID is not found in an object's internal registry"""
 
     def __init__(self, parent: str, child: str, missing_id: str):
@@ -30,7 +36,7 @@ class ArborealRegistryMissingError(KeyError, ArborealError):
         super().__init__(msg)
 
 
-class ArborealRegistryDuplicateError(KeyError, ArborealError):
+class ArborealRegistryDuplicateError(KeyError, ArborealRegistryError):
     """Raised when an ID is already attached in an Arboreals internal registry"""
 
     def __init__(self, parent: str, child: str, duplicated_id: str):
@@ -40,6 +46,8 @@ class ArborealRegistryDuplicateError(KeyError, ArborealError):
 
 
 class ArborealTrackerError(AttributeError, ArborealError):
+    """For lightweight Arboreal Tracker Files"""
+
     def __init__(self, message=None, arbo_to_track=None):
         if message:
             msg: str = message
