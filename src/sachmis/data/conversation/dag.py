@@ -1,7 +1,5 @@
 import networkx as nx
-from pydantic import Field, PrivateAttr, model_validator
-
-from sachmis.exceptions import ArborealRegistryMissingError
+from pydantic import Field
 
 from .base_dag import BipartiteDAG, Edge, Node
 
@@ -10,106 +8,98 @@ class ConversationNode(Node):
     local_id: int
     name: str = ""
 
-    @property
-    def uuid(self) -> str:
-        """Helper property to match your internal naming convention."""
-        return self.id
-
 
 class ConversationEdge(Edge):
-    @property
-    def source_uuid(self) -> str:
-        return self.source
-
-    @property
-    def target_uuid(self) -> str:
-        return self.target
+    pass
 
 
 class ConversationDAG(BipartiteDAG):
     nodes: list[ConversationNode] = Field(default_factory=list)
     edges: list[ConversationEdge] = Field(default_factory=list)
 
-    # Private attribute to hold the actual NetworkX graph for traversal logic
-    _nx_graph: nx.DiGraph = PrivateAttr(default_factory=nx.DiGraph)
-
-    @model_validator(mode="after")
-    def sync_and_validate_conversation_dag(self) -> ConversationDAG:
-        self._sync_to_nx()
-        return self
-
-    def _sync_to_nx(self):
-        """Populates the hidden NetworkX graph using Pydantic data."""
-        self._nx_graph.clear()
-        for node in self.nodes:
-            self._nx_graph.add_node(node.uuid, **node.model_dump())
-        for edge in self.edges:
-            self._nx_graph.add_edge(edge.source_uuid, edge.target_uuid)
-
     def find_node(self, identifier: str | int) -> ConversationNode | None:
-        """Find a node by uuid, local_id, or name."""
         for node in self.nodes:
-            if identifier in (node.uuid, node.local_id, node.name):
+            if identifier in (node.id, node.local_id, node.name):
                 return node
         return None
 
-    def copy_subtree(self, current_node_uuid: str) -> ConversationDAG:
-        """Extracts a node and its successors into a new lightweight DAG."""
+    def attach_leaf(self, anchor: str, node: ConversationNode) -> None:
+        if any(n.id == node.id for n in self.nodes):
+            return
+        if not (internal := self.find_node(anchor)):
+            return
+        edge = ConversationEdge(source=internal.id, target=node.id)
+        self.nodes.append(node)
+        self.edges.append(edge)
 
-        if current_node_uuid not in self._nx_graph:
-            raise ValueError(f"Node {current_node_uuid} not found in graph.")
+    def copy_subtree(self, root_node_id: str) -> ConversationDAG:
+        """Recursively extracts a node and ALL of its descendants."""
+        if root_node_id not in self._graph:
+            raise ValueError(f"Node '{root_node_id}' not found in the graph.")
 
-        successors = list(self._nx_graph.successors(current_node_uuid))
-        nodes_to_keep = [current_node_uuid] + successors
+        # Gather all descendants recursively (arbitrary depth)
+        descendants = nx.descendants(self._graph, root_node_id)
+        nodes_to_keep: set[str] = {root_node_id}.union(descendants)
 
-        sub_nodes = [n for n in self.nodes if n.uuid in nodes_to_keep]
-        sub_edges = [
+        sub_nodes: list[ConversationNode] = [
+            n for n in self.nodes if n.id in nodes_to_keep
+        ]
+        sub_edges: list[ConversationEdge] = [
             e
             for e in self.edges
-            if e.source_uuid in nodes_to_keep
-            and e.target_uuid in nodes_to_keep
+            if e.source in nodes_to_keep and e.target in nodes_to_keep
         ]
 
         return ConversationDAG(nodes=sub_nodes, edges=sub_edges)
 
+    def extract_sprout(self, response_id: str, prompt_name) -> ConversationDAG:
+        if not (response := self.find_node(response_id)):
+            raise ValueError(f"Invalid { response_id= }")
+        prompt = ConversationNode(
+            id="xxhd", partition="P", local_id=55, name=prompt_name
+        )
+        edge = ConversationEdge(source=response.id, target=prompt.id)
+        return ConversationDAG(nodes=[prompt], edges=[edge])
+
     def attach_sprout(
-        self, parent_uuid: str, sprout_dag: ConversationDAG
-    ) -> None:
-        """Merges a returning Sprout DAG back into this master DAG."""
-        if not self.find_node(parent_uuid):
-            raise ValueError(
-                f"Parent UUID {parent_uuid} not found in master DAG."
+        self, parent_id: str, sprout_dag: ConversationDAG
+    ) -> ConversationDAG:
+        """
+        Connects a sub-DAG to a parent node of this graph.
+        Returns a newly validated unified ConversationDAG.
+        """
+        if not self.find_node(parent_id):
+            raise ValueError(f"Parent '{parent_id}' not found in master DAG.")
+
+        # Identify sprout roots (nodes with no parents inside the sprout)
+        sprout_roots = [
+            n.id
+            for n in sprout_dag.nodes
+            if sprout_dag.graph.in_degree(n.id) == 0
+        ]
+        if not sprout_roots:
+            raise ValueError("Invalid sprout: No root node detected.")
+
+        # Deep-copy properties to prevent side-effects
+        new_nodes: dict[str, ConversationNode] = {n.id: n for n in self.nodes}
+        for node in sprout_dag.nodes:
+            new_nodes[node.id] = (
+                node  # Overwrites/updates existing node config
             )
 
-        # Identify the root of the incoming sprout (node with no internal parents)
-        sprout_root_uuid = None
-        for node in sprout_dag.nodes:
-            if sprout_dag._nx_graph.in_degree(node.id) == 0:
-                sprout_root_uuid = node.id
-                break
-
-        if not sprout_root_uuid:
-            raise ArborealRegistryMissingError(
-                parent="Sprout", child="Sprout", missing_id=parent_uuid
-            )
-
-        # Deduplicate and append incoming nodes
-        existing_uuids = {n.id for n in self.nodes}
-        for node in sprout_dag.nodes:
-            if node.id not in existing_uuids:
-                self.nodes.append(node)
-
-        # Append edges
-        existing_edges = {(e.source, e.target) for e in self.edges}
+        new_edges: set[tuple[str, str]] = {
+            (e.source, e.target) for e in self.edges
+        }
         for edge in sprout_dag.edges:
-            if (edge.source, edge.target) not in existing_edges:
-                self.edges.append(edge)
+            new_edges.add((edge.source, edge.target))
 
-        # Connect the master graph to the sprout's root node if it doesn't already link
-        if (parent_uuid, sprout_root_uuid) not in existing_edges:
-            self.edges.append(
-                ConversationEdge(source=parent_uuid, target=sprout_root_uuid)
-            )
+        # Dynamically link the master parent to each sprout root
+        for root_id in sprout_roots:
+            new_edges.add((parent_id, root_id))
 
-        # Trigger Pydantic model rebuild/revalidation to refresh maps & networks
-        self.model_validate(self.model_dump())
+        # Re-construct lists and validate everything structural (including bipartite constraints)
+        unified_dag = ConversationDAG(
+            nodes=list(new_nodes.values()),
+            edges=[ConversationEdge(source=s, target=t) for s, t in new_edges],
+        )
+        return unified_dag

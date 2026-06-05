@@ -43,7 +43,9 @@ def run_mock_workflow():
     # 1. Setup Mock Tree
     tree_path = Path("/tmp/mock_tree.json")
     # Using a fake tracker for the sake of bypassing Arboreal Disk checks
-    tree = Tree.create_with_tracker(path=tree_path, local_id=1)
+    tree = Tree.create_with_tracker(
+        path=tree_path, local_id=1, tree_stem="hello"
+    )
 
     # 2. First Turn (P1 -> R1)
     p1 = generate_mock_prompt(1, "Fix the data pipeline.")

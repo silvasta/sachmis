@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Self
+from typing import Literal, Self
 
 from boltons.strutils import slugify
 from loguru import logger
@@ -18,6 +18,7 @@ class Prompt(ConversationData):
     files: list[UploadFile] = Field(default_factory=list)
     images: list[SstFile] = Field(default_factory=list)
 
+    partition: Literal["P"] = "P"
     _content: str
     _input_file_path: Path | None = PrivateAttr(default=None)
 

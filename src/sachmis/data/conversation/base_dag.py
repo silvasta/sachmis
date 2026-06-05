@@ -57,12 +57,9 @@ class BipartiteDAG(BaseModel):
 
     @property
     def graph(self) -> nx.DiGraph:
-        if self._graph is None:
-            raise ValueError
         return self._graph
 
     def topological_sort(self) -> list[str]:
-        """Return a valid topological ordering."""
         return list(nx.topological_sort(self._graph))
 
     def get_partition(self, part: Literal["P", "R"]) -> set[str]:
