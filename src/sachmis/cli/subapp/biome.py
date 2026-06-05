@@ -28,7 +28,7 @@ app = SafeTyper(
 @app.command()
 def setup(name: args.Name | None = None):
     """Create new Biome with global data structure"""
-    main_biome_execution(create_biome(name))
+    main_biome_execution(create_biome, name)
 
 
 @app.command()
@@ -58,24 +58,29 @@ def arboreal_statistic():
 def main_biome_execution(func, *args):
     """Core of the module, every task pipes at least 1 function trough"""
     file_statistic()
+    func_result = None
 
     observer = BiomeObserver.init()
 
     with Biome.observe(obsi=observer):
         func_result = func(*args)
 
+    logger.debug(f"{observer=}")
     return result_dispatch(func_result, observer)
 
 
 def result_dispatch(func_result, observer: BiomeObserver):
+    logger.debug(f"{func_result=}")
+    logger.debug(f"{observer=}")
 
     match observer.result:
         case BiomeStatus.STARTED:
             raise RuntimeError("Observer never completed!")
 
         case BiomeStatus.OK:
-            printer.success(f"{_b('Biome')} Operation Successful")
-            return func_result
+            if isinstance(func_result, Biome):
+                printer.success(f"{_b('Biome')} Operation Successful")
+                return func_result
 
         case BiomeStatus.FAIL_OBSERVE:
             printer.danger(f"Failed to load {_b('Biome')}... check the logs")
@@ -87,8 +92,9 @@ def result_dispatch(func_result, observer: BiomeObserver):
             return _ask_user()
 
         case BiomeStatus.CREATED:
-            printer.success(f"Successfully created New {_b('Biome')}")
-            return func_result
+            if isinstance(func_result, Biome):
+                printer.success(f"Successfully created New {_b('Biome')}")
+                return func_result
 
         case BiomeStatus.PROMPT:
             return _ask_user()
@@ -97,19 +103,21 @@ def result_dispatch(func_result, observer: BiomeObserver):
 
 
 # ==================== USER INTERACTION ====================
+
+
 def _ask_user() -> Biome | None:
     """Handle PROMPT / FAIL_CREATE cases"""
     config: SachmisConfig = get_config()
 
     if config.paths.num_biome_files > 0:
         if Confirm.ask("Do you want to switch Biome?"):
-            return select_biome_switch()  # returns None currently
+            return show()
         elif Confirm.ask("Create new Biome?"):
             name = typer.prompt("Biome name", default=None)
-            return create_biome(name)
+            return setup(name)
 
     # Fallback: create
-    return create_biome(None)
+    return setup(None)
 
 
 # ==================== CORE OPERATIONS ====================
