@@ -8,6 +8,7 @@ from typing import Self
 from loguru import logger
 from pydantic import Field
 from sstcore.data.files import SstFile
+from sstcore.utils import day_count
 
 from sachmis.exceptions import (
     ArborealFileExistsError,
@@ -93,7 +94,7 @@ class Biome(Arboreal[Forest]):
         biome_file: Path = config.paths.new_biome_file(biome_filename)
 
         biome: Biome = cls.create_with_tracker(
-            path=biome_file, local_id=config.paths.num_biome_files + 1
+            path=biome_file, local_id=day_count()
         )
         logger.success("Biome created!")
 
