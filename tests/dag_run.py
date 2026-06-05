@@ -17,7 +17,7 @@ def generate_mock_prompt(local_id: int, content: str) -> Prompt:
     return Prompt(
         local_id=local_id,
         topic=Prompt.extract_topic(content),
-        content=content,
+        _content=content,
         partition="P",
     )
 
@@ -30,7 +30,7 @@ def generate_mock_response(
         topic="mock-response",
         model="mock-gpt-4o",
         remote_id=f"req_{uuid.uuid4().hex[:8]}",
-        content=content,
+        _content=content,
         usage={"total_tokens": 42},
         full_response=Path(f"/tmp/mock_resp_{local_id}.json"),
         partition="R",
@@ -43,9 +43,7 @@ def run_mock_workflow():
     # 1. Setup Mock Tree
     tree_path = Path("/tmp/mock_tree.json")
     # Using a fake tracker for the sake of bypassing Arboreal Disk checks
-    tree = Tree.create_with_tracker(
-        path=tree_path, local_id=1, tree_stem="mock-workflow"
-    )
+    tree = Tree.create_with_tracker(path=tree_path, local_id=1)
 
     # 2. First Turn (P1 -> R1)
     p1 = generate_mock_prompt(1, "Fix the data pipeline.")
