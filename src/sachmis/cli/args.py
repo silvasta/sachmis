@@ -9,11 +9,7 @@ import typer
 
 Name = Annotated[
     str,
-    typer.Option(
-        "--name",
-        "-n",  # FIX: dont workt in: sachmis biome setup
-        help="Name of current target",
-    ),
+    typer.Option("--name", "-n", help="Name of Current Target"),
 ]
 
 Async = Annotated[

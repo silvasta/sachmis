@@ -6,7 +6,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Self
 
-from boltons.typeutils import classproperty
 from filelock import FileLock
 from loguru import logger
 from pydantic import BaseModel, Field, PrivateAttr, ValidationError
@@ -196,15 +195,10 @@ class Arboreal[ArboT: Arboreal](BaseModel):
         self.last_updated: datetime = datetime.now(UTC)
         return self.last_updated
 
-    @classmethod
-    @classproperty
-    def name(cls):
-        return cls.__name__
-
     @property
     def stat(self):
         """Short representation for printable statistics"""
-        return f"{self.name} {self.tracker_info.local_id}: created at {self.local_created_at}"
+        return f"{self.__class__.__name__} {self.tracker_info.local_id}: created at {self.local_created_at}"
 
     @property
     def local_created_at(self) -> str:
@@ -221,7 +215,7 @@ class Arboreal[ArboT: Arboreal](BaseModel):
 
         if not path.exists():
             if strict:
-                ArborealFileMissingError(self.name, path)
+                ArborealFileMissingError(self.__class__.__name__, path)
             logger.error(f"Sample Tracker with invalid {path=}")
 
         match (id := self.tracker_info.local_id, local_id):
@@ -239,10 +233,15 @@ class Arboreal[ArboT: Arboreal](BaseModel):
                     logger.warning(f"Use {local_id=} instead of tracked:{id=}")
                     id: int = local_id
 
-        logger.debug(f"{self.name} {id}: {(uuid := self.unique_id)}")
+        logger.debug(
+            f"{self.__class__.__name__} {id}: {(uuid := self.unique_id)}"
+        )
 
         return ArborealTracker.setup(
-            local_id=id, path=path, unique_id=uuid, arbo_name=self.name
+            local_id=id,
+            path=path,
+            unique_id=uuid,
+            arbo_name=self.__class__.__name__,
         )
 
     @classmethod
@@ -250,10 +249,14 @@ class Arboreal[ArboT: Arboreal](BaseModel):
         """Prefill Tracker before init, update UUID afterwards"""
         # LATER: context? or how to ensure runtime data loss?
 
-        logger.info(f"Create {cls.name} {local_id}: tracker without uuid")
+        logger.info(f"Create {cls.__name__} {local_id}: tracker without uuid")
 
-        tracker: ArborealTracker[Self] = ArborealTracker.setup(
-            local_id=local_id, path=path, unique_id="", arbo_name=cls.name
+        tracker: ArborealTracker[Self] = ArborealTracker(
+            local_id=local_id,
+            path=path,
+            unique_id="",
+            arbo_name=cls.__name__,
+            local_path=path,
         )
         instance: Self = cls(tracker_info=tracker, **kwargs)
 
@@ -353,14 +356,16 @@ class Arboreal[ArboT: Arboreal](BaseModel):
         tracker: ArborealTracker = self.tracker_info
         updated = False
 
-        if tracker.arbo_name != self.name:
-            logger.error(f"updating {tracker.arbo_name=} for {self.name}")
-            tracker.arbo_name = self.name
+        if tracker.arbo_name != self.__class__.__name__:
+            logger.error(
+                f"updating {tracker.arbo_name=} for {self.__class__.__name__}"
+            )
+            tracker.arbo_name = self.__class__.__name__
             updated = True
 
         if tracker.unique_id != self.unique_id:
             logger.error(f"UUID!\n{tracker.unique_id=}\n{self.unique_id=}")
-            raise ArborealTrackerError(arbo_to_track=self.name)
+            raise ArborealTrackerError(arbo_to_track=self.__class__.__name__)
 
         if tracker.path != path:
             logger.warning(f"updating {tracker.path=} to {path=}")
@@ -370,7 +375,7 @@ class Arboreal[ArboT: Arboreal](BaseModel):
         return updated
 
     def save_state(self, file: Path, *, lock_required=True) -> None:
-        logger.info(f"Save {(arbo := self.name)} to json")
+        logger.info(f"Save {(arbo := self.__class__.__name__)} to json")
 
         if lock_required and not self._has_lock:
             raise ArborealError(f"FileLock required to write {arbo}!")
