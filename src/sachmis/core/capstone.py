@@ -9,7 +9,6 @@ from ..config import SachmisConfig, get_config
 from ..config.models import DummyFamily, Geminis, Groks, ModelFamily
 from ..data import DataManager
 from ..data.arboreal import ArborealTracker, Forest, Tree
-from ..data.conversation import ConversationBag
 from ..data.files import CampManager
 from ..data.handler import FileRollout
 from ..utils.print import printer
@@ -139,7 +138,7 @@ class ExtractFromForest(AbstractContextManager):
             forest.attach_camp_back_by_mirror(self.camp)
             # LATER: confirm Tree, maybe after first response is written
 
-        logger.debug("Forest closed - Data transfered back")
+        logger.debug("Forest closed - Data transferred back")
         return config.defaults.context.forest_end.swallow
 
 
@@ -152,17 +151,17 @@ class ExtractFromTree(AbstractContextManager):
             self.tracker: ArborealTracker = tree.sample_tracker(
                 path, local_id=data.handler.tree_tracker.local_id
             )
-            # NEXT:
-            cwd_conversations: ConversationBag = (
-                tree.find_conversation_by_stem(
-                    stems=data.handler.existing_conversations
-                )
-            )
-            cwd_conversations.log_and_print()
-            # TODO: attach prompt, extract
-            # NEXT:
-            # TODO: previous_sprout
-            # TODO: find prompt ancestor
+            # # NEXT:
+            # cwd_conversations: ConversationBag = (
+            #     tree.find_conversation_by_stem(
+            #         stems=data.handler.existing_conversations
+            #     )
+            # )
+            # cwd_conversations.log_and_print()
+            # # TODO: attach prompt, extract
+            # # NEXT:
+            # # TODO: previous_sprout
+            # # TODO: find prompt ancestor
 
         logger.debug("Data extracted - Tree closed")
         data.handler.attach_tracker(
@@ -183,7 +182,7 @@ class ExtractFromTree(AbstractContextManager):
             # TODO: attach Response
             # TODO: test consistency?
 
-        logger.debug("Tree closed - Data transfered back")
+        logger.debug("Tree closed - Data transferred back")
         return config.defaults.context.tree_end.swallow
 
 
@@ -198,8 +197,8 @@ class Fire(AbstractContextManager):
         self.data: DataManager = self.stack.enter_context(
             DataManager(biome=True, forest=True)
         )
-        # NEXT:
         self.data.attach_handler(FileRollout())
+        # NEXT: state<-data
 
         self.forest_handler: ExtractFromForest = self.stack.enter_context(
             ExtractFromForest(self.data)
@@ -220,7 +219,7 @@ class Fire(AbstractContextManager):
     def load_models(self, models: list[ModelFamily]) -> list[Model]:
         logger.info(f"Start of loading: {models=}")
 
-        self.agentgs: list[Model] = [
+        self.agents: list[Model] = [
             match_family(model, self.data) for model in models
         ]
         return self.agents
