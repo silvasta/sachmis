@@ -1,6 +1,8 @@
 from abc import ABCMeta, abstractmethod
 from enum import Enum, EnumMeta
 
+from sstcore.utils.print import ColorBox
+
 # INFO: this is the Model Param Schema for fixed external data
 
 # REFACTOR: Use csv/pyandtic instead of Enum?
@@ -12,6 +14,9 @@ from enum import Enum, EnumMeta
 # check file-analyzer for template pydantic read/write
 
 # NEXT: update latest model
+
+
+c = ColorBox()
 
 
 class AbstractEnum(ABCMeta, EnumMeta):
@@ -28,6 +33,16 @@ class ModelFamily(Enum, metaclass=AbstractEnum):
     def unique(self) -> str:
         """Unique bidirectional identifier for single model"""
         return f"{self.unique_letter}-{self.value}"
+
+    @property
+    def cli(self) -> str:
+        """Colorized for Console output"""
+        return f"{c.yellow(self.unique)}-{self.family}.{c.magenta(self.name)}"
+
+    @property
+    def family(self) -> str:
+        """Full name that is used for API call"""
+        return self.__class__.__name__
 
     @property
     @abstractmethod

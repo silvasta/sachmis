@@ -1,6 +1,9 @@
 from loguru import logger
+from sstcore.utils.print import ColorBox
 
 from .family import ModelFamily
+
+c = ColorBox()
 
 
 class Groks(ModelFamily):
@@ -21,6 +24,11 @@ class Groks(ModelFamily):
     def unique_letter(self) -> str:
         """Used for pydantic Models -> str -> Models and for CLI"""
         return "x"
+
+    @property
+    def family(self) -> str:
+        """Full name that is used for API call"""
+        return c.cyan(self.__class__.__name__)
 
     @property
     def target(self) -> str:

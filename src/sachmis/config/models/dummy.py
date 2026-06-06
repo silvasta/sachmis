@@ -21,4 +21,5 @@ class DummyFamily(ModelFamily):
         return {
             DummyFamily.D1: "d1-pro",
             DummyFamily.D2: "d1-flash",
+            DummyFamily.F34: "F34-flash",
         }[self]
