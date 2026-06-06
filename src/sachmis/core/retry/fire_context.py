@@ -18,7 +18,7 @@ config: SachmisConfig = get_config()
 
 class FireRetry(AbstractContextManager):
     def __init__(self):
-        logger.info("Setup Contex")
+        logger.info("Setup Context")
 
         self.td: TenacityDefaults = config.defaults.tenacity
 
