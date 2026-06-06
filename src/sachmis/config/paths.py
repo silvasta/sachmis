@@ -131,10 +131,10 @@ class Paths(SstPaths[Names, Defaults]):
         return self.camp_dir / self._names.tree_dir
 
     @PathGuard.unique(ensure_parent=True)
-    def tree_file(self, id: int, stem: str) -> Path:
+    def tree_file(self, id: int, topic: str) -> Path:
         """Error if not in base"""
-        tree_file: str = self._names.tree_file([id, stem])
-        return self.tree_dir / tree_file
+        tree_file: str = self._names.tree_stem(id, topic)
+        return self.tree_dir / f"{tree_file}.json"
 
     @property
     @PathGuard.file(default_content="", raise_error=True)
@@ -207,11 +207,10 @@ class Paths(SstPaths[Names, Defaults]):
 
     @PathGuard.unique
     def full_response(self, topic: str, model: str, suffix=".txt") -> Path:
-        # NOTE: better locator?
-        stem: str = self._names.sprout_stem.computed(
-            topic=topic, locator="B", spec=model
-        )
-        return self._path_from_stem(stem, suffix, self.full_response_dir)
+        # # NOTE: better locator?
+        # stem: str = self._names.prompt_stem(topic=topic, spec=model)
+        # return self._path_from_stem(stem, suffix, self.full_response_dir)
+        raise NotImplementedError
 
     @PathGuard.unique(ensure_parent=True)
     def conversation_file(

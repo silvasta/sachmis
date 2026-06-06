@@ -1,6 +1,9 @@
-from sstcore.config import SstNames, StyledName
+from functools import cached_property
+from pathlib import Path
 
-# from sstcore.utils import day_count
+from pydantic import BaseModel
+from sstcore.config import SstNames
+from sstcore.utils.parse import ParsedName
 
 
 class Names(SstNames):
@@ -26,11 +29,70 @@ class Names(SstNames):
     prompt: str = "prompt.md"
 
     # Patterns
-    tree_file: str = "t_{id}_{topic}.json"
-    sprout_stem: str = "c_{id}_{spec}_{topic}"
+    tree_pattern: str = "t_{tree_id}_{topic}"
+    prompt_pattern: str = "p_{sprout_id}_{topic}"
+    response_pattern: str = "r_{sprout_id}_{model}_{topic}"
 
-    remotes: StyledName = StyledName.parse_style(
-        style_pattern="[{style1}]{name}[/] Remotes: [{style2}]{remotes}[/]",
-        keys=["name", "remotes"],
-        styles=["blue", "green"],
-    )
+    @cached_property
+    def tree_parser(self) -> ParsedName:
+        return ParsedName[TreeNameSchema](
+            pattern=self.tree_pattern,
+            schema=TreeNameSchema,
+            strip_extension=True,
+        )
+
+    def tree_stem(self, id: int, topic: str) -> str:
+        return self.tree_parser((id, topic))
+
+    def tree_schema(self, name: str | Path) -> TreeNameSchema:
+        return self.tree_parser(name)
+
+    def tree_id(self, name: str | Path) -> int:
+        return self.tree_parser(name).id
+
+    def tree_topic(self, name: str | Path) -> str:
+        return self.tree_parser(name).topic
+
+    @cached_property
+    def prompt_parser(self) -> ParsedName:
+        return ParsedName[PromptNameSchema](
+            pattern=self.prompt_pattern,
+            schema=PromptNameSchema,
+            strip_extension=True,
+        )
+
+    def prompt_stem(self, id: int, topic: str) -> str:
+        return self.prompt_parser((id, topic))
+
+    def prompt_schema(self, name: str | Path) -> PromptNameSchema:
+        return self.prompt_parser(name)
+
+    @cached_property
+    def response_parser(self) -> ParsedName:
+        return ParsedName[ResponseNameSchema](
+            pattern=self.response_pattern,
+            schema=ResponseNameSchema,
+            strip_extension=True,
+        )
+
+    def response_stem(self, id: int, model: str, topic: str) -> str:
+        return self.response_parser((id, model, topic))
+
+    def response_schema(self, name: str | Path) -> ResponseNameSchema:
+        return self.response_parser(name)
+
+
+class TreeNameSchema(BaseModel):
+    tree_id: int
+    topic: str
+
+
+class PromptNameSchema(BaseModel):
+    sprout_id: int
+    topic: str
+
+
+class ResponseNameSchema(BaseModel):
+    sprout_id: int
+    model: str
+    topic: str
