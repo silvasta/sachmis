@@ -13,9 +13,9 @@ from tenacity import (
 
 from ...config import SachmisConfig, get_config
 from ...config.defaults import ModelParam, TenacityDefaults
-from ...config.model import ModelFamily
+from ...config.models import ModelFamily
 from ...data import DataManager
-from ...data.conversation import Response, ResponseData
+from ...data.conversation import Response
 from ...exceptions import SachmisDataError
 from ...utils.print import printer
 from .. import retry
@@ -141,10 +141,9 @@ class Model(ABC):
 
         self.process_response()
 
-    # AI: is there any issu with using this like that?
     @retry.relaxed()
     def get_response(self):
-        self._count += 1  # AI: is there a better trick?
+        self._count += 1
         logger.debug(f"Start of try {self._count}")
         self._raw_response: Any = self._get_response()
 
@@ -176,7 +175,7 @@ class Model(ABC):
         if not self._calculate_usage_cost(usage):
             printer(usage)
 
-        response: ResponseData = ResponseData.from_model(
+        response: Response = Response.from_model(
             content=content,
             model=self.model.unique,
             remote_id=response_id,
