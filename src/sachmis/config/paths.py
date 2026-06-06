@@ -12,6 +12,7 @@ from sstcore.utils.path import (
 
 from ..exceptions import (
     ArborealFileExistsError,
+    ArborealFileMissingError,
     NotInCampError,
     NotInForestError,
 )
@@ -23,13 +24,6 @@ class Paths(SstPaths[Names, Defaults]):
     """Assemble paths for project"""
 
     @property
-    @PathGuard.dir
-    def config_home(self) -> Path:
-        # FIX: find new solution!!!
-        # FIX: find new solution!!!
-        return self.project_root
-
-    @property
     def active_biome(self) -> bool:
         return self.unconfirmed_biome_file.exists()
 
@@ -37,15 +31,17 @@ class Paths(SstPaths[Names, Defaults]):
     def biome_dir(self) -> Path:
         return self.data_home
 
-    @property
-    @PathGuard.file(raise_error=True)
-    def biome_file(self) -> Path:
-        """Current active Biome file"""
-        return self._biome_file()
+    def biome_file(self, filename: str | None = None) -> Path:
+        """Path to active Biome File or Error"""
+        try:
+            return PathGuard.file(target=self._biome_file(filename))
+        except FileNotFoundError as error:
+            logger.error(f"Missing biome: {error=}")
+        raise ArborealFileMissingError("Biome", self._biome_file())
 
-    def _biome_file(self, biome_filename: str | None = None) -> Path:
+    def _biome_file(self, filename: str | None = None) -> Path:
         """path constructor class"""
-        return self.biome_dir / (biome_filename or self._names.biome_file)
+        return self.biome_dir / (filename or self._names.biome_file)
 
     @property
     def unconfirmed_biome_file(self) -> Path:
@@ -64,7 +60,7 @@ class Paths(SstPaths[Names, Defaults]):
     def new_biome_file(self, name: str) -> Path:
         """Generate new biome_file path if it not already exists"""
 
-        biome_filename: str = f"{name.strip('.json')}.json"
+        biome_filename: str = f"{name.rstrip('.json')}.json"
         new_biome_file: Path = self._biome_file(biome_filename)
 
         if new_biome_file in self.biome_files:

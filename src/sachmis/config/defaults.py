@@ -68,9 +68,9 @@ class DebugToggle(BaseModel):
     model: ModelToggle = Field(default_factory=ModelToggle)
 
 
-class CliToggle(BaseModel):  # LATER: set all to false in auto modus
-    # TODO:  alias for type
-    data_no_biome: Literal["create", "raise", "prompt"] = "prompt"
+class CliToggle(BaseModel):
+    # MOVE: ContextParam?
+    missing_biome: Literal["create", "raise", "prompt"] = "prompt"
 
 
 class LogAndPrintBase(BaseModel):

@@ -1,27 +1,6 @@
-from boltons.strutils import slugify
-from sstcore.config import ParsedName, SstNames, StyledName
+from sstcore.config import SstNames, StyledName
 
 # from sstcore.utils import day_count
-
-
-class SproutName(ParsedName):
-    @classmethod
-    def _load_predefined_keys(cls) -> list[str]:
-        return [
-            # "dom",
-            "locator",
-            "spec",
-            "topic",
-        ]
-
-    def computed(self, topic: str, locator: str, spec: str) -> str:
-        values: list[str] = [
-            # str(day_count()),
-            locator,
-            spec,
-            slugify(topic, delim="-"),
-        ]
-        return self(values)
 
 
 class Names(SstNames):
@@ -47,8 +26,8 @@ class Names(SstNames):
     prompt: str = "prompt.md"
 
     # Patterns
-    tree_file: ParsedName = ParsedName(pattern="t_{id}_{stem}.json")
-    sprout_stem: SproutName = SproutName.with_predefined_keys()
+    tree_file: str = "t_{id}_{topic}.json"
+    sprout_stem: str = "c_{id}_{spec}_{topic}"
 
     remotes: StyledName = StyledName.parse_style(
         style_pattern="[{style1}]{name}[/] Remotes: [{style2}]{remotes}[/]",
