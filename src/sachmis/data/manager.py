@@ -1,23 +1,20 @@
 from itertools import product
 from pathlib import Path
-from typing import Literal, Self
+from typing import Self
 
 from loguru import logger
-from rich.prompt import Confirm
 from sstcore.data import SstFile
 
 from ..config import SachmisConfig, get_config
 from ..exceptions import (
     ArborealError,
-    ArborealFileMissingError,
     DataRuntimeError,
     SachmisError,
 )
-from ..utils import printer
 from .arboreal import Biome
-from .conversation import ResponseData
+from .conversation import Response
 from .files import CampManager, UploadFile
-from .handler import FileHandler
+from .handler import DataHandler
 from .uploader import RemoteUploader, create_uploader
 
 config: SachmisConfig = get_config()
@@ -26,7 +23,7 @@ config: SachmisConfig = get_config()
 class DataManager:
     """Loads Pydantic models on entry, saves them on clean exit."""
 
-    _handler: FileHandler | None = None
+    _handler: DataHandler | None = None
     _camp: CampManager | None = None
     _uploader: dict[str, RemoteUploader] = {}
 
@@ -35,9 +32,9 @@ class DataManager:
         return self._handler is not None
 
     @property
-    def handler(self) -> FileHandler:
+    def handler(self) -> DataHandler:
         if self._handler is None:
-            raise DataRuntimeError("FileHandler not loaded!")
+            raise DataRuntimeError("DataHandler not loaded!")
         return self._handler
 
     @property
@@ -58,26 +55,8 @@ class DataManager:
         self._needs_forest: bool = forest
 
         if self._needs_biome:
-            try:
-                self.biome_file: Path = config.paths.biome_file
-                logger.debug(f"biome: {self.biome_file}")
-            except FileNotFoundError:
-                # REFACTOR: out of data.manager or at least __init__
-                printer.warn("Biome File Missing")
-                Literal["create", "raise", "prompt"]
-                text = "Create New Biome from default names?"
-                strategy: str = config.defaults.cli.data_no_biome
-                if strategy == "create" or (
-                    strategy == "prompt"
-                    and Confirm.ask(prompt=text, default=True)
-                ):
-                    Biome.with_name()
-                    printer.success("DataManager Setup recovered!")
-                else:
-                    raise ArborealFileMissingError(
-                        "Biome", config.paths._biome_file()
-                    ) from None
-
+            self.biome_file: Path = config.paths.biome_file()
+            logger.debug(f"biome: {self.biome_file}")
             self._full_responses: list[SstFile] = []
 
         if self._needs_forest:
@@ -117,7 +96,7 @@ class DataManager:
         if not self._needs_biome:
             raise ArborealError("Invalid call for data with biome=False")
 
-        with Biome.edit_mode(config.paths.biome_file) as biome:
+        with Biome.edit_mode(config.paths.biome_file()) as biome:
             biome.responses.extend(self._full_responses)
 
         logger.info(f"Attached {len(self._full_responses)} files to Biome")
@@ -132,8 +111,8 @@ class DataManager:
 
         self._full_responses.append(response)
 
-    def attach_handler(self, handler: FileHandler):
-        self._handler: FileHandler = handler
+    def attach_handler(self, handler: DataHandler):
+        self._handler: DataHandler = handler
         logger.info(f"Attached: {handler.__class__.__name__}")
 
     def attach_camp(self, camp: CampManager):
@@ -181,7 +160,7 @@ class DataManager:
     ### --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
     ### --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
-    def handle_response(self, response: ResponseData):
+    def handle_response(self, response: Response):
         """So far: write when desired, later handle filetree | other.."""
         # IMPORTANT: check load Tree! save intermediate?
 
