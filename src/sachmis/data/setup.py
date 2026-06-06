@@ -10,7 +10,9 @@ from ..exceptions import ArborealFileMissingError
 from ..utils.print import printer
 from .arboreal import ArborealTracker, Biome
 
-# MOVE: Module: setup base? data handler? conductor?
+# REFACTOR: Module: setup base? data handler? conductor?
+# - attach to ROllOut
+# - replace logger with printer for CLI stuff, how to do both? how to swich?
 
 
 def _ensure_base_dir(base_name: str, root_dir: Path | None = None):
@@ -50,7 +52,7 @@ def create_new_base(base_name: str | None = None):
 
             forest_file: Path = config.paths.forest_file
 
-            with Biome.edit_mode(config.paths.biome_file) as biome:
+            with Biome.edit_mode(config.paths.biome_file()) as biome:
                 forest_tracker: ArborealTracker = biome.attach_new_forest(
                     forest_file
                 )

@@ -7,7 +7,7 @@ from sstcore.data import SstFileRegistry
 
 from ..config import SachmisConfig, get_config
 from ..config.models import ModelFamily
-from ..exceptions import DataRolloutError, DataRuntimeError, SachmisDataError
+from ..exceptions import DataRuntimeError, SachmisDataError
 from ..utils import model_from_unique, printer
 from .arboreal import ArborealTracker, Tree
 from .conversation import Prompt
@@ -138,23 +138,6 @@ class FileRollout(FileHandler):
 
     def load_raw_prompt(self) -> Prompt:
         return Prompt.load_from_path()
-
-    @staticmethod
-    def extract_tree_id() -> int:
-        """Tree id or zero if in root_dir of Forest"""
-
-        if (relative_to_base := config.paths.cwd_to_base_dir()) == Path():
-            return 0
-        logger.debug(f"{relative_to_base=}")
-        try:
-            tree_dir_name: str = relative_to_base.parts[0]
-            tree_name_parts: dict = config.names.tree_file(tree_dir_name)
-            extracted_id: str = tree_name_parts["id"]
-            return int(extracted_id)
-        except (ValueError, KeyError) as error:
-            logger.error(f"Problems while parsing: {error=}")
-
-        raise DataRolloutError(f"Tree Not Found from: {relative_to_base=}")
 
     @property
     def scan_statistics(self) -> str:
