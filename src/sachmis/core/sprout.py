@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field, PrivateAttr
 
-from ..conversation import ConversationDAG, Prompt, Response
-from .base import ArborealTracker
+from ..data.arboreal import ArborealTracker
+from ..data.conversation import ConversationDAG, Prompt, Response
 
 
 class Sprout(BaseModel):
@@ -10,7 +10,7 @@ class Sprout(BaseModel):
     tree_tracker: ArborealTracker
 
     # and most likely (lightweight tracker of tree that provides data)
-    _graph: ArborealTracker | None = PrivateAttr(default=None)
+    _tracker: ArborealTracker | None = PrivateAttr(default=None)
 
     dag: ConversationDAG
     prompts: dict[str, Prompt] = Field(default_factory=dict)
