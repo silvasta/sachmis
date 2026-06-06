@@ -1,4 +1,5 @@
 from .arbo import (
+    ArborealFileError,
     ArborealFileExistsError,
     ArborealFileMissingError,
     ArborealRegistryDuplicateError,
@@ -25,6 +26,7 @@ from .launch import (
 __all__: list[str] = [
     # arbo
     "ArborealFileExistsError",
+    "ArborealFileError",
     "ArborealFileMissingError",
     "ArborealRegistryDuplicateError",
     "ArborealRegistryMissingError",
