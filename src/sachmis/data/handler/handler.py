@@ -27,7 +27,7 @@ config: SachmisConfig = get_config()
 #   - Automatic in out
 # - rollout file writer
 # - prompt/response handler
-class FileHandler:
+class DataHandler:
     """Future interface for other tasks executed with DataManager() as data"""
 
     tree_id: int = 0  # root number, ids start at 1
@@ -106,7 +106,7 @@ class FileHandler:
         )
 
 
-class FileRollout(FileHandler):
+class FileRollout(DataHandler):
     """Manage Prompt and Response write to Forest dir"""
 
     # LATER: compare PathTree with PromptResponseTree
