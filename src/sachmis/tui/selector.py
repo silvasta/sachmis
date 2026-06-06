@@ -2,7 +2,7 @@ from pathlib import Path
 
 from loguru import logger
 from sstcore.data import FileRegistry
-from sstcore.exceptions import FailedSelectionError
+from sstcore.exceptions import TuiSelectorError
 from sstcore.tui import ListSelectorApp, TreeSelectorApp
 
 from ..config import models as fam
@@ -26,7 +26,7 @@ def model_selector(
 
         return parse_raw_models(selected_models)
 
-    raise FailedSelectionError("No valid models parsed from input...")
+    raise TuiSelectorError("No valid models parsed from input...")
 
 
 def file_selector(
@@ -49,7 +49,7 @@ def role_selector(roles: list[Path]) -> Path:
     if selected := ListSelectorApp(items=items, multi_select=False).run():
         logger.success(f"Selected {(role := selected[0]).name}")
         return role
-    raise FailedSelectionError
+    raise TuiSelectorError
 
 
 def multi_line_selector[T](items: dict[T, str] | list[T] | set[T]) -> list[T]:
@@ -57,7 +57,7 @@ def multi_line_selector[T](items: dict[T, str] | list[T] | set[T]) -> list[T]:
     if selected := ListSelectorApp(items=items, multi_select=True).run():
         logger.success(f"Selected {len(selected)} elements")
         return selected
-    raise FailedSelectionError
+    raise TuiSelectorError
 
 
 def single_line_selector[T](items: dict[T, str] | list[T] | set[T]) -> T:
@@ -65,4 +65,4 @@ def single_line_selector[T](items: dict[T, str] | list[T] | set[T]) -> T:
     if selected := ListSelectorApp(items=items, multi_select=False).run():
         logger.success(f"Selected: {(item := selected[0])=}")
         return item
-    raise FailedSelectionError
+    raise TuiSelectorError
