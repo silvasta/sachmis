@@ -1,8 +1,7 @@
 from itertools import product
 from pathlib import Path
 
-import typer
-from sstcore.cli import attach_callback, logger_catch
+from sstcore.cli import SafeTyper
 
 from ...config import SachmisConfig, get_config
 from ...data import DataManager
@@ -20,16 +19,13 @@ def main() -> None:
     app()
 
 
-app = typer.Typer(
+app = SafeTyper(
     name="files",
     help="Manage local files used for prompt attach",
-    no_args_is_help=True,
 )
-attach_callback(app)
 
 
 @app.command()
-@logger_catch
 def load(fresh: bool = False):
     """Load files from local folder into file registry and camp folder"""
     # TASK: silvasta.data.FolderScanner
@@ -38,7 +34,6 @@ def load(fresh: bool = False):
 
 
 @app.command()
-@logger_catch
 def local():
     """Show all local files in Forest"""
 
@@ -55,7 +50,6 @@ def local():
 
 
 @app.command()
-@logger_catch
 def push(xai: Xai = False, google: Google = False, ensure=True):
     """Sync all files in Forest to remote registry"""
 
@@ -68,7 +62,6 @@ def push(xai: Xai = False, google: Google = False, ensure=True):
 
 
 @app.command()
-@logger_catch
 def online(xai: Xai = False, google: Google = False):
     """Show all files on remote registry"""
 
@@ -80,7 +73,6 @@ def online(xai: Xai = False, google: Google = False):
 
 
 @app.command()
-@logger_catch
 def status(xai: Xai = False, google: Google = False):
     """Show remote status of all files in Forest"""
 
@@ -95,7 +87,6 @@ def status(xai: Xai = False, google: Google = False):
 
 
 @app.command()
-@logger_catch
 def clear(xai: Xai = False, google: Google = False):
     """Delete all files in remote registry"""
 
@@ -115,7 +106,6 @@ def clear(xai: Xai = False, google: Google = False):
 
 
 @app.command()
-@logger_catch
 def delete():
     """Delete single file(s) in remote registry"""
     # TASK: create selection method

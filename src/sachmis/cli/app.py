@@ -17,6 +17,7 @@ app = SafeTyper(
     param=config.setup_info,
 )
 
+app.command()(command.rollout)
 
 # core
 # app.command()(command.thunder)

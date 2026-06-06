@@ -1,13 +1,12 @@
 from itertools import product
 
-from sstcore.cli import logger_catch, sargs
+from sstcore.cli import sargs
 
-from sachmis.data.conversation import (
+from ...config import SachmisConfig, get_config, models
+from ...data.conversation import (
     PromptTransitionRules,
     ResponseTransitionRules,
 )
-
-from ...config import SachmisConfig, get_config, models
 from ...data.setup import create_new_base
 from ...utils.print import printer
 from .. import args
@@ -22,11 +21,15 @@ def init(name: args.Name = config.names.base_dir):
 
 def model_display():  # TODO: rich table, statistics
     """Show all models of all providers"""
+    for model in models.all():
+        printer(model.cli)
+
     printer.model_table(models.uniques(), models.names(), models.api_names())
 
 
-@logger_catch
 def rules():
+    """Show Prompt / Response Relationship and Transitions"""
+
     def _explain(rule: type):
         printer.title(name := rule.__name__)
         printer.header(

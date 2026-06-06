@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from loguru import logger
-from sstcore.cli import logger_catch, sargs
+from sstcore.cli import sargs
 from sstcore.data import SstFile
 
 from ...config import SachmisConfig, get_config
@@ -25,7 +25,6 @@ config: SachmisConfig = get_config()
 DEBUG = True
 
 
-@logger_catch
 def fire(
     # Arguments
     models: args.Models = None,

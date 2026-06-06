@@ -89,7 +89,8 @@ PickModel = Annotated[
     typer.Option(
         "--pick-model",
         "-M",
-        help="Pick models from list!",
+        # LATER: try color in helpp
+        help="Pick anyway independant of FileSystem status!",
     ),
 ]
 

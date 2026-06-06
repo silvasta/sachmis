@@ -8,8 +8,8 @@ class SachmisPrinter(Printer):
     def conversation_transition_result(
         self, prompt: str, response: str, result: bool, from_prompt: bool
     ):
-        source = f"Prompt {self.color.cyan(prompt)}"
-        target = f"Response {self.color.magenta(response)}"
+        source = f"Prompt {self.colors.cyan(prompt)}"
+        target = f"Response {self.colors.magenta(response)}"
 
         if not from_prompt:
             target, source = source, target

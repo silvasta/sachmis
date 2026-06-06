@@ -1,5 +1,4 @@
-import typer
-from sstcore.cli import attach_callback, logger_catch
+from sstcore.cli import SafeTyper
 
 from ...config import SachmisConfig, get_config
 from ...data.arboreal import ArborealTracker, Forest, Tree
@@ -10,12 +9,10 @@ def main() -> None:
     app()
 
 
-app = typer.Typer(
+app = SafeTyper(
     name="forest",
     help="Forest - Home of every Tree",
-    no_args_is_help=True,
 )
-attach_callback(app)
 
 
 def trees():
@@ -35,7 +32,6 @@ def trees():
 
 
 @app.command()
-@logger_catch
 def stat():
     """Show statistics of active Forest"""
     # LATER: generic for Arbo
