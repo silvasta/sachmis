@@ -14,21 +14,8 @@
     "file_dir": "Files",
     "image_dir": "Images",
     "prompt": "prompt.md",
-    "tree_file": {
-      "pattern": "t_{id}_{stem}.json",
-      "keys": [
-        "id",
-        "stem"
-      ]
-    },
-    "sprout_stem": {
-      "pattern": "{locator}_{spec}_{topic}",
-      "keys": [
-        "locator",
-        "spec",
-        "topic"
-      ]
-    },
+    "tree_file": "t_{id}_{topic}.json",
+    "sprout_stem": "c_{id}_{spec}_{topic}",
     "remotes": {
       "pattern": "{name} Remotes: {remotes}",
       "keys": [
@@ -124,16 +111,10 @@
     "retention": "1 week",
     "rotation": "5 MB"
   },
-  "last_updated": "2026-06-05T12:32:12.260163Z",
+  "last_updated": "2026-06-05T22:46:05.238632Z",
   "updates": [
-    "2026-06-05T01:50:55.559108Z",
-    "2026-06-05T10:31:54.837449Z",
-    "2026-06-05T10:56:57.750070Z",
-    "2026-06-05T10:57:49.337691Z",
-    "2026-06-05T11:00:41.727837Z",
-    "2026-06-05T11:01:07.144956Z",
-    "2026-06-05T12:30:48.995927Z",
-    "2026-06-05T12:32:12.260163Z"
+    "2026-06-05T21:48:55.850034Z",
+    "2026-06-05T22:46:05.238632Z"
   ],
   "update_maxlen": 79
 }

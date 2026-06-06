@@ -28,7 +28,7 @@ dependencies = [
 
 [tool.uv.sources]
 sstcore = { path = "/home/silvan/Code/sstcore/latest", editable = true }
-# sstcore = { git = "https://github.com/silvasta/silvasta", tag = "v0.2.4b2" }
+# sstcore = { git = "https://github.com/silvasta/silvasta", tag = "v0.3.0b2" }
 
 [project.scripts]
 sachmis = "sachmis.__main__:main"

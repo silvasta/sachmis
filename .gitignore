@@ -23,3 +23,5 @@ old*
 logs
 plots
 /src/sachmis/data/arboreal/summary.xml
+/layouts/lib
+/configs/bak
