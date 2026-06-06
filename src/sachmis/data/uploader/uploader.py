@@ -5,13 +5,13 @@ from typing import Any, TypeVar
 
 from loguru import logger
 
-from sachmis.config import SachmisConfig, get_config
-from sachmis.data.files import (
+from ...config import SachmisConfig, get_config
+from ...utils.print import printer
+from ..files import (
     RemoteState,
     UploadFile,
     UploadState,
 )
-from sachmis.utils.print import printer
 
 TUploadState = TypeVar("TUploadState", bound=UploadState)
 
