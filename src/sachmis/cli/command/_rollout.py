@@ -3,10 +3,9 @@ import time
 from loguru import logger
 from sstcore.exceptions import TuiSelectorError
 
-from sachmis.data.rollout import FileRollout
-
 from ...config import SachmisConfig, get_config
 from ...config.models import ModelFamily
+from ...data.handler import FileRollout
 from ...tui.selector import model_selector
 from ...utils.parse import parse_raw_models
 from ...utils.print import printer

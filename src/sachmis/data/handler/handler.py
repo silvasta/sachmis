@@ -3,14 +3,13 @@ from typing import Literal
 
 from loguru import logger
 from sstcore import PathGuard
-from sstcore.data import SstFileRegistry
 
-from ..config import SachmisConfig, get_config
-from ..config.models import ModelFamily
-from ..exceptions import DataRuntimeError, SachmisDataError
-from ..utils import model_from_unique, printer
-from .arboreal import ArborealTracker, Tree
-from .conversation import Prompt
+from ...config import SachmisConfig, get_config
+from ...config.models import ModelFamily
+from ...exceptions import DataRuntimeError
+from ...utils import printer
+from ..arboreal import ArborealTracker, Tree
+from ..conversation import Prompt
 
 config: SachmisConfig = get_config()
 
@@ -27,6 +26,8 @@ config: SachmisConfig = get_config()
 #   - Automatic in out
 # - rollout file writer
 # - prompt/response handler
+
+
 class DataHandler:
     """Future interface for other tasks executed with DataManager() as data"""
 
@@ -108,92 +109,3 @@ class DataHandler:
 
 class FileRollout(DataHandler):
     """Manage Prompt and Response write to Forest dir"""
-
-    # LATER: compare PathTree with PromptResponseTree
-
-    _prompt_written = False
-    _write_dir_name: str = ""
-
-    @property
-    @PathGuard.dir
-    def write_dir(self):
-        return Path.cwd() / self._write_dir_name
-
-    @property
-    def local_root(self) -> Path:
-        return self.file_system_state.local_root
-
-    def __init__(self, state: SstFileRegistry | None = None):
-        self.file_system_state: SstFileRegistry = (
-            state or SstFileRegistry.setup_at(local_root=config.paths.base_dir)
-        )
-
-        self.tree_id: int = self.extract_tree_id()
-        logger.info(f"Using {self.tree_id=}")
-
-        self.scan_folder()
-        logger.info(self.scan_statistics)
-
-        self._raw_prompt: Prompt = self.load_raw_prompt()
-
-    def load_raw_prompt(self) -> Prompt:
-        return Prompt.load_from_path()
-
-    @property
-    def scan_statistics(self) -> str:
-        return (
-            f"Found {len(self.existing_prompts_at_cwd)} Prompts, "
-            f"{len(self.existing_responses_at_cwd)} Responses "
-            f"and parsed {len(self.scanned_models)} Models."
-        )
-
-    def scan_folder(self):
-        """Backward parse file names in current folder"""
-
-        for path in Path.cwd().glob("*.md"):
-            try:  # LATER: check for (nested) folders?
-                name_parts: dict = config.names.sprout_stem(path)
-                if (spec := name_parts[key_to_check := "spec"]) == "prompt":
-                    self.existing_prompts_at_cwd.append(path)
-                    logger.debug(f"attach to prompts: {path=}")
-                elif model := model_from_unique(spec):
-                    self.existing_responses_at_cwd.append(path)
-                    self.scanned_models.append(model)
-                    logger.debug(f"attach {model=} and response from: {path=}")
-                else:
-                    logger.debug(f"ignoring {path=}")
-            except ValueError:
-                logger.debug(f"Failed to parse: {path=}")
-            except KeyError:
-                logger.error(f"{key_to_check=} failed for: {path=}")
-
-    def rotate_prompt(self) -> Path:
-        # HACK: how to get the prompt here? or just the command to process? where to send path?
-        prompt_path: Path = self.prompt.rollout_path(root_dir=self.write_dir)
-        PathGuard.rotate(
-            source=self.input_prompt_path, target=prompt_path, reset=True
-        )
-        logger.debug(f"prompt rotated: {prompt_path=}")
-        if self.write_dir != Path.cwd():
-            (self.write_dir / config.names.prompt).touch()
-            logger.debug("new empty prompt in new write_dir")
-        return prompt_path
-
-    def save_response(self):
-        pass
-
-    def set_model_subdir(self, model_name: str):
-        # REFACTOR: match to new structure
-        match len(paths := list(Path.cwd().glob(f"_{model_name}_"))):
-            case 0:
-                raise SachmisDataError("No path to create Model subgroup")
-            case 1:
-                model_path: Path = paths[0]
-            case _:
-                raise SachmisDataError(
-                    "Multiple paths to create Model subgroup"
-                )
-        self._previous_sprout: Path = model_path
-        self._write_dir_name: str = model_path.stem  # TODO: keep
-        self._next_fs_locator: int = 1
-        # REFACTOR: match to new structure

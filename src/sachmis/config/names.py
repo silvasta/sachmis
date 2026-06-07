@@ -37,7 +37,7 @@ class Names(SstNames):
     def tree_parser(self) -> ParsedName:
         return ParsedName[TreeNameSchema](
             pattern=self.tree_pattern,
-            schema=TreeNameSchema,
+            model_cls=TreeNameSchema,
             strip_extension=True,
         )
 
@@ -57,7 +57,7 @@ class Names(SstNames):
     def prompt_parser(self) -> ParsedName:
         return ParsedName[PromptNameSchema](
             pattern=self.prompt_pattern,
-            schema=PromptNameSchema,
+            model_cls=PromptNameSchema,
             strip_extension=True,
         )
 
@@ -71,7 +71,7 @@ class Names(SstNames):
     def response_parser(self) -> ParsedName:
         return ParsedName[ResponseNameSchema](
             pattern=self.response_pattern,
-            schema=ResponseNameSchema,
+            model_cls=ResponseNameSchema,
             strip_extension=True,
         )
 

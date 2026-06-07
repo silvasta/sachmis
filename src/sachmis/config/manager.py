@@ -16,11 +16,12 @@ def get_config() -> SachmisConfig:
 
     if _config_instance is None:
         logger.info("Setup Sachmis ConfigManager...")
+        logger.remove()  # REMOVE:
 
         _config_instance = ConfigManager(
             settings_cls=Settings,
             paths_cls=Paths,
-            project_name="Sachmis",
+            project_name="sachmis",
         )
 
         logger.info("ConfigManager setup completed")

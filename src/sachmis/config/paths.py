@@ -79,6 +79,11 @@ class Paths(SstPaths[Names, Defaults]):
             raise NotInForestError
         return root
 
+    @property
+    def cwd_in_top_dir(self) -> bool:
+        """Tree Folder Level: Error for outside Forest"""
+        return Path.cwd() == self.base_dir
+
     def cwd_to_base_dir(self, strict=True) -> Path:
         """Error for outside Forest, try with strict=False for ../../path"""
         return PathGuard.relative(
