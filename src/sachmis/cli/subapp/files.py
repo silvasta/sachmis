@@ -13,6 +13,8 @@ from ..args import Google, Xai
 config: SachmisConfig = get_config()
 
 # NEXT: data: setup for Forest, arborefactor
+# NEXT: prepare file loader!!!
+# TASK: assign to camp!
 
 
 def main() -> None:

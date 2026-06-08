@@ -9,8 +9,8 @@ from sstcore.utils.print import ColorBox
 from ...cli import args
 from ...config import get_config
 from ...data.arboreal import ArborealTracker, Biome
+from ...data.arboreal.executor import BiomeExecutor
 from ...utils.print import printer
-from ..executor import BiomeExecutor
 
 
 def main() -> None:
@@ -44,10 +44,10 @@ def select():
             raise TuiSelectorError
 
         biome_file = Path(selected[0])
-        with Biome.edit_mode(biome_file) as b:
-            b.apply_to_config(biome_file)
-            b.touch()
-            return b
+        with Biome.edit_mode(biome_file) as biome:
+            biome.apply_to_config(biome_file)
+            biome.touch()
+            return biome
 
     executor.execute(_select)
 

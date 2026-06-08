@@ -19,6 +19,7 @@ def trees():
     """Show statistics of active Forest"""
     config: SachmisConfig = get_config()
 
+    # TASK:  generic for Arbo
     active: str = "[bold]Active:[/]"
     printer.title(f"{active} {config.paths.forest_file}", style="warning")
 
@@ -34,7 +35,7 @@ def trees():
 @app.command()
 def stat():
     """Show statistics of active Forest"""
-    # LATER: generic for Arbo
+    # TASK:  generic for Arbo
     config: SachmisConfig = get_config()
 
     active: str = "[bold]Active:[/]"

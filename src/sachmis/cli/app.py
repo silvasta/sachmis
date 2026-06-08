@@ -7,6 +7,8 @@ from sachmis.exceptions import ArborealFileError
 from ..config import SachmisConfig, get_config
 from ..exceptions import SachmisLaunchError
 from . import command, subapp
+from .fire import fire
+from .thunder import thunder
 
 config: SachmisConfig = get_config()
 
@@ -20,24 +22,27 @@ app = SafeTyper(
 app.command()(command.rollout)
 
 # core
-# app.command()(command.thunder)
-app.command()(command.fire)
-# app.command()(command.tree)  # TASK: rename to sprout???
-# app.command()(command.loop)
+app.command()(thunder)
+app.command()(fire)
+
+# important
+app.command()(command.init)
+app.command("roll")(command.rollout)
 
 # utils
-app.command()(command.init)
-app.command("config")(command.config_details)
 app.command("models")(command.model_display)
-app.command()(command.rules)
-# app.command()(command.roles)
+app.command()(command.rules)  # TODO: check
+app.command("config")(command.config_details)
 
 # nested
+app.add_typer(subapp.files)
 app.add_typer(subapp.biome)
 app.add_typer(subapp.forest)
-# app.add_typer(subapp.tree) # NEXT: change to tree handler?
-app.add_typer(subapp.files)
+# app.add_typer(subapp.tree) # TASK: change to tree handler?
 app.add_typer(subapp.utils)
+
+if config.defaults.debug.subapp:
+    app.add_typer(subapp.debug)
 
 
 @app.register_error(SachmisLaunchError)

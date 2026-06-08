@@ -14,7 +14,7 @@ from .. import args
 config: SachmisConfig = get_config()
 
 
-def rollout(
+def rollout(  # TASK: this as selector of current file tree!
     # Arguments
     id: int,
     models: args.Models = None,
@@ -24,6 +24,9 @@ def rollout(
 ):
     """Test File to Filesystem Mapping for write only files"""
 
+    if True:
+        printer.special("Comming Soon")
+        return
     # TASK:
     # -> handler figures out tree_id or root
     # state loads c_id from Tree at init

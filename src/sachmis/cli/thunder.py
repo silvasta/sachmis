@@ -1,49 +1,19 @@
-# from pathlib import Path
-# from typing import Annotated
-#
-# import typer
-# from loguru import logger
-#
-# from ...config.models import Geminis, Groks, ModelFamily
-# from ...core.model import Gemini, Grok, Model
-# from ...data import DataManager
-# from ...utils.print import printer
-#
-# # IMPORTANT: launch v0.4.0b1 when this is ready!
-#
+from ...utils.print import printer
+
+# REFACTOR: everything here below
+# /41/󰌠 /aml.py
+# /42/󰌠 /gtc.py
+# /43/󰌠 /mpc.py
+# /44/󰌠 /robol-hw1.py
+# /45/󰌠 /rodyn.py
+
+
+def thunder():
+    """Prepare Model Pipeline and Launch massiv Thunder"""
+    printer("Executing strategic script!")
+
+
 # # REFACTOR: everything here below
-# # /41/󰌠 /aml.py
-# # /42/󰌠 /gtc.py
-# # /43/󰌠 /mpc.py
-# # /44/󰌠 /robol-hw1.py
-# # /45/󰌠 /rodyn.py
-#
-# # REFACTOR: everything here below
-#
-#
-# def thunder(
-#     ctx: typer.Context,
-#     # - - - Async - - - #
-#     use_async: Annotated[
-#         bool,
-#         typer.Option(
-#             "--use-async",
-#             "-a",
-#             help="Send all models together with async",
-#         ),
-#     ] = True,
-#     # - - - DRYRUN - - - #
-#     DRYRUN: Annotated[
-#         bool,
-#         typer.Option(
-#             "--dry",
-#             help="Just simulate pipeline without online requests",
-#         ),
-#     ] = False,
-# ):
-#     """Release specific assembled task script"""
-#     printer("Executing strategic script!")
-#
 #     data: DataManager = ctx.obj["data"]
 #     data.load_forest()
 #

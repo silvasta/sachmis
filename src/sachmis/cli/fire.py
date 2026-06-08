@@ -4,21 +4,17 @@ from loguru import logger
 from sstcore.cli import sargs
 from sstcore.data import SstFile
 
-from ...config import SachmisConfig, get_config
-from ...config.models import ModelFamily
-from ...core import capstone
-from ...core.model import Model
-from ...data import DataManager
-from ...data.files import CampManager, UploadFile
-from ...exceptions.data import DataRuntimeError
-from ...tui.selector import (
-    file_selector,
-    model_selector,
-    role_selector,
-)
-from ...utils.parse import parse_raw_models
-from ...utils.print import printer
-from .. import args
+from ..config import SachmisConfig, get_config
+from ..config.models import ModelFamily
+from ..core import capstone
+from ..core.model import Model
+from ..data import DataManager
+from ..data.files import CampManager, UploadFile
+from ..exceptions.data import DataRuntimeError
+from ..tui.selector import file_selector, model_selector, role_selector
+from ..utils.parse import parse_raw_models
+from ..utils.print import printer
+from . import args
 
 config: SachmisConfig = get_config()
 
@@ -40,22 +36,28 @@ def fire(
     dry_run: sargs.DryRun = False,
     direct_fire: args.Fire = False,
 ):
-    """Prepare models with local prompt and Fire"""
+    """Prepare Models with Local Prompt and Fire"""
 
+    # NEXT: ensure this
     with capstone.Fire() as session:
+        # TASK: data.handler provide model subset needed!
+        # NEXT: check cli.command._rollout
         models: list[ModelFamily] = _prepare_model_args(session.data, models)
         agents: list[Model] = session.load_models(models)
 
+        # NEXT: function of camp
         files: list[UploadFile] = _prepare_file_args(
             session.data.camp, files, pick_file
         )
         session.data.load_files(files)
 
+        # NEXT: function of camp
         images: list[SstFile] = _prepare_image_args(
             session.data.camp, images, pick_image
         )
         session.data.load_images(images)
 
+        # NEXT: function of camp
         role: Path | None = _prepare_role(pick_role)
         session.data.load_role(role)
 
@@ -80,10 +82,9 @@ def fire(
 
 def confirm_fire(models: list[Model], data: DataManager) -> bool:
 
-    printer.success(
-        "Summary of Release",
-    )
+    printer.special("Summary of Release")
 
+    # NEXT: prompt to... Sprout?
     printer.title(f"Prompt - {data.prompt.topic}")
     printer.md(data.prompt.content)
 
@@ -114,29 +115,30 @@ def confirm_fire(models: list[Model], data: DataManager) -> bool:
                 f"{model.model.unique} is answering to previous response",
                 style="bold black on yellow",
             )
+    # NEXT: but with previons response
+    # printer.model_table()
+
     printer.danger("Last check before deployment")
 
-    match input("type 'ok' to launch: "):
+    match input("type 'ok' to launch: "):  # NEXT: check rich.prompt.Ask
         case "ok":
             printer.title("send API request now!", style="green")
-            fire = True
+            return True
         case _:
             printer(
                 "see you when prompt and command chain is ready!",
                 style="yellow",
             )
-            fire = False
-
-    return fire
+            return False
 
 
 def _prepare_model_args(
-    data: DataManager,
-    models: list[str] | None,
-    with_dummy=DEBUG,
+    data: DataManager,  # NEXT: sprout
+    models: list[str] | None,  # REMOVE: data.handler!
 ) -> list[ModelFamily]:
     printer.title("Selecting Models...")
 
+    # NEXT: fix with new setup
     if models and (parsed_models := parse_raw_models(models)):
         printer.header(f"...{len(parsed_models)} selected for pipeline")
         return parsed_models
@@ -155,6 +157,7 @@ def _prepare_model_args(
     return [selected_model]
 
 
+# NEXT: move to camp?
 # MOVE: _prepare... to args?
 def _prepare_file_args(
     camp: CampManager, files: list[Path] | None, pick_file: bool
@@ -194,6 +197,7 @@ def _prepare_file_args(
     return prepared_files
 
 
+# NEXT: move to camp?
 # MOVE: _prepare... to args?
 def _prepare_image_args(
     camp: CampManager, images: list[Path] | None, pick_image: bool
@@ -203,6 +207,8 @@ def _prepare_image_args(
 
     prepared_images: list[SstFile] = []
 
+    # NEXT: same as files?
+    # REFACTOR:
     if pick_image:  # Pick first to avoid picking as well new added files
         # TODO: use ListSelector? or unify with _prepare_file_args
         selected_images: list[Path] = file_selector(files=camp.images)
