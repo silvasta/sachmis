@@ -5,7 +5,6 @@ from pydantic import Field
 
 from ..conversation import ConversationDAG, Prompt, Response
 from .base import Arboreal
-from .sprout import Sprout
 
 
 class Tree(Arboreal):

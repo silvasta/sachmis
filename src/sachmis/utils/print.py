@@ -26,12 +26,13 @@ class SachmisPrinter(Printer):
         uniques: list[str],
         names: list[str],
         api_names: list[str],
-        title=None,
+        header: str = "Table with all Active Models",
         show_header=True,
+        title=None,
     ):
         """load base paths from file, check existence, print result"""
 
-        printer.title("Table with all Active Models")
+        printer.title(header)
         table = Table(
             title=title,
             show_header=show_header,

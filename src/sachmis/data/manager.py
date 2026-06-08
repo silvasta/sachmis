@@ -27,27 +27,6 @@ class DataManager:
     _camp: CampManager | None = None
     _uploader: dict[str, RemoteUploader] = {}
 
-    @property
-    def has_handler(self) -> bool:
-        return self._handler is not None
-
-    @property
-    def handler(self) -> DataHandler:
-        if self._handler is None:
-            raise DataRuntimeError("DataHandler not loaded!")
-        return self._handler
-
-    @property
-    def camp(self) -> CampManager:
-        if self._camp is None:
-            raise DataRuntimeError("Camp not loaded!")
-        return self._camp
-
-    def get_uploader(self, target: str) -> RemoteUploader:
-        if target not in self._uploader:
-            self._uploader[target] = create_uploader(target)
-        return self._uploader[target]
-
     def __init__(self, biome=False, forest=False):
         """Setup and check required: Biome, Forest"""
 
@@ -92,6 +71,31 @@ class DataManager:
 
         return config.defaults.context.data_end.swallow
 
+    # NEXT: needed?
+    @property
+    def has_handler(self) -> bool:
+        return self._handler is not None
+
+    # NEXT: multiple?
+    @property
+    def handler(self) -> DataHandler:
+        if self._handler is None:
+            raise DataRuntimeError("DataHandler not loaded!")
+        return self._handler
+
+    @property
+    def camp(self) -> CampManager:
+        if self._camp is None:
+            raise DataRuntimeError("Camp not loaded!")
+        return self._camp
+
+    # NEXT: confirm
+    def get_uploader(self, target: str) -> RemoteUploader:
+        if target not in self._uploader:
+            self._uploader[target] = create_uploader(target)
+        return self._uploader[target]
+
+    # NEXT: new handler...
     def _attach_new_full_responses_to_biome(self):
         if not self._needs_biome:
             raise ArborealError("Invalid call for data with biome=False")
@@ -102,6 +106,7 @@ class DataManager:
         logger.info(f"Attached {len(self._full_responses)} files to Biome")
         self._full_responses.clear()
 
+    # NEXT: new handler...
     def _add_temporary_full_response(self, text: str, path: Path) -> None:
 
         # TASK: handle path creation here?
@@ -111,14 +116,17 @@ class DataManager:
 
         self._full_responses.append(response)
 
+    # NEXT: modfify, dispatch
     def attach_handler(self, handler: DataHandler):
         self._handler: DataHandler = handler
         logger.info(f"Attached: {handler.__class__.__name__}")
 
+    # NEXT: check with others
     def attach_camp(self, camp: CampManager):
         self._camp: CampManager = camp
 
     # MOVE: camp
+    # NEXT:
     def load_files(self, files: list[UploadFile], ensure_after_upload=True):
         """Assumes valid local data files, pushes to Remotes"""
 
@@ -139,6 +147,7 @@ class DataManager:
                 # TODO: check if raise or not
 
     # MOVE: camp
+    # NEXT:
     def load_images(self, images: list[SstFile]):
         """Assumes valid local image files, pushes to Remotes"""
 
@@ -160,6 +169,7 @@ class DataManager:
     ### --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
     ### --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
+    # NEXT: move DataHandler
     def handle_response(self, response: Response):
         """So far: write when desired, later handle filetree | other.."""
         # IMPORTANT: check load Tree! save intermediate?

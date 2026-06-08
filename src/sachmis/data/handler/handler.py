@@ -1,110 +1,47 @@
+from abc import abstractmethod
 from pathlib import Path
-from typing import Literal
 
-from loguru import logger
 from sstcore import PathGuard
 
 from ...config import SachmisConfig, get_config
 from ...config.models import ModelFamily
-from ...exceptions import DataRuntimeError
-from ...utils import printer
-from ..arboreal import ArborealTracker, Tree
-from ..conversation import Prompt
 
 config: SachmisConfig = get_config()
 
-# NEXT:
-# NEXT:
-# NEXT:
-# NEXT:
-# NEXT:
-
-
-# REFACTOR:
-# - in out
-#   - FileSystem in out
-#   - Automatic in out
-# - rollout file writer
-# - prompt/response handler
-
 
 class DataHandler:
-    """Future interface for other tasks executed with DataManager() as data"""
+    """Provide input/output data from Sprout to Forest or Rollout"""
 
-    tree_id: int = 0  # root number, ids start at 1
-    existing_prompts_at_cwd: list[Path] = []
-    existing_responses_at_cwd: list[Path] = []
-    scanned_models: list[ModelFamily] = []
+    _result_files: list[Path] = []
 
-    _tree_tracker_from_forest: ArborealTracker | None = None
-    _tree_tracker_from_tree: ArborealTracker | None = None
+    @abstractmethod
+    def models() -> list[ModelFamily]:
+        # NEXT: maybe an arg for pick or so
+        """Provide subset of Models according to observed Data state"""
 
-    _raw_prompt: Prompt | None = None
-    _prompt: Prompt | None = None
+    @abstractmethod
+    def prompt_text():
+        """Provide the prepared content for the Prompt"""
+        # INFO: for fire:
+        # - not possible to directly create prompt, id might be unknown
 
-    _result_file_paths: list[Path] = []
+    @abstractmethod
+    def process(self, **kwargs):
+        """Process the received Prompt or Response with your Schema"""
 
-    def attach_tracker(
-        self,
-        tracker: ArborealTracker,
-        extracted_from: Literal["forest", "tree"],
-    ):
-        match extracted_from:
-            case "forest":
-                self._tree_tracker_from_forest: ArborealTracker[Tree] = tracker
-            case "tree":
-                self._tree_tracker_from_tree: ArborealTracker[Tree] = tracker
-
-    @property
-    def existing_conversations(self) -> list[str]:
-        return [
-            path.stem
-            for path in self.existing_prompts_at_cwd
-            + self.existing_responses_at_cwd
-        ]
-
-    @property
-    def tree_tracker(self) -> ArborealTracker:
-        if self._tree_tracker_from_tree:
-            logger.info("Providing Tree Tracker extracted from Tree")
-            return self._tree_tracker_from_tree
-        if self._tree_tracker_from_forest:
-            logger.info("Providing Tree Tracker extracted from Forest")
-            return self._tree_tracker_from_forest
-        raise DataRuntimeError("No Tracker Loaded!")
-
-    def attach_prompt(self, prompt: Prompt):
-        if config.defaults.log_and_print.data_prompt_attach.printer:
-            printer(prompt)
-        self.prompt: Prompt = prompt
-        logger.debug(f"Prompt attached to: {self.__class__.__name__}")
-
-    @property
-    def raw_prompt(self) -> Prompt:
-        if self._prompt:  # TODO: check if that has any drawbacks
-            logger.info("Providing Prompt instead of raw_prompt")
-            return self._prompt
-        if self._raw_prompt:
-            return self._raw_prompt
-        raise DataRuntimeError("Prompt and Prompt not loaded!")
-
-    @property
-    def prompt(self) -> Prompt:
-        if self._prompt is None:
-            raise DataRuntimeError("Prompt not loaded!")
-        return self._prompt
+    def result_files(self, root_dir: Path | None = None) -> list[Path]:
+        """Provide relative Paths of already written result files"""
+        # NEXT: simplify, use cwd, No root_dir arg!
+        # - relative? to cwd, base or not at all?
+        return list(
+            PathGuard.relative(target=path, root=root_dir, strict=False)
+            for path in self._result_files
+        )
 
     @property
     def result_file_paths(self) -> list[Path]:
-        """Get absolute result file paths"""
-        return self._result_file_paths
-
-    def result_files(self, root_dir: Path | None = None) -> list[Path]:
-        """Compute relative result file paths"""
-        return list(
-            PathGuard.relative(target=path, root=root_dir, strict=False)
-            for path in self.result_file_paths
-        )
+        """Provide absolute Paths of already written result files"""
+        return self._result_files
 
 
 class FileRollout(DataHandler):

@@ -12,6 +12,7 @@ from sstcore.data import (
     SstFile,
     SstFileRegistry,
 )
+from sstcore.utils.parse import StyledName
 
 from ..config import SachmisConfig, get_config
 from ..exceptions import SachmisDataError
@@ -53,6 +54,13 @@ type RemoteState = Annotated[
     Field(discriminator="target"),
 ]
 
+# MOVE: back to names after setting up style strategy
+remotes: StyledName = StyledName.parse_style(
+    style_pattern="[{style1}]{name}[/] Remotes: [{style2}]{remotes}[/]",
+    keys=["name", "remotes"],
+    styles=["blue", "green"],
+)
+
 
 class UploadFile(SstFile):
     """Local file for upload and usage in prompt"""
@@ -70,16 +78,14 @@ class UploadFile(SstFile):
 
     @property
     def remotes(self) -> str:
-        config: SachmisConfig = get_config()
-        return config.names.remotes.styled([self.name, self._remotes])
+        return remotes.styled([self.name, self._remotes])
 
     def _remotes(self) -> str:
         return " - ".join(list(self.remote_states.keys()))
 
     @property
     def remotes_plain(self) -> str:
-        config: SachmisConfig = get_config()
-        return config.names.remotes([self.name, self._remotes])
+        return remotes([self.name, self._remotes])
 
     def attach_remote(self, state: RemoteState):
         """Attach new remote states"""

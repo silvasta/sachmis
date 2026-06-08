@@ -1,7 +1,6 @@
 from .base import ArborealTracker
 from .biome import Biome
 from .forest import Forest
-from .sprout import Sprout, SproutSession
 from .tree import Tree
 
 __all__: list[str] = [
@@ -9,6 +8,4 @@ __all__: list[str] = [
     "Forest",
     "Tree",
     "ArborealTracker",
-    "Sprout",
-    "SproutSession",
 ]

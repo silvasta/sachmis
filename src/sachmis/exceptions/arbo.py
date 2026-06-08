@@ -2,8 +2,9 @@ from pathlib import Path
 
 from .base import ArborealError
 
+# NEXT: check and confirm
 
-# exceptions/arbo.py
+
 class ArborealFileError(ArborealError):
     def __init__(self, msg: str, arboreal: str, file: Path):
         self.arboreal = arboreal

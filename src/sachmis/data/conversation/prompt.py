@@ -14,43 +14,53 @@ config: SachmisConfig = get_config()
 
 
 class Prompt(ConversationData):
-    role: Role | None = None
+    partition: Literal["P"] = "P"
+
+    role: Role | None = None  # LATER: replace by layout
     files: list[UploadFile] = Field(default_factory=list)
     images: list[SstFile] = Field(default_factory=list)
 
-    partition: Literal["P"] = "P"
+    # NEXT: from Handler
     _content: str
+    # REMOVE:
     _input_file_path: Path | None = PrivateAttr(default=None)
 
     @property
+    # REMOVE: ???
     def content(self) -> str:
         return self._content
 
     @property
+    # REMOVE:
     def has_input_file_path(self) -> bool:
         return self._input_file_path is not None
 
     @property
+    # REMOVE:
     def input_file_path(self) -> Path:
         if self._input_file_path is None:
             raise PromptError("Invalid access to path: is None")
         return self._input_file_path
 
     @property
+    # TODO: check
     def has_role(self) -> bool:
         return self.role is not None
 
     @property
+    # TODO: check
     def role_content(self) -> str:
         if self.role is None:
             raise PromptError("No Role is loaded!")
         return self.role.content
 
     @property
+    # REMOVE:
     def _spec_for_stem(self) -> str:
         return "prompt"
 
     @classmethod
+    # TASK: handler or here?
     def load_from_path(
         cls,
         local_id: int,
@@ -70,6 +80,7 @@ class Prompt(ConversationData):
         return prompt
 
     @classmethod
+    # TASK: handler or here?
     def load_from_text(
         cls,
         content: str,
@@ -92,6 +103,7 @@ class Prompt(ConversationData):
         return prompt
 
     @staticmethod
+    # TASK: handler or here?
     def extract_topic(prompt_text: str) -> str:
 
         if lines := prompt_text.splitlines():

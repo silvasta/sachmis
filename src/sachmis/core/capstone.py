@@ -57,6 +57,7 @@ def launch_sequential(models: list[Model]):
             model.assemble_prompt()
             model.fire()
         except Exception as e:
+            # TODO: collect exceptions
             logger.error(f"Problem with model: {model.model.unique}\n{e}")
 
 
@@ -120,16 +121,19 @@ class ExtractFromForest(AbstractContextManager):
             tree_tracker: ArborealTracker = forest.provide_tree(
                 data.handler.tree_id, data.handler.raw_prompt
             )
+            # NEXT: needed? probably yes for open earlier
             data.handler.attach_tracker(
                 tracker=tree_tracker, extracted_from="forest"
             )
+            # NEXT: verify camp
+            # NEXT: get tree id if needed -> handler
             self.camp: CampManager = forest.get_camp()
             data.attach_camp(self.camp)
         logger.debug("Data extracted - Forest closed")
 
     def __exit__(self, exc_type, _exc_val, _exc_tb):
         logger.debug("...Forest Extractor 󱢗")
-        if exc_type is not None:
+        if exc_type is not None:  # LATER: what can happen?
             logger.warning(f"Task failed with {exc_type.__name__}")
             return config.defaults.context.forest_error.swallow
 
@@ -144,43 +148,33 @@ class ExtractFromForest(AbstractContextManager):
 
 class ExtractFromTree(AbstractContextManager):
     def __init__(self, data: DataManager):
+        # TASK: data attach to sprout?
         self.data: DataManager = data
 
+        # NEXT: GET SPROUT
         logger.debug("Loading Tree...")
         with Tree.edit_mode(path := data.handler.tree_tracker.path) as tree:
             self.tracker: ArborealTracker = tree.sample_tracker(
                 path, local_id=data.handler.tree_tracker.local_id
             )
-            # # NEXT:
-            # cwd_conversations: ConversationBag = (
-            #     tree.find_conversation_by_stem(
-            #         stems=data.handler.existing_conversations
-            #     )
-            # )
-            # cwd_conversations.log_and_print()
-            # # TODO: attach prompt, extract
-            # # NEXT:
-            # # TODO: previous_sprout
-            # # TODO: find prompt ancestor
 
         logger.debug("Data extracted - Tree closed")
+        # NEXT: needed? probably yes for open earlier
         data.handler.attach_tracker(
             tracker=self.tracker, extracted_from="forest"
         )
 
     def __exit__(self, exc_type, _exc_val, _exc_tb):
         logger.debug("...Tree Extractor ")
-        if exc_type is not None:
+        if exc_type is not None:  # LATER: what can happen?
             logger.warning(f"Task failed with {exc_type.__name__}")
             return config.defaults.context.tree_error.swallow
 
         logger.debug("Loading Tree...")
-        # NEXT:
+        # NEXT: Bring back sprout
+        # NEXT: Confirm DAG, what if failed???
         with Tree.edit_mode(self.tracker.path) as tree:
             printer(tree)
-            # TODO: modify Prompt
-            # TODO: attach Response
-            # TODO: test consistency?
 
         logger.debug("Tree closed - Data transferred back")
         return config.defaults.context.tree_end.swallow
@@ -197,19 +191,25 @@ class Fire(AbstractContextManager):
         self.data: DataManager = self.stack.enter_context(
             DataManager(biome=True, forest=True)
         )
+        # NEXT: dispatch handler
         self.data.attach_handler(FileRollout())
-        # NEXT: state<-data
+        # NEXT: Tree must be clear or ready to ask Forest
 
+        # TASK: create new Tree if needed
         self.forest_handler: ExtractFromForest = self.stack.enter_context(
             ExtractFromForest(self.data)
         )
         logger.info("Forest Extractor stacked to Context")
 
+        # TASK: get Sprout
+        # WARN: model not already avaliable
+        # MOVE: after  model loading?
         self.tree_handler: ExtractFromTree = self.stack.enter_context(
             ExtractFromTree(data=self.data)
         )
         logger.info("Tree Extractor stacked to Context")
 
+        # REFACTOR: sprout
         self.data.handler.attach_prompt(self.tree_handler.prompt)
 
         logger.success("capstone.Fire ready for session")

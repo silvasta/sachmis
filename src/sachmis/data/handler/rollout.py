@@ -29,9 +29,6 @@ text = f"{c.black('TreeIDMissingError')} Important for the Order!"
 
 
 # NEXT: map this
-# NEXT: map this
-# NEXT: map this
-# NEXT: map this
 def scan_and_parse_forest_dir():
     project: FolderScanner = ToolBox.PROJECT.scanner(config.paths.base_dir)
     tree: FolderScanner = ToolBox.TREE.scanner(config.paths.base_dir)
@@ -80,24 +77,37 @@ class FileRollout:
 
     result_files: list[Path] = []
 
+    def models():  # NEXT:
+        raise NotImplementedError
+
+    def prompt_text():  # NEXT:
+        raise NotImplementedError
+
+    def process():  # NEXT:
+        raise NotImplementedError
+
     @property
+    # REFACTOR:
     def output_prompt_path(self):
         return self.target_dir / f"{self.prompt_stem}.md"
 
     @property
+    # REFACTOR:
     def current_response_path(self):
         return self.target_dir / f"{self.response_stem}.md"
 
     def __init__(self):
+        # NEXT: hold all here? maybe new Registry! with new Tree
         self.tree_parser: ParsedName = config.names.tree_parser
         self.prompt_parser: ParsedName = config.names.prompt_parser
         self.answer_parser: ParsedName = config.names.response_parser
 
         self.input_prompt_path: Path = config.paths.input_prompt
 
+        # NEXT: what needed?
         self._print_entry()  # REMOVE:
 
-    def scan_forest(self):
+    def scan_forest(self):  # WARN: must be triggered?
         """Delayed after init scan the entire Forest and map Structure"""
 
         if config.paths.cwd_in_top_dir:
@@ -111,11 +121,6 @@ class FileRollout:
         self.tree_model: TreeNameSchema = self.tree_parser(tree_stem)
         self.tree_id: int = self.tree_model.tree_id
 
-    # IMPORTANT: def provide_models()
-
-    # PLUG: this in general base class
-    #  or - prompt_attach or similar
-    #     - prompt text from here -> sprout
     def attach_tree_id(self, id: int):
         """Triggered from Sprout after Tree is loaded"""
         # IDEA: maybe provide here the prompt text
@@ -127,7 +132,7 @@ class FileRollout:
             )
         self.tree_id: int = id
 
-    def load_prompt_text(self):
+    def load_prompt_text(self):  # NEXT: as function of Prompt!
         logger.info(f"Loading prompt text from: {self.input_prompt_path=}")
         self.prompt_text: str = self.input_prompt_path.read_text()
         return self.prompt_text
@@ -167,7 +172,7 @@ class FileRollout:
             case Status.CROWD:
                 self.action_dig()
 
-    # PLUG: this in general base class
+    # NEXT:
     def process(self, model, topic, sprout_id, tree_id=0):
         """Dispatch Execution on Filesystem depending on Status"""
 
@@ -181,6 +186,9 @@ class FileRollout:
 
         self.write_response()  # NEXT: args
 
+    # IMPORTANT: from here:
+    # REFACTOR: all to _self methods
+    #
     def write_response(self):  # NEXT: args
         pass
 
