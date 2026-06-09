@@ -1,3 +1,4 @@
+from typing import Literal
 from contextlib import suppress
 from functools import cached_property
 from pathlib import Path
@@ -110,6 +111,31 @@ class Names(SstNames):
             return self.response_schema(name)
 
 
+class IdKeywordSchema(BaseModel):
+    category: str
+    cat_id: int
+
+
+def id_keyword_parser() -> ParsedName:
+    return ParsedName[IdKeywordSchema](
+        pattern="{category}_id_{cat_id}",
+        model_cls=IdKeywordSchema,
+    )
+
+
+def id_keywords_backwards(
+    target: Literal["sprout", "tree"], keywords: set[str]
+) -> int:
+    parser: ParsedName[IdKeywordSchema] = id_keyword_parser()
+    for keyword in keywords:
+        try:
+            if (schema := parser(keyword)).category == target:
+                return schema.cat_id
+        except ValidationError, ValueError:
+            pass
+    raise ValidationError("Failed to Parse!")
+
+
 class NameSchema(BaseModel):
     topic: str
 
@@ -129,8 +155,12 @@ class NameSchema(BaseModel):
     def _cls(self):
         raise NotImplementedError
 
+    @property
+    def _extra(self) -> set[str]:
+        return set()
+
     def keywords(self) -> set[str]:
-        return {self.id_keyword, self._cls}
+        return {self.id_keyword, self._cls} | self._extra
 
 
 class TreeNameSchema(NameSchema):
@@ -173,3 +203,7 @@ class ResponseNameSchema(SproutNameSchema):
     @property
     def _cls(self):
         return "Response"
+
+    @property
+    def _extra(self) -> set[str]:
+        return {self.model}

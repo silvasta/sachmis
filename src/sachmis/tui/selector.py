@@ -5,15 +5,18 @@ from sstcore.data import FileRegistry
 from sstcore.exceptions import TuiSelectorError
 from sstcore.tui import ListSelectorApp, TreeSelectorApp
 
-from ..config import models as fam
+from sachmis.utils import printer
+
+from ..config.models import ModelFamily, ModelSelectData
+from ..config.models import family as all_models
 from ..utils.parse import parse_raw_models
 
 
 def model_selector(
-    models: list[fam.ModelFamily] | None = None,
+    models: list[ModelFamily] | None = None,
     multi_select: bool = True,
-) -> list[fam.ModelFamily]:
-    models: list[fam.ModelFamily] = models or fam.model_family()
+) -> list[ModelFamily]:
+    models: list[ModelFamily] = models or all_models()
 
     items: dict[str, str] = {model.unique: model.api_name for model in models}
 
@@ -25,6 +28,30 @@ def model_selector(
         logger.debug(f"{selected_models=}")
 
         return parse_raw_models(selected_models)
+
+    raise TuiSelectorError("No valid models parsed from input...")
+
+
+def model_selector_with_dataclass(
+    models: list[ModelSelectData],
+    multi_select: bool = True,
+) -> list[ModelSelectData]:
+
+    items: dict[str, str] = {model.uuid: model.show for model in models}
+
+    tui = ListSelectorApp(items=items, multi_select=multi_select)
+    selected_uuids: list[str] | None = tui.run()
+
+    if selected_uuids:
+        selected_models: list[ModelSelectData] = [
+            model  # Filter all by uuid
+            for model in models
+            if model.uuid in set(selected_uuids)
+        ]
+        logger.success(f"Selected {len(selected_models)=}")
+        printer(selected_models)
+
+        return selected_models
 
     raise TuiSelectorError("No valid models parsed from input...")
 

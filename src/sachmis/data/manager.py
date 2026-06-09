@@ -7,9 +7,9 @@ from sstcore.data import SstFile
 from ..config import SachmisConfig, get_config
 from ..exceptions import ArborealError, DataRuntimeError, SachmisDataError
 from .arboreal import Biome
-from .files import CampManager
+from .files import CampManager, UploadFile, Role
 from .handler import DataHandler
-from .uploader import RemoteUploader, create_uploader
+from .uploader import Uploader
 
 config: SachmisConfig = get_config()
 
@@ -19,7 +19,7 @@ class DataManager:
 
     _handler: DataHandler | None = None
     _camp: CampManager | None = None
-    _uploader: dict[str, RemoteUploader] = {}
+    _uploader: Uploader | None = None
 
     def __init__(self, handler: DataHandler):
         """Setup and check required: Biome, Forest"""
@@ -34,6 +34,10 @@ class DataManager:
 
         self.attach_handler(handler)
 
+    ### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --
+    ### ContexManager stuff
+    ### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --
+
     def __enter__(self) -> Self:
         logger.info("DataManager: Loading Data in Context")
         return self
@@ -45,6 +49,7 @@ class DataManager:
             logger.error(f"DataManager - Error: {exception_type.__name__}")
 
             if issubclass(exception_type, ArborealError):
+                # IMPORTANT: check if handle arbos sepatat, and what else
                 logger.error(f"Context: {exception_value=}")
                 logger.warning("State not saved!")
                 return config.defaults.context.data_error_arboreal.swallow
@@ -63,6 +68,10 @@ class DataManager:
         logger.info("DataManager: Clean Exit")
 
         return config.defaults.context.data_end.swallow
+
+    ### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --
+    ### Handlers
+    ### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --
 
     @property
     def handler(self) -> DataHandler:
@@ -84,19 +93,31 @@ class DataManager:
         self._camp: CampManager = camp
         logger.info(f"Attached: {camp.__class__.__name__}")
 
-    def get_uploader(self, target: str) -> RemoteUploader:
-        if target not in self._uploader:
-            self._uploader[target] = create_uploader(target)
-        return self._uploader[target]
+    @property
+    def uploader(self) -> Uploader:
+        if self._uploader is None:
+            self._uploader = Uploader()
+        return self._uploader
 
     ### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --
-    ### Biome Level Tasks - only remaining responsibility
+    ### Handler Communication
     ### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --
 
-    # TASK: Improve Error robustness of System and ensure Biome Tasks
+    def load_files(self, files: list[UploadFile]):
+        uploaded: list[UploadFile] = self.uploader.load_files(files)
+        self.handler.prompt.attach_files(uploaded)
 
-    def _add_temporary_full_response(self, text: str, path: Path) -> None:
-        path.write_text(text)  # TODO: handle path creation here?
+    def load_role(self, path: Path | None):
+        role: Role | None = self.camp.load_role(path)
+        self.handler.prompt.attach_role(role)
+
+    ### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --
+    ### Biome Level Tasks - remaining tasks
+    ### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --
+
+    def _add_temporary_full_response(self, text: str) -> None:
+        # NEXT:
+        path.write_text(text)
         response: SstFile = SstFile(local_path=Path(path.name))
         self._full_responses.append(response)
 

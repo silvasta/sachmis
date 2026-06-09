@@ -13,6 +13,8 @@ from ...exceptions import SachmisDataError
 from .. import retry
 from .agent import Model
 
+config: SachmisConfig = get_config()
+
 
 class Grok(Model):
     model: Groks
@@ -23,18 +25,15 @@ class Grok(Model):
 
     def _load_param(self, param: ModelParam | None) -> GrokParam:
         """Load defaults if param not set"""
-
+        # LATER: centralize
         if param is None:
-            config: SachmisConfig = get_config()
             param: GrokParam = config.defaults.grok
-
         if isinstance(param, GrokParam):
             return param
-
+        # LATER: imprve
         raise SachmisDataError(f"{self.__class__.__name__}: Invalid {param=}")
 
     def _load_client(self):
-        config: SachmisConfig = get_config()
         self.client = Client(
             api_key=config.from_env(key="XAI_API_KEY"),
             timeout=self.param.timeout,
@@ -91,8 +90,6 @@ class Grok(Model):
             else:
                 logger.warning(f"Failed: {upload_file=}")
 
-    # AI: is there any issue with using this like that?
-    @retry.rich_style()
     def _get_response(self):
         response: Response = self.chat.sample()
         return response

@@ -3,24 +3,23 @@ from pathlib import Path
 
 from loguru import logger
 from sstcore import PathGuard
-from sstcore.utils.print import ColorBox
+from sstcore.data import SstFile
 
 from ...config import SachmisConfig, get_config
-from ...utils.print import printer
+from ...config.models import ModelSelectData
+from ...config.models import uniques as model_uniques
+from ...config.names import id_keywords_backwards
+from ...exceptions import SachmisDataError, SachmisLaunchError
+from ...utils import parse_raw_models, printer
 from ..conversation import Prompt
 from ..local_dir import RolloutRegistry
 from .handler import DataHandler
 
 config: SachmisConfig = get_config()
 
-c: ColorBox = ColorBox()
-c._colors.black = "dark_goldenrod"
-
-text = f"{c.black('TreeIDMissingError')} Important for the Order!"
-
 
 class Status(StrEnum):
-    OUTSIDE_FOREST = auto()
+    UNDEFINED = auto()
     ROOT = auto()
     SINGLE = auto()
     LONG = auto()
@@ -30,28 +29,15 @@ class Status(StrEnum):
 class FileRollout(DataHandler):
     """Manage Prompt and Response write to Forest dir"""
 
-    status: Status = Status.OUTSIDE_FOREST
+    status: Status = Status.UNDEFINED
 
     filesystem_work_todo = True
     target_dir: Path = Path.cwd()
 
     result_files: list[Path] = []
 
-    def models(self):  # NEXT:
-        raise NotImplementedError
-
     def _prepare_prompt_text(self):
         return self._prompt_text
-
-    @property
-    # REFACTOR:
-    def output_prompt_path(self):
-        return self.target_dir / f"{self.prompt_stem}.md"
-
-    @property
-    # REFACTOR:
-    def current_response_path(self):
-        return self.target_dir / f"{self.response_stem}.md"
 
     def __init__(self, prompt=True, forest=True):
         if prompt:
@@ -66,16 +52,69 @@ class FileRollout(DataHandler):
         """Build Registry with FileTree and RolloutTree of Forest"""
 
         self.registry: RolloutRegistry = RolloutRegistry.ready()
-        self.registry.get_neighbours()
 
-        if Path.cwd().parent != config.paths.base_dir:
-            # IDEA: use registry level of folder?
-            self.scanned_tree_id = self.registry.get_tree_id_above(Path.cwd())
+        if (tree_schema := self.registry.find_tree_above()) is None:
+            if not config.paths.cwd_in_top_dir:
+                raise SachmisLaunchError("Bad Location, Sprout has not Tree!")
+            self.scanned_tree_id = 0
+        else:
+            self.scanned_tree_id: int = tree_schema.tree_id
 
-    # NEXT:
-    def process(self, model, topic, sprout_id, tree_id=0):
-        """Dispatch Execution on Filesystem depending on Status"""
+    def get_sprout_groups(self) -> dict[str, list[SstFile]]:
+        sprout_groups: dict[str, list[SstFile]] = (
+            self.registry.get_folder_member_grouped_by_id_keyword()
+        )
+        logger.info(f"Found {len(sprout_groups.keys())} Sprouts in CWD")
+        return sprout_groups
 
+    def models(self) -> list[ModelSelectData]:
+        return self._filter_model_select_data_from_sprout_group()
+
+    def _filter_model_select_data_from_sprout_group(self):
+        all_models: set[str] = model_uniques()
+
+        model_select_data: list[ModelSelectData] = []
+
+        for sprout_id, sprout_files in self.get_sprout_groups().items():
+            self._print_stuff(sprout_id, sprout_files)
+
+            for file in sprout_files:
+                printer.title(f"Start of: {file}")
+
+                # Filter if keyword is in models
+                if model_unique := file.keywords & all_models:
+                    printer.success(f"Found Model: {model_unique=}")
+                    if len(model_unique) != 1:
+                        raise SachmisDataError("Error in Registry Keywords")
+                    data: ModelSelectData = self._create_model_select_data(
+                        file, model_unique.pop()
+                    )
+                    model_select_data.append(data)
+        return model_select_data
+
+    def _create_model_select_data(
+        self, file: SstFile, model_unique: str
+    ) -> ModelSelectData:
+
+        if not (model := parse_raw_models([model_unique])):
+            raise SachmisDataError(f"Bad Parameter in {file}")
+
+        return ModelSelectData.from_data(
+            model=model[0],
+            tree_id=id_keywords_backwards("tree", file.keywords),
+            sprout_id=id_keywords_backwards("sprout", file.keywords),
+        )
+
+    def _print_stuff(self, sprout_id, sprout_files):  # REMOVE
+        printer.special(f"Start of Detected Sprout: {sprout_id}")
+        printer([file for file in sprout_files])
+        printer.banner("Go")
+
+    def _handle_response_by_responsibility(
+        self, model, topic, sprout_id, tree_id=0
+    ):
+
+        # NEXT:
         self.tree_id: int = tree_id or self.tree_id
         self.prepare_sprout_stems(model, topic, sprout_id)
 
@@ -90,6 +129,22 @@ class FileRollout(DataHandler):
     def write_response(self):  # NEXT: args
         pass
 
+    @property  # REFACTOR:
+    def output_prompt_path(self):
+        return self.target_dir / f"{self.prompt_stem}.md"
+
+    @property  # REFACTOR:
+    def current_response_path(self):
+        return self.target_dir / f"{self.response_stem}.md"
+
+    # REFACTOR:
+    def prepare_sprout_stems(self, model, topic, sprout_id):
+        self.prompt_stem: str = config.names.prompt_stem(sprout_id, topic)
+        self.response_stem: str = config.names.response_stem(
+            sprout_id, model.unique, topic
+        )  # WARN: here will come only 1 prompt but n responses
+        printer.lines([self.prompt_stem, self.response_stem])
+
     def rotate_prompt(self):
         PathGuard.rotate(
             source=self.input_prompt_path,
@@ -100,18 +155,10 @@ class FileRollout(DataHandler):
         self.output_prompt_path.with_name(self.input_prompt_path.name).touch()
         logger.debug(f"prompt rotated: {self.output_prompt_path}")
 
-    # REMOVE:
-    def prepare_sprout_stems(self, model, topic, sprout_id):
-        self.prompt_stem: str = config.names.prompt_stem(sprout_id, topic)
-        self.response_stem: str = config.names.response_stem(
-            sprout_id, model.unique, topic
-        )  # WARN: here will come only 1 prompt but n responses
-        printer.lines([self.prompt_stem, self.response_stem])
-
     def dispatch_action(self):
         # TASK: arguments, Prompt/Response probably not, also not Tree
         match self.status:
-            case Status.OUTSIDE_FOREST:  # LATER: remove
+            case Status.UNDEFINED:  # LATER: remove
                 printer.danger("Response Outside Forest!!!")
             case Status.ROOT:
                 self.action_init()

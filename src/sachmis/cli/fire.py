@@ -5,16 +5,22 @@ from sstcore.cli import sargs
 from sstcore.data import SstFile
 
 from ..config import SachmisConfig, get_config
-from ..config.models import ModelFamily
+from ..config.models import ModelSelectData
 from ..core import capstone
 from ..core.model import Model
 from ..data import DataManager
-from ..data.files import CampManager, UploadFile
+from ..data.camp import CampManager, UploadFile
 from ..exceptions.data import DataRuntimeError
-from ..tui.selector import file_selector, model_selector, role_selector
+from ..tui.selector import (
+    file_selector,
+    model_selector,
+    model_selector_with_dataclass,
+    role_selector,
+)
 from ..utils.parse import parse_raw_models
 from ..utils.print import printer
 from . import args
+from .sketch.model import model_family_table
 
 config: SachmisConfig = get_config()
 
@@ -24,7 +30,7 @@ DEBUG = True
 def fire(
     # Arguments
     models: args.Models = None,
-    # sprout: args.Sprout = False,
+    # sprout: args.Sprout = False, # TODO: some partial select
     # Options for task selection
     pick_role: args.PickRole = True,
     files: sargs.Files = None,
@@ -39,27 +45,19 @@ def fire(
     """Prepare Models with Local Prompt and Fire"""
 
     with capstone.Fire() as session:
-        # PLUG:
-        # PLUG:
-        # PLUG:
-        # NEXT: check cli.command._rollout
-        # TASK: data.handler provide model subset needed!
-        models: list[ModelFamily] = _prepare_model_args(session.data, models)
+        models: list[ModelSelectData] = _prepare_model_args(session, models)
         agents: list[Model] = session.load_models(models)
 
-        # NEXT: function of camp
         files: list[UploadFile] = _prepare_file_args(
             session.data.camp, files, pick_file
         )
         session.data.load_files(files)
 
-        # NEXT: function of camp
         images: list[SstFile] = _prepare_image_args(
             session.data.camp, images, pick_image
         )
-        session.data.load_images(images)
+        session.data.handler.prompt.attach_images(images)
 
-        # NEXT: function of camp
         role: Path | None = _prepare_role(pick_role)
         session.data.load_role(role)
 
@@ -71,13 +69,8 @@ def fire(
         session.launch(use_async, dry_run)
 
         printer.success("Models finished to run, storing data, au revoir!")
-
-        printer.lines(
-            header="Paths of generated Files",
-            # IMPORTANT: no box around! plus nvim command
-            title=session.data.prompt.topic,
-            lines=session.data.result_files(),
-        )
+        printer.title("Paths of generated Files")
+        printer(session.data.handler.result_files_relative())
 
     logger.info("All processes finished")
 
@@ -86,9 +79,11 @@ def confirm_fire(models: list[Model], data: DataManager) -> bool:
 
     printer.special("Summary of Release")
 
-    # NEXT: prompt to... Sprout?
-    printer.title(f"Prompt - {data.prompt.topic}")
-    printer.md(data.prompt.content)
+    # LATER:
+    # TASK: Prompt Print - including files, images, role
+
+    printer.title(f"Prompt - {(prompt := data.handler.prompt)}")
+    printer.md(prompt.content)
 
     printer.lines_with_len(
         name="Models",
@@ -96,33 +91,25 @@ def confirm_fire(models: list[Model], data: DataManager) -> bool:
     )
 
     printer.lines(
-        header=f"Role: {data._role_path.stem if data._role_path else 'No role selected!'}",
+        header=f"Role: {prompt.role.path.stem if prompt.role else 'No role selected!'}",
         title="Role",
-        lines=[data._role or f"{data._role_path=} and {data._role=}"],
+        lines=[prompt.role or "build more roles in camp"],
     )
 
     printer.lines_with_len(
         name="Files",
-        lines=[file.name for file in data.prompt.files],
+        lines=[file.name for file in prompt.files],
     )
 
     printer.lines_with_len(
         name="Images",
-        lines=[image.name for image in data.prompt.images],
+        lines=[image.name for image in prompt.images],
     )
-
-    for model in models:
-        if model.sprout.previous_response_id:
-            printer.title(
-                f"{model.model.unique} is answering to previous response",
-                style="bold black on yellow",
-            )
-    # NEXT: but with previons response
-    # printer.model_table()
+    model_family_table()
 
     printer.danger("Last check before deployment")
 
-    match input("type 'ok' to launch: "):  # NEXT: check rich.prompt.Ask
+    match input("type 'ok' to launch: "):  # LATER: check rich.prompt.Ask
         case "ok":
             printer.title("send API request now!", style="green")
             return True
@@ -131,39 +118,36 @@ def confirm_fire(models: list[Model], data: DataManager) -> bool:
                 "see you when prompt and command chain is ready!",
                 style="yellow",
             )
-            return False
+            return False  # TASK: id loss?
 
 
 def _prepare_model_args(
-    data: DataManager,  # NEXT: sprout
-    models: list[str] | None,  # REMOVE: data.handler!
-) -> list[ModelFamily]:
+    session: capstone.Fire, models: list[str] | None, multi_select=True
+) -> list[ModelSelectData]:
     printer.title("Selecting Models...")
 
-    # NEXT: fix with new setup
     if models and (parsed_models := parse_raw_models(models)):
-        printer.header(f"...{len(parsed_models)} selected for pipeline")
-        return parsed_models
+        text = f"{len(parsed_models)} Models parsed for Pipeline"
+        printer.header(text)
+        return ModelSelectData.fresh_models(parsed_models)
 
-    match len(scanned_models := data.handler.scanned_models):  # TEST:
+    match len(scanned_models := session.data.handler.models()):  # TEST:
         case 0:
-            return model_selector(multi_select=True)
+            return ModelSelectData.fresh_models(
+                model_selector(multi_select=True)
+            )
         case 1:
-            selected_model: ModelFamily = scanned_models[0]
+            return scanned_models
         case _:
-            selected_model: ModelFamily = model_selector(
+            return model_selector_with_dataclass(
                 models=scanned_models,
-                multi_select=False,
-            )[0]  # TASK: multi output, bipart tree
-
-    return [selected_model]
+                multi_select=multi_select,
+            )
 
 
-# NEXT: move to camp?
-# MOVE: _prepare... to args?
 def _prepare_file_args(
     camp: CampManager, files: list[Path] | None, pick_file: bool
-) -> list[UploadFile]:
+) -> list[UploadFile]:  # LATER:: as function of camp
 
     printer.title("Preparing Files...")
 
@@ -191,7 +175,6 @@ def _prepare_file_args(
 
     for file in prepared_files:
         if not file.confirm_local_status(camp.files.local_root):
-            # TODO: better Error
             raise DataRuntimeError(f"Failed to Import {file=}")
 
     printer.md(f"...{len(prepared_files)} files selected for pipeline")
@@ -199,20 +182,15 @@ def _prepare_file_args(
     return prepared_files
 
 
-# NEXT: move to camp?
-# MOVE: _prepare... to args?
 def _prepare_image_args(
     camp: CampManager, images: list[Path] | None, pick_image: bool
-) -> list[SstFile]:
+) -> list[SstFile]:  # LATER:: as function of camp
 
     printer.title("Preparing Images...")
 
     prepared_images: list[SstFile] = []
 
-    # NEXT: same as files?
-    # REFACTOR:
-    if pick_image:  # Pick first to avoid picking as well new added files
-        # TODO: use ListSelector? or unify with _prepare_file_args
+    if pick_image:  # TODO: use ListSelector? or unify with _prepare_file_args
         selected_images: list[Path] = file_selector(files=camp.images)
         for path in selected_images:
             match len(file := camp.images.get_files_by_path(path)):
@@ -241,6 +219,9 @@ def _prepare_image_args(
 
 
 def _prepare_role(pick_role: bool) -> Path | None:
+    # LATER:: as function of camp
+    # TASK: extend to gathering statistics, creating layouts
+    #
     printer.title("Preparing Role...")
 
     if pick_role:

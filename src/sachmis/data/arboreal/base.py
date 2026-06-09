@@ -32,8 +32,8 @@ class ArborealTracker[ArboT: Arboreal](SstFile):  # LATER: ArboT?
     local_id: int = 0
 
     @property
-    def stat(self):
-        return f"{self.arbo_name} {self.local_id} - "
+    def stem(self):
+        return self.path.stem
 
     @property
     def path_is_valid(self) -> bool:

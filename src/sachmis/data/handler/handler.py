@@ -1,3 +1,4 @@
+import uuid
 from abc import abstractmethod
 from pathlib import Path
 
@@ -5,7 +6,7 @@ from loguru import logger
 from sstcore import PathGuard
 
 from ...config import SachmisConfig, get_config
-from ...config.models import ModelFamily
+from ...config.models import ModelSelectData
 from ...exceptions import PromptError, SachmisDataError
 from ..arboreal import ArborealTracker, Tree
 from ..conversation import ConversationDAG, DataDAG, Prompt, Response
@@ -25,25 +26,13 @@ class DataHandler:
     _initial_prompt: Prompt | None = None
     _dag_of_entire_tree: DataDAG | None = None
 
+    _sprout_registry: dict[str, ModelSelectData] = {}
+
     def attach_tracker(self, tracker: ArborealTracker[Tree]):
         self._tree_tracker: ArborealTracker[Tree] = tracker
 
     # NEXT: model registry, assign uuid, use later for response
-
-    # NEXT:
-    def export_dag(self):
-        """Send only the newly created part of the DAG"""
-        raise NotImplementedError
-
-    # NEXT:
-    @abstractmethod
-    def models(self) -> list[ModelFamily]:
-        """Provide subset of Models according to observed Data state"""
-
-    # NEXT:
-    @abstractmethod
-    def process(self, **kwargs):
-        """Process the received Prompt or Response with your Schema"""
+    # - plus create data bag with files, role, .. everything
 
     def attach_tree_data(self, sprout_id: int, full_dag: DataDAG):
         self._initial_prompt: Prompt = Prompt.from_text(
@@ -52,8 +41,43 @@ class DataHandler:
         self._dag_of_entire_tree: DataDAG = full_dag
         logger.info(f"DAG attached from Tree to {self.__class__.__name__}")
 
+    @abstractmethod
+    def models(self) -> list[ModelSelectData]:
+        """Provide subset of Models according to observed Data state"""
+
+    # NEXT:
+    @abstractmethod
+    def prepare_package(self, model_data: ModelSelectData) -> DataDAG:
+        """Load DataDAG or whatever"""
+        response_id = str(uuid.uuid4())
+        # TODO: data
+        # - model
+        # - chain [P,R,P,R,...] of previous livin responses
+        # - DAG with here new created prompt as head,
+        # - response_id for head of new dag
+        self._sprout_registry[response_id] = info
+        # TODO: info
+        # - model
+        # - ?
+        return info
+
+    @abstractmethod
+    def process_response(self, **kwargs):
+        """Process the received Prompt or Response with your Schema"""
+        # NEXT: preprocessing: general
+        self._handle_response_by_responsibility()
+
+    # NEXT: back to tree
+    def export_dag(self):
+        """Send only the newly created part of the DAG"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def _handle_response_by_responsibility(self, **kwargs):
+        raise NotImplementedError
+
     @property
-    def initial_prompt(self) -> Prompt:
+    def prompt(self) -> Prompt:
         if not self._initial_prompt:
             raise SachmisDataError("No Initial Prompt loaded, wait for Tree")
         return self._initial_prompt
@@ -119,7 +143,3 @@ class DataHandler:
     def result_file_paths(self) -> list[Path]:
         """Provide absolute Paths of already written result files"""
         return self._result_files
-
-
-class FileRollout(DataHandler):
-    """Manage Prompt and Response write to Forest dir"""

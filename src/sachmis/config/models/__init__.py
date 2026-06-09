@@ -3,7 +3,7 @@ from loguru import logger
 from ..defaults import ModelToggle
 from ..manager import get_config
 from .dummy import DummyFamily
-from .family import ModelFamily
+from .family import ModelFamily, ModelSelectData
 from .gemini import Geminis
 from .grok import Groks
 
@@ -12,6 +12,7 @@ __all__: list[str] = [
     "Groks",
     "Geminis",
     "DummyFamily",
+    "ModelSelectData",
 ]
 
 
@@ -42,8 +43,8 @@ def family() -> list[ModelFamily]:
     return select(toggle.dummy, toggle.grok, toggle.gemini)
 
 
-def uniques() -> list[str]:
-    return [model.unique for model in family()]
+def uniques() -> set[str]:
+    return {model.unique for model in family()}
 
 
 def names() -> list[str]:

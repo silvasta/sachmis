@@ -2,15 +2,12 @@ from google.genai import Client, types
 from google.genai.types import GenerateContentResponse
 from loguru import logger
 
-from sachmis.data.files import GoogleUploadState
-from sachmis.exceptions import SachmisDataError
-
-# from tenacity import retry, stop_after_attempt, wait_exponential
 from ...config import SachmisConfig, get_config
 from ...config.defaults import GeminiParam, ModelParam
 from ...config.models import Geminis
+from ...data.files import GoogleUploadState
+from ...exceptions import SachmisDataError
 from ...utils.print import printer
-from .. import retry
 from .agent import Model
 
 config: SachmisConfig = get_config()
@@ -24,14 +21,13 @@ class Gemini(Model):
 
     def _load_param(self, param: ModelParam | None) -> GeminiParam:
         """Load defaults if param not set"""
-
+        # LATER: centralize
         if param is None:
             config: SachmisConfig = get_config()
             param: GeminiParam = config.defaults.gemini
-
         if isinstance(param, GeminiParam):
             return param
-
+        # LATER: imprve
         raise SachmisDataError(f"{self.__class__.__name__}: Invalid {param=}")
 
     def _load_client(self):
@@ -95,8 +91,6 @@ class Gemini(Model):
             else:
                 logger.warning(f"Failed: {upload_file=}")
 
-    # AI: is there any issue with using this like that?
-    @retry.push_forward()
     def _get_response(self):
         response: GenerateContentResponse = (
             self.client.models.generate_content(

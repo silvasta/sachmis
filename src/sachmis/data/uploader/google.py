@@ -4,7 +4,7 @@ from typing import Any
 from loguru import logger
 
 from ...config import SachmisConfig, get_config
-from ...data.files import GoogleUploadState, UploadFile
+from ..files import GoogleUploadState, UploadFile
 from .uploader import FileUploader
 
 config: SachmisConfig = get_config()

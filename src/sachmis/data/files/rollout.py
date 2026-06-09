@@ -1,5 +1,5 @@
 """
-Organize FileTree and Rollout of Base Directory with Forest
+Organize FileTree of Base Directory with Forest front side
 
 """
 
@@ -10,20 +10,16 @@ from typing import Self
 from loguru import logger
 from sstcore import PathGuard
 from sstcore.data import FileRegistry, SstFile
-from sstcore.utils import PathTreeNode, ProjectFilter
+from sstcore.utils import FolderScanner, PathTreeNode, ProjectFilter
 from sstcore.utils.parse import ParsedName
-from sstcore.utils.print import ColorBox
-from sstcore.utils.scanner import FolderScanner
 from sstcore.utils.tree import build_path_tree
 
-from ..config import SachmisConfig, get_config
-from ..config.names import TreeNameSchema
-from ..exceptions import SachmisLaunchError
-from ..utils import printer
+from ...config import SachmisConfig, get_config
+from ...config.names import TreeNameSchema
+from ...exceptions import SachmisLaunchError
+from ...utils import printer
 
 config: SachmisConfig = get_config()
-
-c: ColorBox = ColorBox()
 
 
 IGNORE_DIRS: set[str] = {".camp"}
@@ -31,13 +27,8 @@ IGNORE_DIRS: set[str] = {".camp"}
 ALLOWED_EXTS: set[str] = {".md"}
 
 
-printer.header(f"Parsing: {self}", frame="purple")
-printer.tree_graph(self.scanner(root).tree())
-
-tree: PathTreeNode = build_path_tree(paths=[], root_name=scan_root)
-
-# TASK: Attach NameSchema to File??!!
-# NEXT:
+def plot():  # NEXT: tree plot
+    _tree: PathTreeNode = build_path_tree(paths=[], root_name="name")
 
 
 class RolloutRegistry(FileRegistry[SstFile]):
@@ -59,8 +50,11 @@ class RolloutRegistry(FileRegistry[SstFile]):
     def get_responses(self):
         self.get_files_by_keyword({"Response"})
 
-    def find_tree_above(self, path: Path) -> TreeNameSchema | None:
-        for part in path.parts:  # IDEA: just use relative_path.part[0]?
+    def find_tree_above(
+        self, path: Path | None = None
+    ) -> TreeNameSchema | None:
+        # IDEA: just use relative_path.part[0]?
+        for part in (path or Path.cwd()).parts:
             if tree_schema := config.names.tree_schema_safe(part):
                 return tree_schema
 
@@ -70,21 +64,25 @@ class RolloutRegistry(FileRegistry[SstFile]):
             united_keywords |= file.keywords
         return united_keywords
 
-    def get_tree_id_above(self, path: Path) -> int:
+    def get_tree_id_above(self, path: Path | None = None) -> int:
         if tree_schema := self.find_tree_above(path):
             return tree_schema.tree_id
         raise SachmisLaunchError("Invalid Location, Sprout has not Tree!")
 
-    def get_neighbours(self, path: Path | None = None):  # NEXT: -> ?:
+    def get_folder_member_grouped_by_id_keyword(
+        self, path: Path | None = None
+    ) -> dict[str, list[SstFile]]:
+        """Provide"""
         united_keywords: set[str] = set()
         shared_keywords: set[str] = self.all_keywords()
-        neighbor_stat: dict[str, list[Path]] = defaultdict(list)
+        groups: dict[str, list[SstFile]] = defaultdict(list)
 
         for file in self.get_files_by_path(path or Path.cwd()):
             united_keywords |= file.keywords
             shared_keywords & file.keywords
             id: str = config.names.id_keyword(file.local_path, strict=False)
-            neighbor_stat[id].append(file.local_path)
+            # TASK: attach File? new FileType? with any information
+            groups[id].append(file)
 
         printer.special(
             [
@@ -95,8 +93,8 @@ class RolloutRegistry(FileRegistry[SstFile]):
                 shared_keywords,
             ]
         )
-        printer.dict_table(neighbor_stat)
-        return neighbor_stat
+        printer.dict_table(groups)
+        return groups
 
     @classmethod
     def ready(cls) -> Self:

@@ -3,8 +3,8 @@ from typing import Any
 from loguru import logger
 
 from ...config import SachmisConfig, get_config
-from ...data.files import UploadFile, XaiUploadState
-from .uploader import FileUploader
+from ..files import UploadFile, XaiUploadState
+from .base import FileUploader
 
 config: SachmisConfig = get_config()
 
@@ -15,7 +15,6 @@ class XaiUploader(FileUploader):
     @property
     def target(self) -> str:
         """Name of remote as defined in UploadFile"""
-        # TODO: this as function of XaiUploadState
         return "xai"
 
     @property

@@ -6,31 +6,40 @@ from typing import Self
 from loguru import logger
 
 from ..config import SachmisConfig, get_config
-from ..config.models import DummyFamily, Geminis, Groks, ModelFamily
+from ..config.defaults import ModelParam
+from ..config.models import (
+    DummyFamily,
+    Geminis,
+    Groks,
+    ModelSelectData,
+)
 from ..data import DataManager
 from ..data.arboreal import ArborealTracker, Forest, Tree
-from ..data.files import CampManager
+from ..data.camp import CampManager
 from ..data.handler import FileRollout
 from ..utils.print import printer
 from .model import Gemini, Grok, Model
 from .model.dummy import DummyModel
+from .sprout import Sprout
 
 config: SachmisConfig = get_config()
 
 
-def match_family(model, data, **kwargs) -> Model:
-    """Create instance of execution model from Enum family model"""
+def match_family(
+    model, sprout: Sprout, param: ModelParam | None = None
+) -> Model:
+    """Create Execution Model from Enum Family Model"""
 
     if isinstance(model, Groks):
-        data.get_uploader(target=model.target)
-        return Grok(model, data, **kwargs)
+        sprout.data.uploader.prepare(target=model.target)
+        return Grok(model, sprout, param)
 
     if isinstance(model, Geminis):
-        data.get_uploader(target=model.target)
-        return Gemini(model, data, **kwargs)
+        sprout.data.uploader.prepare(target=model.target)
+        return Gemini(model, sprout, param)
 
     if isinstance(model, DummyFamily):
-        return DummyModel(model, data, **kwargs)
+        return DummyModel(model, sprout, param)
 
     raise ValueError(f"Unknown {model=}")
 
@@ -156,6 +165,7 @@ class TreeExtractor(AbstractContextManager):
 
     def __init__(self, data: DataManager):
 
+        # LATER: check move after selection
         logger.debug("Loading Tree...")
         self.data: DataManager = data
 
@@ -206,12 +216,16 @@ class Fire(AbstractContextManager):
         logger.success("capstone.Fire session is ready")
         return self
 
-    def load_models(self, models: list[ModelFamily]) -> list[Model]:
+    def load_models(self, models: list[ModelSelectData]) -> list[Model]:
         logger.info(f"Start of loading: {models=}")
 
-        self.agents: list[Model] = [
-            match_family(model, self.data) for model in models
-        ]
+        # NEXT: sprout!!!!
+
+        self.agents: list[Model] = []
+        for model in models:
+            package = self.data.handler.prepare_package(model)
+            sprout = Sprout.setup(package)
+            match_family(model, sprout)
         return self.agents
 
     def launch(self, use_async=False, dry_run=False):

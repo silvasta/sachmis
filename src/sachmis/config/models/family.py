@@ -1,5 +1,8 @@
+import uuid
 from abc import ABCMeta, abstractmethod
+from dataclasses import dataclass
 from enum import Enum, EnumMeta
+from typing import Self
 
 from sstcore.utils.print import ColorBox
 
@@ -13,10 +16,35 @@ from sstcore.utils.print import ColorBox
 # - load including prices, status=Active etc,
 # check file-analyzer for template pydantic read/write
 
-# NEXT: update latest model
-
 
 c = ColorBox()
+
+
+@dataclass
+class ModelSelectData:
+    uuid: str
+    show: str
+    model: ModelFamily
+    tree_id: int = 0
+    sprout_id: int = 0
+
+    @classmethod
+    def from_model(cls, model: ModelFamily) -> Self:
+        return cls(uuid=str(uuid.uuid4()), show=model.id_cli, model=model)
+
+    @classmethod
+    def from_data(cls, model: ModelFamily, tree_id, sprout_id) -> Self:
+        return cls(
+            uuid=str(uuid.uuid4()),
+            show=model.id_cli,
+            model=model,
+            tree_id=tree_id,
+            sprout_id=sprout_id,
+        )
+
+    @classmethod
+    def fresh_models(cls, models: list[ModelFamily]) -> list[Self]:
+        return [cls.from_model(model) for model in models]
 
 
 class AbstractEnum(ABCMeta, EnumMeta):
@@ -35,9 +63,14 @@ class ModelFamily(Enum, metaclass=AbstractEnum):
         return f"{self.unique_letter}-{self.value}"
 
     @property
+    def id_cli(self) -> str:
+        """Colorized for Console output"""
+        return f"{c.yellow(self.unique)}-{self.cli}"
+
+    @property
     def cli(self) -> str:
         """Colorized for Console output"""
-        return f"{c.yellow(self.unique)}-{self.family}.{c.magenta(self.name)}"
+        return f"{self.family}.{c.magenta(self.name)}"
 
     @property
     def family(self) -> str:
