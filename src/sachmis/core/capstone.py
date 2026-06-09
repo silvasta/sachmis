@@ -165,7 +165,8 @@ class TreeExtractor(AbstractContextManager):
 
     def __init__(self, data: DataManager):
 
-        # LATER: check move after selection
+        # LATER: check moving load after selection
+
         logger.debug("Loading Tree...")
         self.data: DataManager = data
 
@@ -177,6 +178,8 @@ class TreeExtractor(AbstractContextManager):
                 sprout_id=tree.next_sprout_id(),
                 full_dag=tree.export_dag(),
             )
+        # NEXT: no data_dag to Tree???
+        # NEXT: no data_dag to Tree???
         logger.debug("Tree Data extracted - Closing Tree for now...")
 
     def __exit__(self, exc_type, _exc_val, _exc_tb):
@@ -218,8 +221,6 @@ class Fire(AbstractContextManager):
 
     def load_models(self, models: list[ModelSelectData]) -> list[Model]:
         logger.info(f"Start of loading: {models=}")
-
-        # NEXT: sprout!!!!
 
         self.agents: list[Model] = []
         for model in models:

@@ -1,3 +1,4 @@
+from sachmis.utils import printer
 from pathlib import Path
 
 from loguru import logger
@@ -24,9 +25,6 @@ class Tree(Arboreal):
     def dag(self) -> ConversationDAG:
         return self.data_dag.dag
 
-    # REMOVE:?
-    # failed_sprout_ids: set[int] = Field(default_factory=set)
-
     @property
     def n_prompts(self) -> int:
         return len(self.prompts)
@@ -49,6 +47,7 @@ class Tree(Arboreal):
         raise NotImplementedError
 
     def export_dag(self) -> DataDAG:
+        printer(self.data_dag)  # REMOVE:
         return DataDAG(**self.data_dag.model_dump())
 
     def next_sprout_id(self):

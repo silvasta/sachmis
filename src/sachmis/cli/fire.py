@@ -48,6 +48,8 @@ def fire(
         models: list[ModelSelectData] = _prepare_model_args(session, models)
         agents: list[Model] = session.load_models(models)
 
+        # TASK: show models here first
+
         files: list[UploadFile] = _prepare_file_args(
             session.data.camp, files, pick_file
         )

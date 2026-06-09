@@ -23,6 +23,13 @@ class ConversationDAG(BipartiteDAG):
                 return node
         return None
 
+    def find_sprout_group(self, sprout_id: int) -> list[ConversationNode]:
+        return [
+            node  #
+            for node in self.nodes
+            if sprout_id == node.local_id
+        ]
+
     def attach_leaf(self, anchor: str, node: ConversationNode) -> None:
         if any(n.id == node.id for n in self.nodes):
             return

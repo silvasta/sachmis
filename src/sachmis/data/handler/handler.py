@@ -1,3 +1,4 @@
+from sachmis.utils import printer
 import uuid
 from abc import abstractmethod
 from pathlib import Path
@@ -9,7 +10,13 @@ from ...config import SachmisConfig, get_config
 from ...config.models import ModelSelectData
 from ...exceptions import PromptError, SachmisDataError
 from ..arboreal import ArborealTracker, Tree
-from ..conversation import ConversationDAG, DataDAG, Prompt, Response
+from ..conversation import (
+    ConversationDAG,
+    DataDAG,
+    Prompt,
+    Response,
+    ConversationNode,
+)
 
 config: SachmisConfig = get_config()
 
@@ -25,20 +32,31 @@ class DataHandler:
 
     _initial_prompt: Prompt | None = None
     _dag_of_entire_tree: DataDAG | None = None
+    _growing_dag: DataDAG | None = None
 
+    # NEXT: move, change, multiple models!!!!!!!!!!!
+    # NEXT: move, change, multiple models!!!!!!!!!!!
+    # NEXT: move, change, multiple models!!!!!!!!!!!
+    # NEXT: move, change, multiple models!!!!!!!!!!!
+    # NEXT: move, change, multiple models!!!!!!!!!!!
+    # NEXT: move, change, multiple models!!!!!!!!!!!
     _sprout_registry: dict[str, ModelSelectData] = {}
 
     def attach_tracker(self, tracker: ArborealTracker[Tree]):
         self._tree_tracker: ArborealTracker[Tree] = tracker
-
-    # NEXT: model registry, assign uuid, use later for response
-    # - plus create data bag with files, role, .. everything
 
     def attach_tree_data(self, sprout_id: int, full_dag: DataDAG):
         self._initial_prompt: Prompt = Prompt.from_text(
             content=self.prompt_text, sprout_id=sprout_id, topic=self.topic
         )
         self._dag_of_entire_tree: DataDAG = full_dag
+        self._growing_dag: DataDAG = DataDAG.init_from(self._initial_prompt)
+
+        printer.special("Tree DAG")
+        printer(self._dag_of_entire_tree)
+        printer.special("Sprout DAG")
+        printer(self._growing_dag)
+
         logger.info(f"DAG attached from Tree to {self.__class__.__name__}")
 
     @abstractmethod
@@ -49,17 +67,29 @@ class DataHandler:
     @abstractmethod
     def prepare_package(self, model_data: ModelSelectData) -> DataDAG:
         """Load DataDAG or whatever"""
-        response_id = str(uuid.uuid4())
-        # TODO: data
-        # - model
-        # - chain [P,R,P,R,...] of previous livin responses
-        # - DAG with here new created prompt as head,
-        # - response_id for head of new dag
-        self._sprout_registry[response_id] = info
+        next_id = str(uuid.uuid4())
+        previous_response_node: ConversationNode = (
+            self.tree_dag.find_response_node(model_data)
+        )
+        response_node: ConversationNode = self._create_response_node(next_id)
+
+        self.growing_dag.dag.attach_leaf(
+            anchor=previous_response_node.id, node=response_node
+        )
+
+        self._sprout_registry[next_id] = previous_response_node
         # TODO: info
         # - model
         # - ?
         return info
+
+    def _create_response_node(self, next_id) -> ConversationNode:
+        return ConversationNode(
+            id=next_id,
+            partition="R",
+            local_id=self.prompt.sprout_id,
+            name=self.prompt.topic,
+        )
 
     @abstractmethod
     def process_response(self, **kwargs):
@@ -83,22 +113,16 @@ class DataHandler:
         return self._initial_prompt
 
     @property
-    def prompts(self) -> dict[str, Prompt]:
-        if not self._dag_of_entire_tree:
-            raise SachmisDataError("No DAG loaded, can't provide Prompt")
-        return self._dag_of_entire_tree.prompts
+    def growing_dag(self) -> DataDAG:
+        if not self._growing_dag:
+            raise SachmisDataError("No DAG loaded, can't provide DAG")
+        return self._growing_dag
 
     @property
-    def responses(self) -> dict[str, Response]:
-        if not self._dag_of_entire_tree:
-            raise SachmisDataError("No DAG loaded, can't provide Response")
-        return self._dag_of_entire_tree.responses
-
-    @property
-    def dag(self) -> ConversationDAG:
+    def tree_dag(self) -> DataDAG:
         if not self._dag_of_entire_tree:
             raise SachmisDataError("No DAG loaded, can't provide DAG")
-        return self._dag_of_entire_tree.dag
+        return self._dag_of_entire_tree
 
     @property
     def prompt_text(self):

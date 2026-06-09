@@ -20,10 +20,16 @@ from sstcore.utils.print import ColorBox
 c = ColorBox()
 
 
+# NEXT: move, change, multiple models!!!!!!!!!!!
+# NEXT: move, change, multiple models!!!!!!!!!!!
+# NEXT: move, change, multiple models!!!!!!!!!!!
+# NEXT: move, change, multiple models!!!!!!!!!!!
+# NEXT: move, change, multiple models!!!!!!!!!!!
+# NEXT: move, change, multiple models!!!!!!!!!!!
 @dataclass
-class ModelSelectData:
-    uuid: str
-    show: str
+class ModelSelectData:  # TASK: reduced class after selection
+    uuid: str  # for select
+    show: str  # for select
     model: ModelFamily
     tree_id: int = 0
     sprout_id: int = 0

@@ -36,6 +36,7 @@ class FileRollout(DataHandler):
 
     result_files: list[Path] = []
 
+    # NEXT:
     def _prepare_prompt_text(self):
         return self._prompt_text
 
@@ -99,6 +100,11 @@ class FileRollout(DataHandler):
         if not (model := parse_raw_models([model_unique])):
             raise SachmisDataError(f"Bad Parameter in {file}")
 
+        # NEXT:
+        # NEXT:
+        # NEXT:
+        # NEXT:
+        # NEXT:
         return ModelSelectData.from_data(
             model=model[0],
             tree_id=id_keywords_backwards("tree", file.keywords),
