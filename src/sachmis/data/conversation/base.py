@@ -15,41 +15,43 @@ config: SachmisConfig = get_config()
 
 
 class ConversationData(BaseModel):
-    """Beginning of all Prompts and Conversations"""
+    """Prepare Base for all Prompts and Responses"""
 
-    unique_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     partition: Literal["P", "R"]
+    unique_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
 
-    local_id: int = Field(ge=1)
+    sprout_id: int = Field(ge=1)
+
     topic: str
+    content: str  # LATER: other data types
 
-    original_topic: str | None = None  # Saves the original un-slugified topic
+    no_slug_topic: str | None = None  # Saves the original un-slugified topic
 
-    def __repr__(self):
-        return f"{self.__class__.__name__}(sprout_id={self.local_id})"
+    def _prepare_text_from_content(self):
+        raise NotImplementedError
 
-    def __str__(self):
-        return f"{self.__class__.__name__}_{self.local_id} with {self.topic=}"
-
-    @property
-    # REMOVE:
-    def stem(self) -> str:
-        return self._compose_stem()
-
-    @property
-    def _spec_for_stem(self) -> str:
-        # REMOVE:
+    def _assemble_stem(self) -> str:
         raise NotImplementedError
 
     @property
-    def content(self) -> str:
-        # REMOVE:
-        raise NotImplementedError
+    def text(self) -> str:
+        """Convert content to result for rendering"""
+        return self._prepare_text_from_content()
+
+    @property
+    def sprout_stem(self) -> str:
+        return self._assemble_stem()
+
+    def __repr__(self):  # TASK: this for all major classes
+        return f"{self.__class__.__name__}(sprout_id={self.sprout_id})"
+
+    def __str__(self):  # TASK: this for all major classes
+        return f"{self.__class__.__name__}_{self.sprout_id} with {self.topic=}"
 
     @classmethod
     @model_validator(mode="before")
     def slugify_topic_save_both_use_slug_as_topic(cls, data: Any) -> Any:
         if isinstance(data, dict) and "topic" in data:
-            data["original_topic"] = data.get("original_topic", data["topic"])
+            data["no_slug_topic"] = data.get("no_slug_topic", data["topic"])
             data["topic"] = slugify(str(data["topic"]))
         return data

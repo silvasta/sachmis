@@ -112,27 +112,32 @@ def launch_dry_run_async(models: list[Model]):
     asyncio.run(thunder(models))
 
 
-class ExtractFromForest(AbstractContextManager):
+class ForestExtractor(AbstractContextManager):
+    """Ensure Forest Data is loaded at start and saved at exit"""
+
     def __init__(self, data: DataManager):
 
         logger.debug("Loading Forest...")
-        with Forest.edit_mode(path := data.forest_file) as forest:
+        self.data: DataManager = data
+
+        with Forest.edit_mode(path := config.paths.forest_file) as forest:
             self.tracker: ArborealTracker = forest.sample_tracker(path)
-            tree_tracker: ArborealTracker = forest.provide_tree(
-                data.handler.tree_id, data.handler.raw_prompt
+
+            self.tree_tracker: ArborealTracker = (
+                forest.provide_tree(tree_id)
+                if (tree_id := data.handler.scanned_tree_id)
+                else forest.attach_new_tree(data.handler.topic)
             )
-            # NEXT: needed? probably yes for open earlier
-            data.handler.attach_tracker(
-                tracker=tree_tracker, extracted_from="forest"
-            )
-            # NEXT: verify camp
-            # NEXT: get tree id if needed -> handler
+            data.handler.attach_tracker(self.tree_tracker)
+
             self.camp: CampManager = forest.get_camp()
             data.attach_camp(self.camp)
-        logger.debug("Data extracted - Forest closed")
+
+        logger.debug("Forest Data extracted - Closing Forest for now...")
 
     def __exit__(self, exc_type, _exc_val, _exc_tb):
         logger.debug("...Forest Extractor 󱢗")
+
         if exc_type is not None:  # LATER: what can happen?
             logger.warning(f"Task failed with {exc_type.__name__}")
             return config.defaults.context.forest_error.swallow
@@ -146,35 +151,34 @@ class ExtractFromForest(AbstractContextManager):
         return config.defaults.context.forest_end.swallow
 
 
-class ExtractFromTree(AbstractContextManager):
+class TreeExtractor(AbstractContextManager):
+    """Ensure Tree Data is loaded at start and saved at exit"""
+
     def __init__(self, data: DataManager):
-        # TASK: data attach to sprout?
+
+        logger.debug("Loading Tree...")
         self.data: DataManager = data
 
-        # NEXT: GET SPROUT
-        logger.debug("Loading Tree...")
         with Tree.edit_mode(path := data.handler.tree_tracker.path) as tree:
             self.tracker: ArborealTracker = tree.sample_tracker(
                 path, local_id=data.handler.tree_tracker.local_id
             )
-
-        logger.debug("Data extracted - Tree closed")
-        # NEXT: needed? probably yes for open earlier
-        data.handler.attach_tracker(
-            tracker=self.tracker, extracted_from="forest"
-        )
+            self.data.handler.attach_tree_data(
+                sprout_id=tree.next_sprout_id(),
+                full_dag=tree.export_dag(),
+            )
+        logger.debug("Tree Data extracted - Closing Tree for now...")
 
     def __exit__(self, exc_type, _exc_val, _exc_tb):
         logger.debug("...Tree Extractor ")
+
         if exc_type is not None:  # LATER: what can happen?
             logger.warning(f"Task failed with {exc_type.__name__}")
             return config.defaults.context.tree_error.swallow
 
         logger.debug("Loading Tree...")
-        # NEXT: Bring back sprout
-        # NEXT: Confirm DAG, what if failed???
         with Tree.edit_mode(self.tracker.path) as tree:
-            printer(tree)
+            tree.attach_to_dag(self.data.handler.export_dag())
 
         logger.debug("Tree closed - Data transferred back")
         return config.defaults.context.tree_end.swallow
@@ -186,34 +190,20 @@ class Fire(AbstractContextManager):
         self.agents: list[Model] = []
 
     def __enter__(self) -> Self:
-        # Push to stack, DataManager will close with FireSession
-        # NEXT:
         self.data: DataManager = self.stack.enter_context(
-            DataManager(biome=True, forest=True)
+            DataManager(handler=FileRollout())
         )
-        # NEXT: dispatch handler
-        self.data.attach_handler(FileRollout())
-        # NEXT: Tree must be clear or ready to ask Forest
-
-        # TASK: create new Tree if needed
-        self.forest_handler: ExtractFromForest = self.stack.enter_context(
-            ExtractFromForest(self.data)
+        self.forest: ForestExtractor = self.stack.enter_context(
+            ForestExtractor(self.data)
         )
-        logger.info("Forest Extractor stacked to Context")
+        logger.info("ForestExtractor: Stacked to Context")
 
-        # TASK: get Sprout
-        # WARN: model not already avaliable
-        # MOVE: after  model loading?
-        self.tree_handler: ExtractFromTree = self.stack.enter_context(
-            ExtractFromTree(data=self.data)
+        self.tree: TreeExtractor = self.stack.enter_context(
+            TreeExtractor(data=self.data)
         )
-        logger.info("Tree Extractor stacked to Context")
+        logger.info("TreeExtractor: Stacked to Context")
 
-        # REFACTOR: sprout
-        self.data.handler.attach_prompt(self.tree_handler.prompt)
-
-        logger.success("capstone.Fire ready for session")
-
+        logger.success("capstone.Fire session is ready")
         return self
 
     def load_models(self, models: list[ModelFamily]) -> list[Model]:

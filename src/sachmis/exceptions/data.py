@@ -2,7 +2,7 @@ from .base import SachmisDataError
 
 
 class PromptError(ValueError, SachmisDataError):
-    # NEXT: this as Data/Sprout?
+    # NEXT: this as SachmisLaunchError??? check with response
     def __init__(self, message=None):
         if message is None:
             message = "Problems while processing Prompt"

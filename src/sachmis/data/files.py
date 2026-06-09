@@ -239,3 +239,33 @@ class CampManager(FileSystemManager):
     def mirror_roles(self, paths: Path | list[Path]) -> list[Role]:
         """Copy images at path location into camp and registry"""
         return self.roles.mirror_from_path(paths)
+
+    def load_files(self, files: list[UploadFile], ensure_after_upload=True):
+        """Assumes valid local data files, pushes to Remotes"""
+        # TODO: files
+
+        logger.debug("attaching files to data.prompt")
+
+        prompt_files: list[UploadFile] = self.prompt.files
+
+        for file, uploader in product(files, self._uploader.values()):
+            try:
+                uploader.upload_local_file(file, ensure_after_upload)
+                prompt_files.append(file)
+            except FileNotFoundError:
+                logger.error(f"Missing {file=}")
+            except RuntimeError as err:
+                logger.error(f"Upload failed {file=}, {err}")
+                # TODO: check if raise or not
+
+    def load_images(self, images: list[SstFile]):
+        """Assumes valid local image files, pushes to Remotes"""
+        # TODO: images
+        logger.debug("attaching files to data.image")
+        prompt_files: list[SstFile] = self.prompt.images
+        prompt_files.extend(images)
+
+    def load_role(self, role_path: Path | None = None):
+        if role_path is not None and (role := role_path.read_text()):
+            self._role_path: Path | None = role_path
+            self._role: str | None = role

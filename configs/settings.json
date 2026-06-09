@@ -14,6 +14,9 @@
     "file_dir": "Files",
     "image_dir": "Images",
     "prompt": "prompt.md",
+    "tree_pattern": "t_{tree_id}_{topic}",
+    "prompt_pattern": "p_{sprout_id}_{topic}",
+    "response_pattern": "r_{sprout_id}_{model}_{topic}",
     "tree_file": "t_{id}_{topic}.json",
     "sprout_stem": "c_{id}_{spec}_{topic}",
     "remotes": {
@@ -88,7 +91,8 @@
         "dummy": false,
         "grok": true,
         "gemini": true
-      }
+      },
+      "subapp": true
     },
     "log_and_print": {
       "conversation_bag": {
@@ -111,10 +115,11 @@
     "retention": "1 week",
     "rotation": "5 MB"
   },
-  "last_updated": "2026-06-05T22:46:05.238632Z",
+  "last_updated": "2026-06-08T14:50:32.254030Z",
   "updates": [
     "2026-06-05T21:48:55.850034Z",
-    "2026-06-05T22:46:05.238632Z"
+    "2026-06-05T22:46:05.238632Z",
+    "2026-06-08T14:50:32.254030Z"
   ],
   "update_maxlen": 79
 }

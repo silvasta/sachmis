@@ -6,10 +6,7 @@ def main() -> None:
     app()
 
 
-app = SafeTyper(
-    name="d",
-    help="Forest - Home of every Tree",
-)
+app = SafeTyper(name="d", help="debug")
 
 
 @app.command("log")

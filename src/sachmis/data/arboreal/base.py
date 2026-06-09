@@ -22,7 +22,7 @@ from ...exceptions import (
 from ...exceptions.arbo import ArborealTrackerError
 
 
-class ArborealTracker[ArboT: Arboreal](SstFile):
+class ArborealTracker[ArboT: Arboreal](SstFile):  # LATER: ArboT?
     """Lightweight reference to track and write registry members"""
 
     arbo_name: str
@@ -80,7 +80,6 @@ class ArborealRegistry[ArboT: Arboreal](BaseModel):
 
     def get_tracker(self, uuid: str) -> ArborealTracker:
         if not (tracker := self.find_tracker(uuid)):
-            # NEXT: def raise_missing? prefilled text?
             raise ArborealRegistryMissingError(
                 parent=self.__class__.__name__,
                 child=ArboT.__name__,
@@ -176,7 +175,8 @@ class ArborealRegistry[ArboT: Arboreal](BaseModel):
 class Arboreal[ArboT: Arboreal](BaseModel):
     """Common attributes of all distributed data objects"""
 
-    tracker_info: ArborealTracker
+    # WARN: modified! check what happens, needed at all?
+    tracker: ArborealTracker
     unique_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     local_counter: int = 0
 
@@ -198,7 +198,7 @@ class Arboreal[ArboT: Arboreal](BaseModel):
     @property
     def stat(self):
         """Short representation for printable statistics"""
-        return f"{self.__class__.__name__} {self.tracker_info.local_id}: created at {self.local_created_at}"
+        return f"{self.__class__.__name__} {self.tracker.local_id}: created at {self.local_created_at}"
 
     @property
     def local_created_at(self) -> str:
@@ -215,10 +215,10 @@ class Arboreal[ArboT: Arboreal](BaseModel):
 
         if not path.exists():
             if strict:
-                ArborealFileMissingError(self.__class__.__name__, path)
-            logger.error(f"Sample Tracker with invalid {path=}")
+                raise ArborealFileMissingError(self.__class__.__name__, path)
+            logger.error(f"Tracker sampling with invalid {path=}")
 
-        match (id := self.tracker_info.local_id, local_id):
+        match (id := self.tracker.local_id, local_id):
             case (0, 0):
                 raise DataRuntimeError("Invalid ID: tracked_id = 0 = local_id")
             case (0, _):
@@ -247,7 +247,6 @@ class Arboreal[ArboT: Arboreal](BaseModel):
     @classmethod
     def create_with_tracker(cls, path: Path, local_id: int, **kwargs) -> Self:
         """Prefill Tracker before init, update UUID afterwards"""
-        # LATER: context? or how to ensure runtime data loss?
 
         logger.info(f"Create {cls.__name__} {local_id}: tracker without uuid")
 
@@ -258,9 +257,9 @@ class Arboreal[ArboT: Arboreal](BaseModel):
             arbo_name=cls.__name__,
             local_path=path,
         )
-        instance: Self = cls(tracker_info=tracker, **kwargs)
+        instance: Self = cls(tracker=tracker, **kwargs)
 
-        instance.tracker_info.unique_id = instance.unique_id
+        instance.tracker.unique_id = instance.unique_id
         instance._ensure_tracker(path)
         logger.info(f"uuid attached: {instance.stat}")
 
@@ -353,7 +352,7 @@ class Arboreal[ArboT: Arboreal](BaseModel):
 
     def _tracker_adapted(self, path: Path):
         # LATER: local_id from upper instance??
-        tracker: ArborealTracker = self.tracker_info
+        tracker: ArborealTracker = self.tracker
         updated = False
 
         if tracker.arbo_name != self.__class__.__name__:

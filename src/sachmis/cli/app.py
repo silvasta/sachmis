@@ -19,8 +19,6 @@ app = SafeTyper(
     param=config.setup_info,
 )
 
-app.command()(command.rollout)
-
 # core
 app.command()(thunder)
 app.command()(fire)
@@ -43,6 +41,10 @@ app.add_typer(subapp.utils)
 
 if config.defaults.debug.subapp:
     app.add_typer(subapp.debug)
+
+# TASK: Global Error Handling
+# - SachmisDataError: confirm hanled in DataManager
+# - other globals?
 
 
 @app.register_error(SachmisLaunchError)

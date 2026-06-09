@@ -28,13 +28,31 @@ class Forest(Arboreal[Tree]):
     def n_images(self) -> int:
         return self.images.n_files
 
+    @property
+    def n_trees(self) -> int:
+        """Calculated by num trackers"""
+        return self.registry.n_trackers
+
+    @property
+    def trees(self) -> list[ArborealTracker]:
+        """Serialized part of registry with UUID and ArborealTracker"""
+        return self.registry.all_trackers
+
+    @property
+    def missing_trees(self) -> list[ArborealTracker]:
+        return self.registry.tracker_with_invalid_paths()
+
+    # TODO:
+    # def n_sprouts(self) -> int:
+    #     return sum(tree.n_sprouts for tree in self.loaded_trees)
+
     ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
-    ### -- Forest - Custom Functions and Attributes
+    ### -- Forest - Custom Functions
     ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
 
     @classmethod
     def with_camp(
-        cls, path: Path, local_id, camp: CampManager | None = None
+        cls, path: Path, local_id: int, camp: CampManager | None = None
     ) -> Self:
         camp: CampManager = camp or CampManager()
         return cls.create_with_tracker(
@@ -68,101 +86,41 @@ class Forest(Arboreal[Tree]):
         printer.lines(header=f"New Files from {name} to Forest", lines=new)
         logger.info(f"loaded {len(new)} Files from Camp {name} to Forest")
 
-    def provide_tree(
-        self, tree_id: int, raw_prompt: Prompt
-    ) -> ArborealTracker:
+    ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
+    ### -- Tree - Access to Member
+    ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
 
-        # LATER: attach to temp registry, confirm when task went well
-        if tree_id == 0:
-            return self.attach_new_tree(raw_prompt)
+    def provide_tree(self, tree_id: int) -> ArborealTracker:
+
         if tree := self.find_tree_by_local_id(tree_id):
             return tree
 
         raise ArborealRegistryMissingError("Forest", "Tree", f"{tree_id=}")
 
-    ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
-    ### -- Arboreal - Access to Members
-    ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
-
-    @property
-    def n_trees(self) -> int:
-        """Calculated by num trackers"""
-        return self.registry.n_trackers
-
-    @property
-    def trees(self) -> list[ArborealTracker]:
-        """Serialized part of registry with UUID and ArborealTracker"""
-        return self.registry.all_trackers
-
-    @property
-    def missing_trees(self) -> list[ArborealTracker]:
-        return self.registry.tracker_with_invalid_paths()
-
-    # TODO:
-    # def n_sprouts(self) -> int:
-    #     return sum(tree.n_sprouts for tree in self.loaded_trees)
-
     def find_tree_by_local_id(self, id: int) -> ArborealTracker | None:
         return self.registry.find_tracker_by_local_id(id)
 
-    def attach_new_tree(self, prompt: Prompt) -> ArborealTracker:
+    def attach_tree(
+        self, tree: Tree, tree_file: Path, local_id: int
+    ) -> ArborealTracker:
+        logger.info(f"Attaching {tree} with {tree_file=}")
+        return self.registry.attach(
+            arboreal=tree, path=tree_file, local_id=local_id
+        )
+
+    def attach_new_tree(self, topic: str) -> ArborealTracker:
         """Create new Tree with initial Sprout"""
         config: SachmisConfig = get_config()
 
-        tree_file: Path = config.paths.tree_file(
-            id=(tree_id := self._next_instance_id()), stem=prompt.topic
-        )
-        # FIX: tree constructor, no prompt but dag
-        new_tree: Tree = self._setup_tree(prompt, tree_file, local_id=tree_id)
+        tree_id: int = self._next_instance_id()
+        tree_file: Path = config.paths.tree_file(id=tree_id, topic=topic)
+
+        new_tree: Tree = self._setup_tree(tree_file, local_id=tree_id)
         new_tree.save_state(tree_file, lock_required=False)
 
         return self.attach_tree(
             tree=new_tree, tree_file=tree_file, local_id=tree_id
         )
 
-    def _setup_tree(
-        self, prompt: Prompt, tree_file: Path, local_id: int
-    ) -> Tree:
-        """Instantiate a new Tree and initialize it with the root Prompt."""
-        tree = Tree.create_with_tracker(
-            path=tree_file, local_id=local_id, tree_stem=prompt.topic
-        )
-        # Register the initial prompt to the new tree
-        tree.attach(prompt)
-        return tree
-
-    def attach_tree(
-        self, tree: Tree, tree_file: Path, local_id: int
-    ) -> ArborealTracker:
-
-        return self.registry.attach(
-            arboreal=tree, path=tree_file, local_id=local_id
-        )
-
-    ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
-    ### -- Forest - Health checks, maybe -> ArborealDisk?
-    ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
-
-    # REMOVE: or adapt in CampManager
-    def _prepare_file_registry(self, from_empty_status=False):
-        # TODO: synchronize local file manager and upload file manager
-        pass
-        # if from_empty_status:
-        #     logger.info("Dropping local files")
-        #     logger.debug(self.files)
-        #     self.files: list[UploadFile] = []
-        #     return
-
-        # TODO: check online status as well?
-
-    # REMOVE: or adapt in CampManager
-    def _prune_local_files(self):
-        """Drop files in registry if not in local folder"""
-
-        # logger.info(f"Start pruning files: {self.n_files=}")
-        #
-        # self.files: list[UploadFile] = [
-        #     file  # Assuming flat file structure
-        #     for file in self.files
-        #     if file.name in self.files_on_disk()
-        # ]
+    def _setup_tree(self, tree_file: Path, local_id: int) -> Tree:
+        return Tree.create_with_tracker(path=tree_file, local_id=local_id)

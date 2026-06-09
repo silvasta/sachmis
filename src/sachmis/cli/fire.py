@@ -38,10 +38,12 @@ def fire(
 ):
     """Prepare Models with Local Prompt and Fire"""
 
-    # NEXT: ensure this
     with capstone.Fire() as session:
-        # TASK: data.handler provide model subset needed!
+        # PLUG:
+        # PLUG:
+        # PLUG:
         # NEXT: check cli.command._rollout
+        # TASK: data.handler provide model subset needed!
         models: list[ModelFamily] = _prepare_model_args(session.data, models)
         agents: list[Model] = session.load_models(models)
 

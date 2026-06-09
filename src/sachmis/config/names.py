@@ -1,7 +1,8 @@
+from contextlib import suppress
 from functools import cached_property
 from pathlib import Path
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from sstcore.config import SstNames
 from sstcore.utils.parse import ParsedName
 
@@ -33,6 +34,19 @@ class Names(SstNames):
     prompt_pattern: str = "p_{sprout_id}_{topic}"
     response_pattern: str = "r_{sprout_id}_{model}_{topic}"
 
+    def id_keyword(self, name: str | Path, strict=True) -> str:
+        """Get id plus category from Prompt, Response of Tree"""
+        if tree_schema := self.tree_schema_safe(name):
+            return tree_schema.id_keyword
+        if sprout_schema := self.prompt_schema_safe(name):
+            return sprout_schema.id_keyword
+        if sprout_schema := self.response_schema_safe(name):
+            return sprout_schema.id_keyword
+        if strict:
+            raise ValueError(f"id_keyword parsing failed, unknown: {name=}")
+        else:
+            return "FAIL"
+
     @cached_property
     def tree_parser(self) -> ParsedName:
         return ParsedName[TreeNameSchema](
@@ -46,6 +60,10 @@ class Names(SstNames):
 
     def tree_schema(self, name: str | Path) -> TreeNameSchema:
         return self.tree_parser(name)
+
+    def tree_schema_safe(self, name: str | Path) -> TreeNameSchema | None:
+        with suppress(ValueError, ValidationError):
+            return self.tree_schema(name)
 
     def tree_id(self, name: str | Path) -> int:
         return self.tree_parser(name).id
@@ -67,6 +85,10 @@ class Names(SstNames):
     def prompt_schema(self, name: str | Path) -> PromptNameSchema:
         return self.prompt_parser(name)
 
+    def prompt_schema_safe(self, name: str | Path) -> PromptNameSchema | None:
+        with suppress(ValueError, ValidationError):
+            return self.prompt_schema(name)
+
     @cached_property
     def response_parser(self) -> ParsedName:
         return ParsedName[ResponseNameSchema](
@@ -78,21 +100,76 @@ class Names(SstNames):
     def response_stem(self, id: int, model: str, topic: str) -> str:
         return self.response_parser((id, model, topic))
 
-    def response_schema(self, name: str | Path) -> ResponseNameSchema:
+    def response_schema(self, name: str | Path) -> ResponseNameSchema | None:
         return self.response_parser(name)
 
+    def response_schema_safe(
+        self, name: str | Path
+    ) -> ResponseNameSchema | None:
+        with suppress(ValueError, ValidationError):
+            return self.response_schema(name)
 
-class TreeNameSchema(BaseModel):
+
+class NameSchema(BaseModel):
+    topic: str
+
+    @property
+    def id_keyword(self) -> str:
+        return f"{self._category}_id_{self._id}"
+
+    @property
+    def _category(self):
+        raise NotImplementedError
+
+    @property
+    def _id(self):
+        raise NotImplementedError
+
+    @property
+    def _cls(self):
+        raise NotImplementedError
+
+    def keywords(self) -> set[str]:
+        return {self.id_keyword, self._cls}
+
+
+class TreeNameSchema(NameSchema):
     tree_id: int
-    topic: str
+
+    @property
+    def _category(self):
+        return "tree"
+
+    @property
+    def _cls(self):
+        return "Tree"
+
+    @property
+    def _id(self):
+        return self.tree_id
 
 
-class PromptNameSchema(BaseModel):
+class SproutNameSchema(NameSchema):
     sprout_id: int
-    topic: str
+
+    @property
+    def _category(self):
+        return "sprout"
+
+    @property
+    def _id(self):
+        return self.sprout_id
 
 
-class ResponseNameSchema(BaseModel):
-    sprout_id: int
+class PromptNameSchema(SproutNameSchema):
+    @property
+    def _cls(self):
+        return "Prompt"
+
+
+class ResponseNameSchema(SproutNameSchema):
     model: str
-    topic: str
+
+    @property
+    def _cls(self):
+        return "Response"

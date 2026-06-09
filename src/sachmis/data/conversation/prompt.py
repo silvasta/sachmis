@@ -1,9 +1,8 @@
-from pathlib import Path
 from typing import Literal, Self
 
 from boltons.strutils import slugify
 from loguru import logger
-from pydantic import Field, PrivateAttr
+from pydantic import Field
 
 from ...config import SachmisConfig, get_config
 from ...exceptions import PromptError
@@ -20,72 +19,11 @@ class Prompt(ConversationData):
     files: list[UploadFile] = Field(default_factory=list)
     images: list[SstFile] = Field(default_factory=list)
 
-    # NEXT: from Handler
-    _content: str
-    # REMOVE:
-    _input_file_path: Path | None = PrivateAttr(default=None)
-
-    @property
-    # REMOVE: ???
-    def content(self) -> str:
-        return self._content
-
-    @property
-    # REMOVE:
-    def has_input_file_path(self) -> bool:
-        return self._input_file_path is not None
-
-    @property
-    # REMOVE:
-    def input_file_path(self) -> Path:
-        if self._input_file_path is None:
-            raise PromptError("Invalid access to path: is None")
-        return self._input_file_path
-
-    @property
-    # TODO: check
-    def has_role(self) -> bool:
-        return self.role is not None
-
-    @property
-    # TODO: check
-    def role_content(self) -> str:
-        if self.role is None:
-            raise PromptError("No Role is loaded!")
-        return self.role.content
-
-    @property
-    # REMOVE:
-    def _spec_for_stem(self) -> str:
-        return "prompt"
+    content: str
 
     @classmethod
-    # TASK: handler or here?
-    def load_from_path(
-        cls,
-        local_id: int,
-        path: Path | None = None,
-        topic: str | None = None,
-    ) -> Self:
-        """Load new Prompt from Path and generate topic"""
-
-        input_prompt: Path = path or config.paths.input_prompt
-        logger.info(f"Loading prompt text from: {input_prompt=}")
-
-        prompt: Self = cls.load_from_text(
-            content=input_prompt.read_text(), topic=topic, local_id=local_id
-        )
-        prompt._input_file_path = input_prompt
-
-        return prompt
-
-    @classmethod
-    # TASK: handler or here?
-    def load_from_text(
-        cls,
-        content: str,
-        local_id: int,
-        topic: str | None = None,
+    def from_text(
+        cls, content: str, sprout_id: int, topic: str | None = None
     ) -> Self:
         """Load new Prompt from text and generate topic"""
 
@@ -95,15 +33,12 @@ class Prompt(ConversationData):
         topic: str = (
             topic or cls.extract_topic(content) or config.defaults.topic
         )
-        prompt: Self = cls(
-            topic=topic, _content=content, local_id=local_id, partition="P"
-        )
-        logger.info(f"Prompt loaded with: {topic=}")
+        prompt: Self = cls(topic=topic, content=content, sprout_id=sprout_id)
+        logger.info(f"Loaded: {prompt}")
 
         return prompt
 
     @staticmethod
-    # TASK: handler or here?
     def extract_topic(prompt_text: str) -> str:
 
         if lines := prompt_text.splitlines():
@@ -114,4 +49,22 @@ class Prompt(ConversationData):
                 topic: str = slugify(first_non_empty_line, delim="-")
                 return topic
 
-        raise PromptError(f"Can't extract prompt topic! {prompt_text=}")
+        raise PromptError(f"Can't extract topic! {prompt_text=}")
+
+    # NEXT:
+    @property  # TODO: check
+    def has_role(self) -> bool:
+        return self.role is not None
+
+    # NEXT:
+    @property  # TODO: check
+    def role_content(self) -> str:
+        if self.role is None:
+            raise PromptError("No Role is loaded!")
+        return self.role.content
+
+    def _prepare_text_from_content(self):
+        return self.content
+
+    def _assemble_stem(self) -> str:
+        return config.names.prompt_stem(id=self.sprout_id, topic=self.topic)
