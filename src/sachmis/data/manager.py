@@ -7,7 +7,8 @@ from sstcore.data import SstFile
 from ..config import SachmisConfig, get_config
 from ..exceptions import ArborealError, DataRuntimeError, SachmisDataError
 from .arboreal import Biome
-from .files import CampManager, UploadFile, Role
+from .camp import CampManager
+from .files import Role, UploadFile
 from .handler import DataHandler
 from .uploader import Uploader
 

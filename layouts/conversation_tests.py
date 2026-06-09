@@ -10,9 +10,9 @@ from sachmis.utils import printer
 
 
 def main():
-    manual_1()
-    # dag: ConversationDAG = run_robustness_test()
-    # dag.draw()
+    # manual_1()
+    dag: ConversationDAG = run_robustness_test()
+    dag.draw()
     # draw_interactive_pyvis(dag)
 
 

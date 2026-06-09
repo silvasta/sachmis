@@ -1,11 +1,11 @@
-from sstcore.utils.print import ColorBox
-from sachmis.core.model import Model
 import uuid
 from itertools import cycle
 
 from rich.table import Table
+from sstcore.utils.print import ColorBox
 
 from sachmis.config import models
+from sachmis.core.model import Model
 from sachmis.utils import printer
 
 for model in models.all():
@@ -66,6 +66,3 @@ def model_previous_id(
         table.add_row(status, model.model.cli)
 
     printer(table)
-
-
-model_table()

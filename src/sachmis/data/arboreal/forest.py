@@ -7,8 +7,8 @@ from sstcore.data import FileRegistry, SstFileRegistry
 from ...config import SachmisConfig, get_config
 from ...exceptions import ArborealRegistryMissingError
 from ...utils import printer
-from ..conversation.prompt import Prompt
-from ..files import CampManager, RoleRegistry, UploadRegistry
+from ..camp import CampManager
+from ..files import RoleRegistry, UploadRegistry
 from .base import Arboreal, ArborealTracker
 from .tree import Tree
 

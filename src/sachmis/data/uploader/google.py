@@ -5,7 +5,7 @@ from loguru import logger
 
 from ...config import SachmisConfig, get_config
 from ..files import GoogleUploadState, UploadFile
-from .uploader import FileUploader
+from .base import FileUploader
 
 config: SachmisConfig = get_config()
 

@@ -7,11 +7,7 @@ from loguru import logger
 
 from ...config import SachmisConfig, get_config
 from ...utils.print import printer
-from ..files import (
-    RemoteState,
-    UploadFile,
-    UploadState,
-)
+from ..files import RemoteState, UploadFile, UploadState
 
 TUploadState = TypeVar("TUploadState", bound=UploadState)
 

@@ -12,7 +12,7 @@ from ...config.names import id_keywords_backwards
 from ...exceptions import SachmisDataError, SachmisLaunchError
 from ...utils import parse_raw_models, printer
 from ..conversation import Prompt
-from ..local_dir import RolloutRegistry
+from ..files import RolloutRegistry
 from .handler import DataHandler
 
 config: SachmisConfig = get_config()
