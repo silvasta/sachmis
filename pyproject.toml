@@ -38,7 +38,7 @@ requires = ["uv_build>=0.10.10,<0.11.0"]
 build-backend = "uv_build"
 
 [dependency-groups]
-dev = ["pre-commit>=4.6.0", "pytest>=9.0.3", "ruff>=0.15.12", "ty>=0.0.40"]
+dev = ["pre-commit>=4.6.0", "pytest>=9.0.3", "ruff>=0.15.12", "ty>=0.0.46"]
 
 [project.urls]
 Repository = "https://github.com/silvasta/sachmis"
@@ -47,9 +47,12 @@ Repository = "https://github.com/silvasta/sachmis"
 testpaths = ["tests"]
 pythonpath = ["src"]
 
+[tool.ty.src]
+include = ["src"]
+exclude = ["src/sachmis/core/retry"]
+
 [tool.ruff]
 line-length = 79
-
 [tool.ruff.lint]
 select = [
   "E",  # E: pycodestyle errors

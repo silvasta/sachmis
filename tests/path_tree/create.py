@@ -1,17 +1,11 @@
 import random
-from enum import StrEnum, auto
 from pathlib import Path
 
 from sstcore import PathGuard
 from sstcore.utils import (
-    PathFilter,
-    PathTreeNode,
-    ProjectFilter,
     setup_logging,
 )
-from sstcore.utils.filter import StemFilter
 from sstcore.utils.parse import ParsedName
-from sstcore.utils.scanner import FolderScanner
 
 from sachmis.config import SachmisConfig, get_config
 from sachmis.config.models import select
@@ -33,61 +27,9 @@ _answer_parser: ParsedName[ResponseNameSchema] = config.names.response_parser
 setup_logging(log_level_override="WARNING")
 
 
-class GetParser(StrEnum):
-    PROJECT = auto()
-    TREE = auto()
-    PROMPT = auto()
-    RESPONSE = auto()
-
-    def filter(self) -> PathFilter:
-        match self:
-            case self.PROJECT:
-                # NEXT: setup parser with schema
-                return ProjectFilter()  # TODO: configure
-            case self.TREE:
-                return StemFilter(parser=config.names.tree_parser)
-            case self.PROMPT:
-                return StemFilter(parser=config.names.prompt_parser)
-            case self.RESPONSE:
-                return StemFilter(parser=config.names.response_parser)
-
-    def scanner(self, root) -> FolderScanner:
-        return FolderScanner(scan_root=root, path_filter=self.filter())
-
-    def tree(self, root) -> PathTreeNode:
-        return self.scanner(root).tree()
-
-    def plot(self, root):
-        printer.header(f"Parsing: {self}", frame="purple")
-        printer.tree_graph(self.scanner(root).tree())
-
-
 def main():
     printer.title("Start")
     create_test_directory_1()
-    parse_folder_tree()
-    find_from_prompt()
-
-
-def find_from_prompt():
-    _tree_filter = GetParser.TREE.filter()
-    _prompt_scanner = GetParser.PROMPT.scanner(test_dir())
-
-    printer(f"{test_dir()}")
-    printer(files := _prompt_scanner.get_files())
-
-    input()
-    for path in files:
-        printer.title(_rel(path))
-        _promt_tree(path)
-        _promt_response(path)
-
-
-# NEXT: new approach!
-# NEXT: new approach!
-# NEXT: new approach!
-# create a graph from the whole dir,
-# then just locate by this!!
 
 
 def _promt_response(path):
@@ -113,16 +55,6 @@ def create_test_directory_1():
     _t4_single_2 = attach_with_tree_in_root(models=random_models(1))
 
     _t1_1_next_multi = ""
-
-
-def parse_folder_tree():
-    GetParser.PROJECT.tree(test_dir())
-    GetParser.RESPONSE.plot(test_dir())
-    GetParser.PROMPT.plot(test_dir())
-    _trees = GetParser.TREE.scanner(test_dir()).get_files()
-    for top_dir_path in test_dir().iterdir():
-        printer.title(top_dir_path.name)
-        printer(GetParser.TREE.filter()(_rel(top_dir_path)))
 
 
 def attach_with_tree_in_root(models) -> Path:

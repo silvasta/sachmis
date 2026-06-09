@@ -70,24 +70,18 @@ class DebugToggle(BaseModel):
     subapp: bool = True  # PARAM: switch!
 
 
-class CliToggle(BaseModel):  # MOVE: ContextParam?
+class CliToggle(BaseModel):  # MOVE: ContextParam? NO! but move
     missing_biome: Literal["create", "raise", "prompt"] = "prompt"
 
 
-class LogAndPrintBase(BaseModel):
-    # NEXT: clear
+class LogAndPrint(BaseModel):
     printer: bool = False
     log: bool = True
 
 
 class LogAndPrintParam(BaseModel):
-    # NEXT: clear
-    conversation_bag: LogAndPrintBase = Field(
-        default_factory=lambda: LogAndPrintBase(printer=True, log=True)
-    )
-    # NEXT: clear
-    data_prompt_attach: LogAndPrintBase = Field(
-        default_factory=lambda: LogAndPrintBase(printer=True, log=True)
+    PLACEHOLDER: LogAndPrint = Field(
+        default_factory=lambda: LogAndPrint(printer=True, log=True)
     )
 
 

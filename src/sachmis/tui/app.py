@@ -29,10 +29,10 @@ class SachmisApp(App):
     """project description"""
 
     CSS_PATH = "sachmis.tcss"
-    BINDINGS: list[Binding] = [
+    _BINDINGS: list[Binding] = [
         Binding("ctrl+z", "suspend_process"),
     ]
-    SCREENS: dict[str, type[Screen]] = {
+    _SCREENS: dict[str, type[Screen]] = {
         # mount screens that should be installed here
         "start_screen": StartScreen,
     }
