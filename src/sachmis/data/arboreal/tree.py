@@ -36,7 +36,7 @@ class Tree(Arboreal):
 
     @property
     def child_info(self):
-        return f"{self.n_prompts} Prompts and  {self.n_responses} responses"
+        return f"{self.n_prompts} Prompts and {self.n_responses} responses"
 
     ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
     ### -- Tree - Custom Functions and Attributes
@@ -46,12 +46,23 @@ class Tree(Arboreal):
         printer(self.data_dag)  # REMOVE:
         return DataDAG(**self.data_dag.model_dump())
 
-    def attach_to_dag(self, dag: DataDAG):
-        # NEXT:
-        # NEXT:
-        # NEXT: attach with root id, sync registry
-        # self.data_dag.dag.attach_sprout()
-        raise NotImplementedError
+    def attach_sub_dag(self, target, dag: DataDAG):
+
+        for id, prompt in dag.prompts.items():
+            if id in self.prompts:
+                logger.error(f"Doubled Prompt: {prompt}")
+
+        for id, response in dag.responses.items():
+            if id in self.responses:
+                logger.error(f"Doubled Response: {response}")
+
+        self.data_dag.dag.attach_sprout(target, dag.dag)
+        logger.success("Tree absorbed DAG")
+
+        try:
+            self.dag.draw()
+        except Exception as error:
+            logger.error(f"Draw {error=} {type(error)}")
 
     def next_sprout_id(self):
         return self._next_instance_id()

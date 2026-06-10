@@ -15,6 +15,7 @@ from sstcore.utils.parse import ParsedName
 from sstcore.utils.tree import build_path_tree
 
 from ...config import SachmisConfig, get_config
+from ...config.models import uniques as model_uniques
 from ...config.names import TreeNameSchema
 from ...exceptions import SachmisLaunchError
 from ...utils import printer
@@ -69,6 +70,18 @@ class RolloutRegistry(FileRegistry[SstFile]):
             return tree_schema.tree_id
         raise SachmisLaunchError("Invalid Location, Sprout has not Tree!")
 
+    def get_model_at_path(self, path: Path | None = None) -> set[str]:
+
+        all_models: set[str] = model_uniques()
+        local_models: set[str] = set()  # WARN: ignoring ancestor tree for now
+
+        for file in self.get_files_by_path(path or Path.cwd()):
+            if model := file.keywords & all_models:
+                local_models.add(model.pop())
+
+        logger.info(f"Found {len(local_models)} Models in CWD")
+        return local_models
+
     def get_folder_member_grouped_by_id_keyword(
         self, path: Path | None = None
     ) -> dict[str, list[SstFile]]:
@@ -112,6 +125,7 @@ class RolloutRegistry(FileRegistry[SstFile]):
             response_parser=config.names.response_parser,
         )
         rollout.analyze_rollout_status(attach=True)
+        rollout.tree()
 
         return rollout
 

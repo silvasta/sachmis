@@ -21,7 +21,7 @@ class TreeExtractor(AbstractContextManager):
             self.tracker: ArborealTracker = tree.sample_tracker(
                 path, local_id=data.handler.tree_tracker.local_id
             )
-            self.data.handler.attach_tree_data(
+            self.data.handler.extract_data_from_tree(
                 sprout_id=tree.next_sprout_id(),
                 full_dag=tree.export_dag(),
             )
@@ -37,7 +37,7 @@ class TreeExtractor(AbstractContextManager):
 
         logger.debug("Loading Tree...")
         with Tree.edit_mode(self.tracker.path) as tree:
-            tree.attach_from_sprout(self.data.handler.export_dag())
+            self.data.handler.attach_data_back(tree)
 
         logger.debug("Tree closed - Data transferred back")
         return config.defaults.context.tree_end.swallow

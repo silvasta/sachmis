@@ -5,6 +5,7 @@ from pathlib import Path
 from loguru import logger
 from sstcore import PathGuard
 
+from ...config import SachmisConfig, get_config
 from ...exceptions import DataRuntimeError, PromptError, SachmisDataError
 from ...utils import printer
 from ..arboreal import ArborealTracker, Tree
@@ -17,6 +18,8 @@ from ..conversation import (
     SproutSelectData,
 )
 from ..conversation.fusion import SproutPackage
+
+config: SachmisConfig = get_config()
 
 
 class DataHandler:
@@ -48,33 +51,114 @@ class DataHandler:
     def _prepare_prompt_text(self):
         """Provide the prepared content for the Prompt"""
 
+    def attach_tracker(self, tracker: ArborealTracker[Tree]):  # REMOVE: ??
+        self._tree_tracker: ArborealTracker[Tree] = tracker
+
+    def extract_data_from_tree(self, sprout_id: int, full_dag: DataDAG):
+        """Transform Tree Data to new Prompt and setup DAG"""
+        self._initial_prompt: Prompt = Prompt.from_text(
+            content=self.prompt_text,
+            sprout_id=sprout_id,
+            topic=self.topic,
+            tree_id=self.tree_id,
+        )
+        self._dag_of_entire_tree: DataDAG = full_dag
+        self._growing_dag: DataDAG = DataDAG.init_from(self._initial_prompt)
+
+        printer.special("Tree DAG")
+        printer(self._dag_of_entire_tree)
+        printer.special("Sprout DAG")
+        printer(self._growing_dag)
+
+        logger.info(f"DAG attached from Tree to {self.__class__.__name__}")
+
+    def find_previous_response(
+        self, previous_response_uuid: str
+    ) -> str | None:
+        if previous_response_uuid in self.tree_dag.responses:
+            previous: Response = self.tree_dag.responses[
+                previous_response_uuid
+            ]
+            return previous.remote_id
+        raise DataRuntimeError("Root should not end up here...")
+
+    def provide_grandfather_uuid(self, grand_child_uuid: str) -> str | None:
+        """Find Response before, so far without MultiPrompt support"""
+
+        for edge in self.tree_dag.dag.edges:
+            if edge.target == grand_child_uuid:
+                return edge.source
+
     def handle_response(self, response: Response):
         """Process the received Prompt or Response with your Schema"""
 
         if response.unique_id not in self._sprout_registry:
             raise SachmisDataError("Failed Response ID handling...")
 
-        if prompt_target := self._sprout_registry[response.unique_id]:
-            # Attach valid promp ancestor to registry for Tree cleanup
-            self._target_registry[self.prompt.unique_id] = prompt_target
+        if prompt_ancestor := self._sprout_registry[response.unique_id]:
+            # Attach valid prompt ancestor to registry for Tree cleanup
+            self._target_registry[self.prompt.unique_id] = prompt_ancestor
 
+        self.growing_dag.responses[response.unique_id] = response
+
+        self.growing_dag.dag.attach_leaf(
+            target_uuid=self.prompt.unique_id,
+            new_node=ConversationNode(
+                uuid=response.unique_id,
+                partition="R",
+                sprout_id=response.sprout_id,
+                topic=response.topic,
+                tree_id=response.tree_id,
+            ),
+        )
         # File Operations depending on Handler
-        self._handle_response_by_setup(response)
+        self._handle_response_end_processing(response)
 
     @abstractmethod
-    def _handle_response_by_setup(self, response: Response):
+    def _handle_response_end_processing(self, response: Response):
         """Depending on File System setup or if multi turn online"""
 
-    def export_dag(self):
-        """Send only the newly created part of the DAG"""
-        # NEXT: back to tree : target registry!
-        # NEXT:
-        # NEXT:
-        raise NotImplementedError
+    def attach_data_back(self, tree: Tree):
+        """Send the new created part of the DAG to the Tree"""
+        targets: set[str] = set(self._target_registry)
+        match len(targets):
+            case 0:
+                raise DataRuntimeError("No Root for Prompt detected")
+            case 1:
+                logger.success("Single Ancestor for Prompt")
+            case _:
+                logger.warning("Multiple Ancestor for Prompt")
+                self._check_all_possible_targets(targets)
+                raise DataRuntimeError("To much Grandfathers...")
+
+        for _source, target in self._target_registry.items():
+            tree.attach_sub_dag(target, self.growing_dag.model_copy())
+            logger.success("DAG is back home")
+
+    def _check_all_possible_targets(self, targets):
+        all_nodes: set[str] = set(
+            *[node.uuid for node in self.tree_dag.dag.nodes],
+            *[node.uuid for node in self.growing_dag.dag.nodes],
+        )
+        logger.info(f"{len(all_nodes)=}")
+        logger.info(f"{len(targets)=}")
+        logger.info(f"{len(existing_targets:= targets&all_nodes )=}")
+
+        for node in self.tree_dag.dag.nodes:
+            if node.uuid in existing_targets:
+                logger.info(
+                    f"Found in Tree DAG: {node.sprout_id}, {node.topic}"
+                )
+
+        for node in self.growing_dag.dag.nodes:
+            if node.uuid in existing_targets:
+                logger.info(
+                    f"Found in Handler DAG: {node.sprout_id}, {node.topic}"
+                )
 
     def prepare_package(self, selection: SelectedSproutData) -> SproutPackage:
-        """Load SproutPackage with everything needed for a new DAG"""
-
+        """Load SproutPackage with everything needed sfor a new DAG"""
+        self.selection_previous: SelectedSproutData = selection
         if previous_response_uuid := self._find_ancestor_uuid(selection):
             remote_id: str | None = self.find_previous_response(
                 previous_response_uuid
@@ -136,7 +220,7 @@ class DataHandler:
             PromptError(f"{name} has no valid Prompt Topic!")
         return topic
 
-    @property
+    @property  # REMOVE: ??
     def tree_tracker(self) -> ArborealTracker:
         if not self._tree_tracker:
             raise SachmisDataError("Missing Tracker!")
@@ -155,44 +239,6 @@ class DataHandler:
             PathGuard.relative(target=path, root=root_dir, strict=False)
             for path in self._result_files
         )
-
-    def attach_tracker(self, tracker: ArborealTracker[Tree]):
-        self._tree_tracker: ArborealTracker[Tree] = tracker
-
-    def attach_tree_data(self, sprout_id: int, full_dag: DataDAG):
-        """Transform Tree Data to new Prompt and setup DAG"""
-        self._initial_prompt: Prompt = Prompt.from_text(
-            content=self.prompt_text,
-            sprout_id=sprout_id,
-            topic=self.topic,
-            tree_id=self.tree_id,
-        )
-        self._dag_of_entire_tree: DataDAG = full_dag
-        self._growing_dag: DataDAG = DataDAG.init_from(self._initial_prompt)
-
-        printer.special("Tree DAG")
-        printer(self._dag_of_entire_tree)
-        printer.special("Sprout DAG")
-        printer(self._growing_dag)
-
-        logger.info(f"DAG attached from Tree to {self.__class__.__name__}")
-
-    def find_previous_response(
-        self, previous_response_uuid: str
-    ) -> str | None:
-        if previous_response_uuid in self.tree_dag.responses:
-            previous: Response = self.tree_dag.responses[
-                previous_response_uuid
-            ]
-            return previous.remote_id
-        raise DataRuntimeError("Root should not end up here...")
-
-    def provide_grandfather_uuid(self, grand_child_uuid: str) -> str | None:
-        """Find Response before, so far without MultiPrompt support"""
-
-        for edge in self.tree_dag.dag.edges:
-            if edge.target == grand_child_uuid:
-                return edge.source
 
     def _find_ancestor_uuid(self, selection: SelectedSproutData) -> str | None:
         # LATER: find entire Linear Tree of Ancestors

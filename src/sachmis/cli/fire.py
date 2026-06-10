@@ -34,7 +34,7 @@ def fire(
     pick_image: args.PickImage = False,
     # General Options
     use_async: args.Async = False,
-    dry_run: sargs.DryRun = False,
+    dry_run: sargs.DryRun = True,
     direct_fire: args.Fire = False,
 ):
     """Prepare Models with Local Prompt and Fire"""

@@ -27,77 +27,62 @@ class FileRollout(DataHandler):
     """Manage Prompt and Response write to Forest dir"""
 
     status: Status = Status.UNDEFINED
-
-    filesystem_work_todo = True  # LATER: track prompts better
     target_dir: Path = Path.cwd()
-
     result_files: list[Path] = []
+    write_dir: Path = Path.cwd()
 
     def __init__(self, prompt=True, forest=True):
         if prompt:
             self._load_prompt_text()
-
         if forest:
             self.scan_forest()
-
         self._print_entry()
 
-    def _handle_response_by_setup(self, response: Response):
+    def _handle_response_end_processing(self, response: Response):
         config: SachmisConfig = get_config()
 
-        # IMPORTANT: adapt this!
-        write_dir: Path = Path.cwd()
+        if self.status == Status.UNDEFINED:
+            self._check_cwd_and_tasks()
 
-        self.prompt_file: Path = config.paths.prompt_file(
-            write_dir, response.sprout_id, response.topic
+        response_file: Path = config.paths.response_file(
+            self.write_dir, response.sprout_id, response.model, response.topic
         )
-        _response_file: Path = config.paths.response_file(
-            write_dir, response.sprout_id, response.model, response.topic
-        )
+        response_file.write_text(response.content)
 
-        # NEXT: args
-        # NEXT: args
-        # NEXT: args
-        # NEXT: args
-        if self.filesystem_work_todo:
-            self.dispatch_action()
+    def _check_cwd_and_tasks(self):
+        config: SachmisConfig = get_config()
+
+        if config.paths.cwd_in_top_dir:
+            self.status: Status = Status.ROOT
+            self.action_init()
+            return
+
+        models: set[str] = self.registry.get_model_at_path()
+
+        if len(models) == 1:
+            # WARN: ignores multitple of same model
+            self.status: Status = Status.SINGLE
+            self.action_chain()
+        else:  # TASK: dispatch for long
+            #  case Status.LONG:
+            #     if self.has_selected:
+            #         self.action_dig()
+            #       else: stay()?
+            self.status: Status = Status.CROWD
+            self.action_dig()
             self.rotate_prompt()
-            self.filesystem_work_todo = False
-
-        # NEXT: args
-        # NEXT: args
-        # NEXT: args
-        self.write_response()
 
     def rotate_prompt(self):
+        config: SachmisConfig = get_config()
+        prompt_path: Path = config.paths.prompt_file(
+            self.write_dir, self.prompt.sprout_id, self.prompt.topic
+        )
         PathGuard.rotate(
-            # NEXT:
-            source=self.input_prompt_path,
-            target=self.output_prompt_path,
-            reset=True,
+            source=self.input_prompt_path, target=prompt_path, reset=True
         )
         # Generate new empty prompt in target dir
-        self.output_prompt_path.with_name(self.input_prompt_path.name).touch()
-        logger.debug(f"prompt rotated: {self.output_prompt_path}")
-
-    def dispatch_action(self):
-        # TASK: arguments, Prompt/Response probably not, also not Tree
-        # NEXT:
-        # NEXT:
-        match self.status:
-            case Status.UNDEFINED:  # LATER: remove
-                printer.danger("Response Outside Forest!!!")
-            case Status.ROOT:
-                self.action_init()
-            case Status.SINGLE:
-                self.action_chain()
-            case Status.LONG:
-                if self.has_selected:
-                    self.action_dig()
-                else:
-                    self.action_chain()
-            case Status.CROWD:
-                self.action_dig()
+        prompt_path.with_name(self.input_prompt_path.name).touch()
+        logger.debug(f"prompt rotated: {prompt_path}")
 
     def action_init(self):
         """Setup new tree dir"""
@@ -109,14 +94,23 @@ class FileRollout(DataHandler):
         self.filesystem_work_todo = False
         # IDEA: delayed and applied by decorator at path generation?
         self.target_dir: Path = PathGuard.dir(tree_stem)
+        logger.info(f"Target Dir created: {tree_stem}")
 
     def action_chain(self):
         """Make a single prompt (line) longer"""
+        # Nothing required
         printer.header(f"Start of Chain: {self.status}", frame="purple")
 
     def action_dig(self):
         """Make new subfolder and copy existing prompt/response"""
+        config: SachmisConfig = get_config()
         printer.header(f"Start of Dig: {self.status}", frame="purple")
+
+        previous_stem = config.names.response_stem(
+            self.tree_id, self.selection_previous.model.unique, self.topic
+        )
+        self.target_dir: Path = PathGuard.dir(previous_stem)
+        logger.info(f"Target Dir created: {previous_stem}")
 
     def _print_entry(self):  # TODO: clean entry prints
         config: SachmisConfig = get_config()
@@ -129,6 +123,7 @@ class FileRollout(DataHandler):
 
     def _load_prompt_text(self):
         config: SachmisConfig = get_config()
+
         self.input_prompt_path: Path = config.paths.input_prompt
         logger.info(f"Loading prompt text from: {self.input_prompt_path=}")
         self._prompt_text: str = self.input_prompt_path.read_text()
