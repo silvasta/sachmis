@@ -10,11 +10,9 @@ from ...config.models import uniques as model_uniques
 from ...config.names import id_keywords_backwards
 from ...exceptions import SachmisDataError, SachmisLaunchError
 from ...utils import model_from_unique, printer
-from ..conversation import Prompt, SproutSelectData
+from ..conversation import Prompt, Response, SproutSelectData
 from ..files import RolloutRegistry
 from .handler import DataHandler
-
-config: SachmisConfig = get_config()
 
 
 class Status(StrEnum):
@@ -30,7 +28,7 @@ class FileRollout(DataHandler):
 
     status: Status = Status.UNDEFINED
 
-    filesystem_work_todo = True
+    filesystem_work_todo = True  # LATER: track prompts better
     target_dir: Path = Path.cwd()
 
     result_files: list[Path] = []
@@ -44,43 +42,36 @@ class FileRollout(DataHandler):
 
         self._print_entry()
 
-    def _handle_response_by_responsibility(
-        self, model, topic, sprout_id, tree_id=0
-    ):
+    def _handle_response_by_setup(self, response: Response):
+        config: SachmisConfig = get_config()
 
-        # NEXT:
-        self.tree_id: int = tree_id or self.tree_id
-        self.prepare_sprout_stems(model, topic, sprout_id)
+        # IMPORTANT: adapt this!
+        write_dir: Path = Path.cwd()
 
+        self.prompt_file: Path = config.paths.prompt_file(
+            write_dir, response.sprout_id, response.topic
+        )
+        _response_file: Path = config.paths.response_file(
+            write_dir, response.sprout_id, response.model, response.topic
+        )
+
+        # NEXT: args
+        # NEXT: args
+        # NEXT: args
+        # NEXT: args
         if self.filesystem_work_todo:
             self.dispatch_action()
             self.rotate_prompt()
             self.filesystem_work_todo = False
 
-        self.write_response()  # NEXT: args
-
-    #
-    def write_response(self):  # NEXT: args
-        pass
-
-    @property  # REFACTOR:
-    def output_prompt_path(self):
-        return self.target_dir / f"{self.prompt_stem}.md"
-
-    @property  # REFACTOR:
-    def current_response_path(self):
-        return self.target_dir / f"{self.response_stem}.md"
-
-    # REFACTOR:
-    def prepare_sprout_stems(self, model, topic, sprout_id):
-        self.prompt_stem: str = config.names.prompt_stem(sprout_id, topic)
-        self.response_stem: str = config.names.response_stem(
-            sprout_id, model.unique, topic
-        )  # WARN: here will come only 1 prompt but n responses
-        printer.lines([self.prompt_stem, self.response_stem])
+        # NEXT: args
+        # NEXT: args
+        # NEXT: args
+        self.write_response()
 
     def rotate_prompt(self):
         PathGuard.rotate(
+            # NEXT:
             source=self.input_prompt_path,
             target=self.output_prompt_path,
             reset=True,
@@ -91,6 +82,8 @@ class FileRollout(DataHandler):
 
     def dispatch_action(self):
         # TASK: arguments, Prompt/Response probably not, also not Tree
+        # NEXT:
+        # NEXT:
         match self.status:
             case Status.UNDEFINED:  # LATER: remove
                 printer.danger("Response Outside Forest!!!")
@@ -108,6 +101,7 @@ class FileRollout(DataHandler):
 
     def action_init(self):
         """Setup new tree dir"""
+        config: SachmisConfig = get_config()
         printer.header(f"Start of Init: {self.status}", frame="purple")
 
         tree_stem: str = config.names.tree_stem(self.tree_id, self.topic)
@@ -125,6 +119,7 @@ class FileRollout(DataHandler):
         printer.header(f"Start of Dig: {self.status}", frame="purple")
 
     def _print_entry(self):  # TODO: clean entry prints
+        config: SachmisConfig = get_config()
         if not config.paths.in_forest:
             printer.danger("Outside Forest Dir!")
         else:
@@ -133,6 +128,7 @@ class FileRollout(DataHandler):
             printer(Path.cwd())
 
     def _load_prompt_text(self):
+        config: SachmisConfig = get_config()
         self.input_prompt_path: Path = config.paths.input_prompt
         logger.info(f"Loading prompt text from: {self.input_prompt_path=}")
         self._prompt_text: str = self.input_prompt_path.read_text()
@@ -142,9 +138,9 @@ class FileRollout(DataHandler):
         """Fill property from Base Class"""
         return self._prompt_text
 
-    # INFO: 1
     def scan_forest(self):
         """Build Registry with FileTree and RolloutTree of Forest"""
+        config: SachmisConfig = get_config()
 
         self.registry: RolloutRegistry = RolloutRegistry.ready()
 
@@ -155,7 +151,6 @@ class FileRollout(DataHandler):
         else:
             self.scanned_tree_id: int = tree_schema.tree_id
 
-    # INFO: 1
     def get_sprout_groups(self) -> dict[str, list[SstFile]]:
         sprout_groups: dict[str, list[SstFile]] = (
             self.registry.get_folder_member_grouped_by_id_keyword()
@@ -163,11 +158,9 @@ class FileRollout(DataHandler):
         logger.info(f"Found {len(sprout_groups.keys())} Sprouts in CWD")
         return sprout_groups
 
-    # INFO: 1
     def models(self) -> list[SproutSelectData]:
         return self._filter_model_select_data_from_sprout_group()
 
-    # INFO: 2
     def _filter_model_select_data_from_sprout_group(self):
         all_models: set[str] = model_uniques()
 
@@ -191,7 +184,6 @@ class FileRollout(DataHandler):
 
         return model_select_data
 
-    # INFO: 2
     def _create_model_select_data(
         self, file: SstFile, model_unique: str
     ) -> SproutSelectData:
@@ -205,7 +197,6 @@ class FileRollout(DataHandler):
             sprout_id=id_keywords_backwards("sprout", file.keywords),
         )
 
-    # INFO: 2
     def _print_stuff(self, sprout_id, sprout_files):  # REMOVE
         printer.special(f"Start of Detected Sprout: {sprout_id}")
         printer([file for file in sprout_files])

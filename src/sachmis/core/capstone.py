@@ -68,7 +68,7 @@ class Fire(AbstractContextManager):
         for model in models:
             package: SproutPackage = self.data.handler.prepare_package(model)
 
-            sprout = Sprout(subdag=package, data=self.data)
+            sprout = Sprout(package, self.data)
 
             load_model(model, sprout)
 

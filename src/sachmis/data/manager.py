@@ -50,7 +50,7 @@ class DataManager:
             logger.error(f"DataManager - Error: {exception_type.__name__}")
 
             if issubclass(exception_type, ArborealError):
-                # IMPORTANT: check if handle arbos sepatat, and what else
+                # IMPORTANT: check if handle arbos separat, and what else
                 logger.error(f"Context: {exception_value=}")
                 logger.warning("State not saved!")
                 return config.defaults.context.data_error_arboreal.swallow
@@ -116,8 +116,7 @@ class DataManager:
     ### Biome Level Tasks - remaining tasks
     ### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --
 
-    def _add_temporary_full_response(self, text: str) -> None:
-        # NEXT:
+    def _add_temporary_full_response(self, text: str, path: Path) -> None:
         path.write_text(text)
         response: SstFile = SstFile(local_path=Path(path.name))
         self._full_responses.append(response)

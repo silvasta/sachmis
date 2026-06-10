@@ -42,24 +42,16 @@ class Tree(Arboreal):
     ### -- Tree - Custom Functions and Attributes
     ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
 
-    def attach_to_dag(self, dag: DataDAG):
-        # NEXT: attach with root id, sync registry
-        # self.data_dag.dag.attach_sprout()
-        raise NotImplementedError
-
     def export_dag(self) -> DataDAG:
         printer(self.data_dag)  # REMOVE:
         return DataDAG(**self.data_dag.model_dump())
 
+    def attach_to_dag(self, dag: DataDAG):
+        # NEXT:
+        # NEXT:
+        # NEXT: attach with root id, sync registry
+        # self.data_dag.dag.attach_sprout()
+        raise NotImplementedError
+
     def next_sprout_id(self):
         return self._next_instance_id()
-
-    @classmethod
-    # REFACTOR:
-    def file_attach(cls, file: Path, target: Prompt | Response):
-        logger.info("Loading Tree to attach Response")
-
-        with cls.edit_mode(file) as tree:
-            tree.attach(target)
-
-        logger.info("All information submitted, Tree closed")

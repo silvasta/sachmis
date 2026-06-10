@@ -70,6 +70,7 @@ class SproutPackage:
     # intended for multistep during single runtime
     dag_from_response: ConversationDAG
     prompt: Prompt
+    model: ModelFamily
     previous_response_uuid: str | None
     previous_remote_id: str | None
 

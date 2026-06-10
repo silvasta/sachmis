@@ -2,7 +2,7 @@ from .base import SachmisDataError
 
 
 class PromptError(ValueError, SachmisDataError):
-    # NEXT: this as SachmisLaunchError??? check with response
+    # TASK: this as SachmisLaunchError??? check with response
     def __init__(self, message=None):
         if message is None:
             message = "Problems while processing Prompt"
@@ -10,7 +10,7 @@ class PromptError(ValueError, SachmisDataError):
 
 
 class ResponseError(ValueError, SachmisDataError):
-    # NEXT: this as Data/Sprout?
+    # TASK: this as Data/Sprout?
     def __init__(self, message=None):
         if message is None:
             message = "Problems while processing Prompt"
@@ -18,7 +18,7 @@ class ResponseError(ValueError, SachmisDataError):
 
 
 class ConversationGraphError(AttributeError, SachmisDataError):
-    # NEXT: this as Sprout?
+    # TASK: this as Sprout?
     """Intended for Bipartite DAG failures"""
 
     def __init__(self, message=None, bad_link=None):
@@ -30,7 +30,7 @@ class ConversationGraphError(AttributeError, SachmisDataError):
 
 
 class PromptRegistryError(ConversationGraphError):
-    # NEXT: this as Sprout?
+    # TASK: this as Sprout?
     def __init__(self, message=None):
         if message is None:
             message = "Invalid structure in Conversation DAG"
@@ -38,7 +38,7 @@ class PromptRegistryError(ConversationGraphError):
 
 
 class ResponseRegistryError(ConversationGraphError):
-    # NEXT: this as Sprout?
+    # TASK: this as Sprout?
     def __init__(self, message=None):
         if message is None:
             message = "Invalid structure in Conversation DAG"
@@ -47,14 +47,14 @@ class ResponseRegistryError(ConversationGraphError):
 
 class DataRuntimeError(RuntimeError, SachmisDataError):
     def __init__(self, message=None):
-        # NEXT: this as base for DataManager
+        # TASK: this as base for DataManager
         if message is None:
             message = "Required Data not available within this setup!"
         super().__init__(message)
 
 
 class DataRolloutError(RuntimeError, SachmisDataError):
-    # NEXT: this as base for DataManager
+    # TASK: this as base for DataManager
     def __init__(self, message=None):
         if message is None:
             message = "Required Data not available in FileSystem structure!"

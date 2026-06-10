@@ -1,7 +1,7 @@
-from typing import Literal
 from contextlib import suppress
 from functools import cached_property
 from pathlib import Path
+from typing import Literal
 
 from pydantic import BaseModel, ValidationError
 from sstcore.config import SstNames

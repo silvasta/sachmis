@@ -14,9 +14,6 @@ class NotInForestError(FileNotFoundError, SachmisLaunchError):
 class NotInCampError(FileNotFoundError, SachmisLaunchError):
     """Current Task needs CWD inside camp_dir"""
 
-    # NEXT: assign responisble, save data:
-    # - Path
-    # - ?
     def __init__(self, message=None):
         if message is None:
             super().__init__(_message_not_in("Camp of Forest and Base"))

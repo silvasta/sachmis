@@ -2,7 +2,7 @@ from pathlib import Path
 
 from .base import ArborealError
 
-# NEXT: check and confirm
+# TASK: check and confirm exception
 
 
 class ArborealFileError(ArborealError):

@@ -34,7 +34,10 @@ def sequential_pipeline(models: list[Model]):
             model.assemble_prompt()
             model.fire()
         except Exception as e:
-            logger.error(f"Problem with model: {model.model.unique}\n{e}")
+            logger.error(
+                f"Problem with {model}:"
+                f"{model.model.unique} caused {type(e)}, details:\n{e}"
+            )
 
 
 def dry_run_sequential_pipeline(models: list[Model]):

@@ -16,7 +16,6 @@ class Response(ConversationData):
     remote_id: str
 
     usage: dict = Field(default_factory=dict)
-    full_response: Path
 
     def _prepare_text_from_content(self):
         return self.content

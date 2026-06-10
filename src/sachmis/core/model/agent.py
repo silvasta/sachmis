@@ -36,9 +36,10 @@ class Model(ABC):
 
         logger.info(f"Model loaded: {self.__class__.__name__}")
 
+    @property
     def has_previous_id(self) -> bool:
         """Look at Sprout and find previous Response ID"""
-        return self.sprout.check_ancestor()
+        return self.sprout.previous_remote_id is not None
 
     @abstractmethod
     def _load_param(self, param: ModelParam | None) -> ModelParam:
@@ -56,7 +57,7 @@ class Model(ABC):
         logger.info("Start assembling prompt")
         self.attach_role()
         logger.debug("role attached")
-        self._attach_prompt(prompt=self.sprout.active_prompt.content)
+        self._attach_prompt(prompt=self.sprout.prompt.content)
         logger.debug("prompt attached")
         self._attach_images()
         logger.debug("images attached")
@@ -64,7 +65,7 @@ class Model(ABC):
         logger.debug("files attached")
 
     def attach_role(self):
-        if role := self.sprout.active_prompt.role:
+        if role := self.sprout.prompt.role:
             self._attach_role(role.content)
             logger.debug(f"using role: {role.name}")
         else:
@@ -90,15 +91,13 @@ class Model(ABC):
         """Release prompt and process response"""
         logger.info("Fire")
 
-        self._count = 0
         self.get_response()
         logger.info("Got response, start processing...")
 
         self.process_response()
 
     def get_response(self):
-        self._count += 1
-        logger.debug(f"Start of try {self._count}")
+        printer.special(f"Start of Call: {self}")
         self._raw_response: Any = self._get_response()
 
     @abstractmethod
@@ -125,8 +124,7 @@ class Model(ABC):
             # Print raw usage, _calculate_usage prints when not failed
             printer(usage)
 
-        self.sprout.collect_response_data_from_chat(
-            # NEXT:  datastructure, consider BaseModel in near future
+        self.sprout.collect_response_data(
             content=content,
             remote_id=response_id,
             usage=usage,

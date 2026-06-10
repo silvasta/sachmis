@@ -146,6 +146,7 @@ def _prepare_file_args(
     camp: CampManager, files: list[Path] | None, pick_file: bool
 ) -> list[UploadFile]:  # LATER:: as function of camp
 
+    # REFACTOR: files and images, simple function from Camp
     printer.title("Preparing Files...")
 
     prepared_files: list[UploadFile] = []
@@ -183,6 +184,7 @@ def _prepare_image_args(
     camp: CampManager, images: list[Path] | None, pick_image: bool
 ) -> list[SstFile]:  # LATER:: as function of camp
 
+    # REFACTOR: files and images, simple function from Camp
     printer.title("Preparing Images...")
 
     prepared_images: list[SstFile] = []
@@ -216,9 +218,9 @@ def _prepare_image_args(
 
 
 def _prepare_role(pick_role: bool) -> Path | None:
-    # LATER:: as function of camp
     # TASK: extend to gathering statistics, creating layouts
-    #
+    # LATER:: as function of camp
+
     printer.title("Preparing Role...")
 
     if pick_role:

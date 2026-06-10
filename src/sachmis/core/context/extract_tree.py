@@ -37,7 +37,7 @@ class TreeExtractor(AbstractContextManager):
 
         logger.debug("Loading Tree...")
         with Tree.edit_mode(self.tracker.path) as tree:
-            tree.attach_to_dag(self.data.handler.export_dag())
+            tree.attach_from_sprout(self.data.handler.export_dag())
 
         logger.debug("Tree closed - Data transferred back")
         return config.defaults.context.tree_end.swallow

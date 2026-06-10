@@ -5,6 +5,7 @@ from typing import Literal
 from loguru import logger
 from sstcore import PathGuard
 from sstcore.config import SstPaths
+from sstcore.utils import day_count
 from sstcore.utils.path import (
     recursive_parent,
     recursive_root,
@@ -212,19 +213,17 @@ class Paths(SstPaths[Names, Defaults]):
 
     @PathGuard.unique
     def full_response(self, topic: str, model: str, suffix=".txt") -> Path:
-        # # NOTE: better locator?
-        # stem: str = self._names.prompt_stem(topic=topic, spec=model)
-        # return self._path_from_stem(stem, suffix, self.full_response_dir)
-        raise NotImplementedError
+        stem = f"{day_count()}_{model}_{topic}{suffix}"
+        return self.full_response_dir / stem
 
     @PathGuard.unique(ensure_parent=True)
-    def conversation_file(
-        self, stem: str, suffix: str = ".md", root_dir: Path | None = None
-    ) -> Path:
-        return self._path_from_stem(stem, suffix, root_dir)
+    def prompt_file(self, write_dir: Path, id: int, topic: str) -> Path:
+        prompt_file: str = self._names.prompt_stem(id, topic)
+        return write_dir / f"{prompt_file}.json"
 
-    def _path_from_stem(
-        self, stem: str, suffix: str, root_dir: Path | None = None
+    @PathGuard.unique(ensure_parent=True)
+    def response_file(
+        self, write_dir: Path, id: int, model: str, topic: str
     ) -> Path:
-        suffix: str = suffix if suffix.startswith(".") else f".{suffix}"
-        return (root_dir or Path.cwd()) / f"{stem}{suffix}"
+        response_file: str = self._names.response_stem(id, model, topic)
+        return self.tree_dir / f"{response_file}.json"
