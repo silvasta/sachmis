@@ -20,6 +20,7 @@ class ConversationData(BaseModel):
     partition: Literal["P", "R"]
     unique_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
 
+    tree_id: int = Field(ge=1)
     sprout_id: int = Field(ge=1)
 
     topic: str

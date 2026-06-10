@@ -3,7 +3,7 @@ from loguru import logger
 from ..defaults import ModelToggle
 from ..manager import get_config
 from .dummy import DummyFamily
-from .family import ModelFamily, ModelSelectData
+from .family import ModelFamily
 from .gemini import Geminis
 from .grok import Groks
 
@@ -12,7 +12,6 @@ __all__: list[str] = [
     "Groks",
     "Geminis",
     "DummyFamily",
-    "ModelSelectData",
 ]
 
 

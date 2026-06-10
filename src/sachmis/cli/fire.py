@@ -5,18 +5,13 @@ from sstcore.cli import sargs
 from sstcore.data import SstFile
 
 from ..config import SachmisConfig, get_config
-from ..config.models import ModelSelectData
 from ..core import capstone
 from ..core.model import Model
 from ..data import DataManager
 from ..data.camp import CampManager, UploadFile
+from ..data.conversation import SelectedSproutData, SproutSelectData
 from ..exceptions.data import DataRuntimeError
-from ..tui.selector import (
-    file_selector,
-    model_selector,
-    model_selector_with_dataclass,
-    role_selector,
-)
+from ..tui import selector
 from ..utils.parse import parse_raw_models
 from ..utils.print import printer
 from . import args
@@ -45,7 +40,7 @@ def fire(
     """Prepare Models with Local Prompt and Fire"""
 
     with capstone.Fire() as session:
-        models: list[ModelSelectData] = _prepare_model_args(session, models)
+        models: list[SelectedSproutData] = _prepare_model_args(session, models)
         agents: list[Model] = session.load_models(models)
 
         # TASK: show models here first
@@ -125,23 +120,23 @@ def confirm_fire(models: list[Model], data: DataManager) -> bool:
 
 def _prepare_model_args(
     session: capstone.Fire, models: list[str] | None, multi_select=True
-) -> list[ModelSelectData]:
+) -> list[SelectedSproutData]:
     printer.title("Selecting Models...")
 
     if models and (parsed_models := parse_raw_models(models)):
         text = f"{len(parsed_models)} Models parsed for Pipeline"
         printer.header(text)
-        return ModelSelectData.fresh_models(parsed_models)
+        return SelectedSproutData.from_zero(parsed_models)
 
     match len(scanned_models := session.data.handler.models()):  # TEST:
         case 0:
-            return ModelSelectData.fresh_models(
-                model_selector(multi_select=True)
+            return SelectedSproutData.from_zero(
+                selector.model_family(multi_select=True)
             )
         case 1:
-            return scanned_models
+            return [SelectedSproutData.from_scan(scanned_models.pop())]
         case _:
-            return model_selector_with_dataclass(
+            return selector.model_from_scan(
                 models=scanned_models,
                 multi_select=multi_select,
             )
@@ -156,7 +151,7 @@ def _prepare_file_args(
     prepared_files: list[UploadFile] = []
 
     if pick_file:  # Pick first to avoid picking as well new added files
-        selected_files: list[Path] = file_selector(files=camp.files)
+        selected_files: list[Path] = selector.file_registry(files=camp.files)
         for path in selected_files:
             match len(file := camp.files.get_files_by_path(path)):
                 case 0:
@@ -193,7 +188,7 @@ def _prepare_image_args(
     prepared_images: list[SstFile] = []
 
     if pick_image:  # TODO: use ListSelector? or unify with _prepare_file_args
-        selected_images: list[Path] = file_selector(files=camp.images)
+        selected_images: list[Path] = selector.file_registry(files=camp.images)
         for path in selected_images:
             match len(file := camp.images.get_files_by_path(path)):
                 case 0:
@@ -228,7 +223,7 @@ def _prepare_role(pick_role: bool) -> Path | None:
 
     if pick_role:
         roles: list[Path] = config.paths.role_paths(mode="all")  # PARAM:
-        role: Path = role_selector(roles)
+        role: Path = selector.role_path(roles)
         logger.info(f"Selected Role: {role.stem}")
     else:
         logger.info("no role selected and no picker")

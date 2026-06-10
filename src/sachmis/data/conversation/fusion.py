@@ -1,28 +1,67 @@
-from sachmis.utils import printer
-import re
+import uuid
+from dataclasses import dataclass
 from typing import Self
 
 from loguru import logger
 from pydantic import BaseModel, Field
 
-from ...config.models import ModelSelectData
+from ...config.models import ModelFamily
 from ...exceptions import SachmisDataError
-from .dag import ConversationDAG, ConversationEdge, ConversationNode
+from ...utils import printer
+from .dag import ConversationDAG, ConversationNode
 from .prompt import Prompt
 from .response import Response
 
 
-# NEXT: move, change, multiple models!!!!!!!!!!!
-# NEXT: move, change, multiple models!!!!!!!!!!!
-# NEXT: move, change, multiple models!!!!!!!!!!!
-# NEXT: move, change, multiple models!!!!!!!!!!!
-# NEXT: move, change, multiple models!!!!!!!!!!!
-# NEXT: move, change, multiple models!!!!!!!!!!!
 @dataclass
-class ModelRunData:  # TASK: reduced class after selection
+class SproutSelectData:
+    """
+    Provide scanned Data in displayable form until Selection of Models
+    - Data will be absorbed by SelectedSproutData
+    """
+
+    selector_uuid: str
+    selector_display_name: str
     model: ModelFamily
     tree_id: int = 0
     sprout_id: int = 0
+
+    @classmethod
+    def from_file(cls, model: ModelFamily, tree_id, sprout_id) -> Self:
+        return cls(
+            selector_uuid=str(uuid.uuid4()),
+            selector_display_name=model.id_cli,
+            model=model,
+            tree_id=tree_id,
+            sprout_id=sprout_id,
+        )
+
+
+@dataclass
+class SelectedSproutData:
+    """
+    Provide selected Data in condensed form until Init of Models
+    - Replaces SproutSelectData after Selection
+    - Data will be absorbed by ConversationNode
+    """
+
+    model: ModelFamily
+    tree_id: int = 0
+    sprout_id: int = 0
+
+    @classmethod
+    def from_scan(cls, selected: SproutSelectData) -> Self:
+        return cls(
+            model=selected.model,
+            tree_id=selected.tree_id,
+            sprout_id=selected.sprout_id,
+        )
+
+    @classmethod
+    def from_zero(cls, fresh_models: list[ModelFamily]) -> list[Self]:
+        return [
+            cls(model=model, tree_id=0, sprout_id=0) for model in fresh_models
+        ]
 
 
 class DataDAG(BaseModel):
@@ -31,14 +70,16 @@ class DataDAG(BaseModel):
     dag: ConversationDAG
 
     def find_response_node(
-        self, model_data: ModelSelectData
+        self, sprout: SelectedSproutData
     ) -> ConversationNode:
-        if sprout_group := self.dag.find_sprout_group(model_data.sprout_id):
-            return self._filter_response(model_data, sprout_group)
-        raise SachmisDataError(f"Missing Selected Model: {model_data}")
+        if sprout_group := self.dag.find_sprout_group(sprout.sprout_id):
+            return self._filter_response(sprout, sprout_group)
+        raise SachmisDataError(f"Missing Selected Model: {sprout}")
 
     def _filter_response(
-        self, model_data: ModelSelectData, sprout_group: list[ConversationNode]
+        self,
+        model_data: SelectedSproutData,  # LATER: open
+        sprout_group: list[ConversationNode],
     ) -> ConversationNode:
         logger.debug(f"{model_data=} AND {len(sprout_group)=}")
         result: ConversationNode | None = None
@@ -46,7 +87,7 @@ class DataDAG(BaseModel):
             if node.partition == "P":
                 logger.debug(f"ignoring prompt: {node=}")
             else:
-                response: Response = self.responses[node.id]
+                response: Response = self.responses[node.uuid]
                 printer(("Found: ", response))  # REMOVE:
                 if response.model == model_data.model:
                     logger.success(f"Found: {node=}")
@@ -73,17 +114,19 @@ class DataDAG(BaseModel):
     @staticmethod
     def prompt_from(prompt: Prompt) -> ConversationNode:
         return ConversationNode(
-            id=prompt.unique_id,
+            uuid=prompt.unique_id,
             partition="P",
-            local_id=prompt.sprout_id,
-            name=prompt.topic,
+            sprout_id=prompt.sprout_id,
+            tree_id=prompt.tree_id,
+            topic=prompt.topic,
         )
 
     @staticmethod
     def response_from(response: Response) -> ConversationNode:
         return ConversationNode(
-            id=response.unique_id,
+            uuid=response.unique_id,
             partition="R",
-            local_id=response.sprout_id,
-            name=response.topic,
+            sprout_id=response.sprout_id,
+            tree_id=response.tree_id,
+            topic=response.topic,
         )

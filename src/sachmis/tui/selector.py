@@ -5,17 +5,18 @@ from sstcore.data import FileRegistry
 from sstcore.exceptions import TuiSelectorError
 from sstcore.tui import ListSelectorApp, TreeSelectorApp
 
-from sachmis.utils import printer
-
-from ..config.models import ModelFamily, ModelSelectData
+from ..config.models import ModelFamily
 from ..config.models import family as all_models
+from ..data.conversation import SelectedSproutData, SproutSelectData
+from ..utils import printer
 from ..utils.parse import parse_raw_models
 
 
-def model_selector(
+def model_family(
     models: list[ModelFamily] | None = None,
     multi_select: bool = True,
 ) -> list[ModelFamily]:
+    """Select from list of raw Models"""
     models: list[ModelFamily] = models or all_models()
 
     items: dict[str, str] = {model.unique: model.api_name for model in models}
@@ -32,21 +33,24 @@ def model_selector(
     raise TuiSelectorError("No valid models parsed from input...")
 
 
-def model_selector_with_dataclass(
-    models: list[ModelSelectData],
-    multi_select: bool = True,
-) -> list[ModelSelectData]:
+def model_from_scan(
+    models: list[SproutSelectData], multi_select: bool = True
+) -> list[SelectedSproutData]:
+    """Select from list of Models with stored Information"""
 
-    items: dict[str, str] = {model.uuid: model.show for model in models}
+    items: dict[str, str] = {
+        model.selector_uuid: model.selector_display_name
+        for model in models  # show value, return key
+    }
 
     tui = ListSelectorApp(items=items, multi_select=multi_select)
     selected_uuids: list[str] | None = tui.run()
 
     if selected_uuids:
-        selected_models: list[ModelSelectData] = [
-            model  # Filter all by uuid
+        selected_models: list[SelectedSproutData] = [
+            SelectedSproutData.from_scan(model)
             for model in models
-            if model.uuid in set(selected_uuids)
+            if model.selector_uuid in set(selected_uuids)
         ]
         logger.success(f"Selected {len(selected_models)=}")
         printer(selected_models)
@@ -56,9 +60,10 @@ def model_selector_with_dataclass(
     raise TuiSelectorError("No valid models parsed from input...")
 
 
-def file_selector(
+def file_registry(
     files: FileRegistry, root_name: str | None = None
 ) -> list[Path]:
+    """Select from FileRegistry by displaying Tree representation"""
 
     if selected_files := TreeSelectorApp(sst_tree=files.tree(root_name)).run():
         logger.success(f"Selected {len(selected_files)=}")
@@ -69,9 +74,11 @@ def file_selector(
     return []
 
 
-# TODO: provide 2 separated lists, local/global role
-def role_selector(roles: list[Path]) -> Path:
+def role_path(roles: list[Path]) -> Path:
+    """Select from Paths displayed by name and get 1 selected back"""
+
     items: dict[Path, str] = {role: role.name for role in roles}
+    # LATER: provide advanced setup, statistic and selection
 
     if selected := ListSelectorApp(items=items, multi_select=False).run():
         logger.success(f"Selected {(role := selected[0]).name}")
@@ -79,7 +86,8 @@ def role_selector(roles: list[Path]) -> Path:
     raise TuiSelectorError
 
 
-def multi_line_selector[T](items: dict[T, str] | list[T] | set[T]) -> list[T]:
+def multi_linear[T](items: dict[T, str] | list[T] | set[T]) -> list[T]:
+    """Select from linear Container and get multiple Elements back"""
 
     if selected := ListSelectorApp(items=items, multi_select=True).run():
         logger.success(f"Selected {len(selected)} elements")
@@ -87,7 +95,8 @@ def multi_line_selector[T](items: dict[T, str] | list[T] | set[T]) -> list[T]:
     raise TuiSelectorError
 
 
-def single_line_selector[T](items: dict[T, str] | list[T] | set[T]) -> T:
+def single_linear[T](items: dict[T, str] | list[T] | set[T]) -> T:
+    """Select from linear Container and get 1 Element back"""
 
     if selected := ListSelectorApp(items=items, multi_select=False).run():
         logger.success(f"Selected: {(item := selected[0])=}")

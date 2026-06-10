@@ -2,8 +2,10 @@ from loguru import logger
 
 from ..config.models import DummyFamily, Geminis, Groks, ModelFamily
 
-
 # MOVE: as function of config.model?
+# TODO: decide when final ModelFamily setup is clear
+
+
 def model_from_unique(model_unique: str) -> ModelFamily | None:
     """Transform model unique str back to ModelFamily Enum"""
 
@@ -41,6 +43,7 @@ def model_from_unique(model_unique: str) -> ModelFamily | None:
 
 def parse_raw_models(raw_models: list[str]) -> list[ModelFamily]:
     """Parse all models, ignore raw_models that fail parsing"""
+
     return [
         parsed_model
         for model_unique in raw_models

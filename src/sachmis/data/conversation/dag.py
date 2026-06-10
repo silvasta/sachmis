@@ -1,3 +1,5 @@
+import uuid
+
 import networkx as nx
 from pydantic import Field
 
@@ -5,8 +7,9 @@ from .base_dag import BipartiteDAG, Edge, Node
 
 
 class ConversationNode(Node):
-    local_id: int
-    name: str = ""
+    sprout_id: int
+    topic: str = ""
+    tree_id: int
 
 
 class ConversationEdge(Edge):
@@ -17,9 +20,9 @@ class ConversationDAG(BipartiteDAG):
     nodes: list[ConversationNode] = Field(default_factory=list)
     edges: list[ConversationEdge] = Field(default_factory=list)
 
-    def find_node(self, identifier: str | int) -> ConversationNode | None:
+    def find_node(self, target_uuid: str) -> ConversationNode | None:
         for node in self.nodes:
-            if identifier in (node.id, node.local_id, node.name):
+            if target_uuid == node.uuid:
                 return node
         return None
 
@@ -27,16 +30,16 @@ class ConversationDAG(BipartiteDAG):
         return [
             node  #
             for node in self.nodes
-            if sprout_id == node.local_id
+            if sprout_id == node.sprout_id
         ]
 
-    def attach_leaf(self, anchor: str, node: ConversationNode) -> None:
-        if any(n.id == node.id for n in self.nodes):
-            return
-        if not (internal := self.find_node(anchor)):
-            return
-        edge = ConversationEdge(source=internal.id, target=node.id)
-        self.nodes.append(node)
+    def attach_leaf(self, internal_uuid: str, new_node: ConversationNode):
+        if any(node.uuid == new_node.uuid for node in self.nodes):
+            return None
+        if not (internal := self.find_node(internal_uuid)):
+            return None
+        edge = ConversationEdge(source=internal.uuid, target=new_node.uuid)
+        self.nodes.append(new_node)
         self.edges.append(edge)
 
     def copy_subtree(self, root_node_id: str) -> ConversationDAG:
@@ -49,23 +52,29 @@ class ConversationDAG(BipartiteDAG):
         nodes_to_keep: set[str] = {root_node_id}.union(descendants)
 
         sub_nodes: list[ConversationNode] = [
-            n for n in self.nodes if n.id in nodes_to_keep
+            node for node in self.nodes if node.uuid in nodes_to_keep
         ]
         sub_edges: list[ConversationEdge] = [
-            e
-            for e in self.edges
-            if e.source in nodes_to_keep and e.target in nodes_to_keep
+            edge
+            for edge in self.edges
+            if edge.source in nodes_to_keep and edge.target in nodes_to_keep
         ]
 
         return ConversationDAG(nodes=sub_nodes, edges=sub_edges)
 
-    def extract_sprout(self, response_id: str, prompt_name) -> ConversationDAG:
+    def extract_sprout(
+        self, response_id: str, sprout_id: int, topic: str, tree_id: int
+    ) -> ConversationDAG:
         if not (response := self.find_node(response_id)):
             raise ValueError(f"Invalid { response_id= }")
         prompt = ConversationNode(
-            id="xxhd", partition="P", local_id=55, name=prompt_name
+            uuid=str(uuid.uuid4()),
+            partition="P",
+            sprout_id=sprout_id,
+            topic=topic,
+            tree_id=tree_id,
         )
-        edge = ConversationEdge(source=response.id, target=prompt.id)
+        edge = ConversationEdge(source=response.uuid, target=prompt.uuid)
         return ConversationDAG(nodes=[prompt], edges=[edge])
 
     def attach_sprout(
@@ -80,19 +89,20 @@ class ConversationDAG(BipartiteDAG):
 
         # Identify sprout roots (nodes with no parents inside the sprout)
         sprout_roots = [
-            n.id
-            for n in sprout_dag.nodes
-            if sprout_dag.graph.in_degree(n.id) == 0
+            node.uuid
+            for node in sprout_dag.nodes
+            if sprout_dag.graph.in_degree(node.uuid) == 0
         ]
         if not sprout_roots:
             raise ValueError("Invalid sprout: No root node detected.")
 
         # Deep-copy properties to prevent side-effects
-        new_nodes: dict[str, ConversationNode] = {n.id: n for n in self.nodes}
+        new_nodes: dict[str, ConversationNode] = {
+            node.uuid: node for node in self.nodes
+        }
         for node in sprout_dag.nodes:
-            new_nodes[node.id] = (
-                node  # Overwrites/updates existing node config
-            )
+            # Overwrites/updates existing node config
+            new_nodes[node.uuid] = node
 
         new_edges: set[tuple[str, str]] = {
             (e.source, e.target) for e in self.edges

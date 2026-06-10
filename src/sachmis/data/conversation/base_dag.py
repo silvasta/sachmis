@@ -7,9 +7,9 @@ from pydantic import BaseModel, Field, PrivateAttr, model_validator
 
 
 class Node(BaseModel):
-    id: str
+    uuid: str
     partition: Literal["P", "R"]
-    metadata: dict = Field(default_factory=dict)
+    metadata: dict = Field(default_factory=dict)  # LATER: check again remove
 
 
 class Edge(BaseModel):
@@ -28,13 +28,17 @@ class BipartiteDAG(BaseModel):
 
     @model_validator(mode="after")
     def validate_bipartite_dag(self) -> BipartiteDAG:
-        self._node_map = {n.id: n.partition for n in self.nodes}
+        self._node_map: dict[str, Literal["P", "R"]] = {
+            node.uuid: node.partition for node in self.nodes
+        }
         if len(self._node_map) != len(self.nodes):
             raise ValueError("Node IDs must be unique")
 
         self._graph = nx.DiGraph()
         for node in self.nodes:
-            self._graph.add_node(node.id, partition=node.partition)
+            self._graph.add_node(
+                node_for_adding=node.uuid, partition=node.partition
+            )
 
         for edge in self.edges:
             if (
@@ -152,7 +156,7 @@ class BipartiteDAG(BaseModel):
         edges: list[Edge] = []
 
         # Root
-        nodes.append(Node(id="Root", partition="P"))
+        nodes.append(Node(uuid="Root", partition="P"))
         prev_layer = ["Root"]
 
         for layer_idx in range(1, num_layers + 1):
@@ -162,7 +166,7 @@ class BipartiteDAG(BaseModel):
 
             for i in range(n_nodes):
                 node_id = f"{partition}{layer_idx}_{i + 1}"
-                nodes.append(Node(id=node_id, partition=partition))
+                nodes.append(Node(uuid=node_id, partition=partition))
                 current_layer.append(node_id)
 
             # Each node in previous layer connects to 1–3 random targets

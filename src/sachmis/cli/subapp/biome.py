@@ -74,7 +74,7 @@ def arboreal_statistic():
     executor = BiomeExecutor()
 
     biome: Biome = executor.execute(_load)
-    printer.success(f"Loaded Biome: {biome.tracker_info.stat}")
+    printer.success(f"Loaded Biome: {biome.tracker}")
     forest_statistic(biome)
 
 

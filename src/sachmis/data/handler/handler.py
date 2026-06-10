@@ -1,4 +1,3 @@
-from sachmis.utils import printer
 import uuid
 from abc import abstractmethod
 from pathlib import Path
@@ -7,15 +6,15 @@ from loguru import logger
 from sstcore import PathGuard
 
 from ...config import SachmisConfig, get_config
-from ...config.models import ModelSelectData
 from ...exceptions import PromptError, SachmisDataError
+from ...utils import printer
 from ..arboreal import ArborealTracker, Tree
 from ..conversation import (
-    ConversationDAG,
+    ConversationNode,
     DataDAG,
     Prompt,
-    Response,
-    ConversationNode,
+    SelectedSproutData,
+    SproutSelectData,
 )
 
 config: SachmisConfig = get_config()
@@ -25,51 +24,25 @@ class DataHandler:
     """Provide input/output data from Sprout to Forest or Rollout"""
 
     scanned_tree_id: int = 0
-    _result_files: list[Path] = []
     _prompt_text: str = ""
+
     _topic: str = ""
     _tree_tracker: ArborealTracker[Tree] | None = None
-
     _initial_prompt: Prompt | None = None
     _dag_of_entire_tree: DataDAG | None = None
+
     _growing_dag: DataDAG | None = None
+    _sprout_registry: dict[str, ConversationNode] = {}
 
-    # NEXT: move, change, multiple models!!!!!!!!!!!
-    # NEXT: move, change, multiple models!!!!!!!!!!!
-    # NEXT: move, change, multiple models!!!!!!!!!!!
-    # NEXT: move, change, multiple models!!!!!!!!!!!
-    # NEXT: move, change, multiple models!!!!!!!!!!!
-    # NEXT: move, change, multiple models!!!!!!!!!!!
-    _sprout_registry: dict[str, ModelSelectData] = {}
-
-    def attach_tracker(self, tracker: ArborealTracker[Tree]):
-        self._tree_tracker: ArborealTracker[Tree] = tracker
-
-    def attach_tree_data(self, sprout_id: int, full_dag: DataDAG):
-        self._initial_prompt: Prompt = Prompt.from_text(
-            content=self.prompt_text, sprout_id=sprout_id, topic=self.topic
-        )
-        self._dag_of_entire_tree: DataDAG = full_dag
-        self._growing_dag: DataDAG = DataDAG.init_from(self._initial_prompt)
-
-        printer.special("Tree DAG")
-        printer(self._dag_of_entire_tree)
-        printer.special("Sprout DAG")
-        printer(self._growing_dag)
-
-        logger.info(f"DAG attached from Tree to {self.__class__.__name__}")
-
-    @abstractmethod
-    def models(self) -> list[ModelSelectData]:
-        """Provide subset of Models according to observed Data state"""
+    _result_files: list[Path] = []
 
     # NEXT:
     @abstractmethod
-    def prepare_package(self, model_data: ModelSelectData) -> DataDAG:
+    def prepare_package(self, selected_model: SelectedSproutData) -> DataDAG:
         """Load DataDAG or whatever"""
         next_id = str(uuid.uuid4())
         previous_response_node: ConversationNode = (
-            self.tree_dag.find_response_node(model_data)
+            self.tree_dag.find_response_node(selected_model)
         )
         response_node: ConversationNode = self._create_response_node(next_id)
 
@@ -78,17 +51,15 @@ class DataHandler:
         )
 
         self._sprout_registry[next_id] = previous_response_node
-        # TODO: info
-        # - model
-        # - ?
         return info
 
     def _create_response_node(self, next_id) -> ConversationNode:
         return ConversationNode(
-            id=next_id,
+            uuid=next_id,
             partition="R",
-            local_id=self.prompt.sprout_id,
-            name=self.prompt.topic,
+            sprout_id=self.prompt.sprout_id,
+            tree_id=self.prompt.tree_id,
+            topic=self.prompt.topic,
         )
 
     @abstractmethod
@@ -167,3 +138,26 @@ class DataHandler:
     def result_file_paths(self) -> list[Path]:
         """Provide absolute Paths of already written result files"""
         return self._result_files
+
+    # INFO: 1
+    def attach_tracker(self, tracker: ArborealTracker[Tree]):
+        self._tree_tracker: ArborealTracker[Tree] = tracker
+
+    # INFO: 1
+    def attach_tree_data(self, sprout_id: int, full_dag: DataDAG):
+        self._initial_prompt: Prompt = Prompt.from_text(
+            content=self.prompt_text, sprout_id=sprout_id, topic=self.topic
+        )
+        self._dag_of_entire_tree: DataDAG = full_dag
+        self._growing_dag: DataDAG = DataDAG.init_from(self._initial_prompt)
+
+        printer.special("Tree DAG")
+        printer(self._dag_of_entire_tree)
+        printer.special("Sprout DAG")
+        printer(self._growing_dag)
+
+        logger.info(f"DAG attached from Tree to {self.__class__.__name__}")
+
+    @abstractmethod
+    def models(self) -> list[SproutSelectData]:
+        """Provide subset of Models according to observed Data state"""

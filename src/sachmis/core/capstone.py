@@ -5,13 +5,9 @@ from loguru import logger
 
 from ..config import SachmisConfig, get_config
 from ..config.defaults import ModelParam
-from ..config.models import (
-    DummyFamily,
-    Geminis,
-    Groks,
-    ModelSelectData,  # REMOVE:
-)
+from ..config.models import DummyFamily, Geminis, Groks
 from ..data import DataManager
+from ..data.conversation import SelectedSproutData
 from ..data.handler import FileRollout
 from .context import ForestExtractor, TreeExtractor
 from .model import Gemini, Grok, Model, launch
@@ -62,7 +58,7 @@ class Fire(AbstractContextManager):
         logger.success("capstone.Fire session is ready")
         return self
 
-    def load_models(self, models: list[ModelSelectData]) -> list[Model]:
+    def load_models(self, models: list[SelectedSproutData]) -> list[Model]:
         logger.info(f"Start of loading: {models=}")
 
         self.agents: list[Model] = []
