@@ -36,13 +36,9 @@ class Model(ABC):
 
         logger.info(f"Model loaded: {self.__class__.__name__}")
 
-    @property
-    def has_previous_id(self):
-        self._check_previous_id()
-
-    @abstractmethod  # NEXT: maybe solvable here, but confirmation online?
-    def _check_previous_id(self):
+    def has_previous_id(self) -> bool:
         """Look at Sprout and find previous Response ID"""
+        return self.sprout.check_ancestor()
 
     @abstractmethod
     def _load_param(self, param: ModelParam | None) -> ModelParam:

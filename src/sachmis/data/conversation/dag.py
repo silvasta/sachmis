@@ -1,8 +1,7 @@
-import uuid
-
 import networkx as nx
 from pydantic import Field
 
+from ...utils import printer
 from .base_dag import BipartiteDAG, Edge, Node
 
 
@@ -20,6 +19,9 @@ class ConversationDAG(BipartiteDAG):
     nodes: list[ConversationNode] = Field(default_factory=list)
     edges: list[ConversationEdge] = Field(default_factory=list)
 
+    # IMPORTANT: new DAG functions
+    # predecessor, ancestor, all predecessor,...
+
     def find_node(self, target_uuid: str) -> ConversationNode | None:
         for node in self.nodes:
             if target_uuid == node.uuid:
@@ -33,10 +35,10 @@ class ConversationDAG(BipartiteDAG):
             if sprout_id == node.sprout_id
         ]
 
-    def attach_leaf(self, internal_uuid: str, new_node: ConversationNode):
+    def attach_leaf(self, target_uuid: str, new_node: ConversationNode):
         if any(node.uuid == new_node.uuid for node in self.nodes):
             return None
-        if not (internal := self.find_node(internal_uuid)):
+        if not (internal := self.find_node(target_uuid)):
             return None
         edge = ConversationEdge(source=internal.uuid, target=new_node.uuid)
         self.nodes.append(new_node)
@@ -44,6 +46,7 @@ class ConversationDAG(BipartiteDAG):
 
     def copy_subtree(self, root_node_id: str) -> ConversationDAG:
         """Recursively extracts a node and ALL of its descendants."""
+
         if root_node_id not in self._graph:
             raise ValueError(f"Node '{root_node_id}' not found in the graph.")
 
@@ -60,22 +63,11 @@ class ConversationDAG(BipartiteDAG):
             if edge.source in nodes_to_keep and edge.target in nodes_to_keep
         ]
 
-        return ConversationDAG(nodes=sub_nodes, edges=sub_edges)
+        sub_dag = ConversationDAG(nodes=sub_nodes, edges=sub_edges)
+        printer.special("Sub DAG")
+        printer(sub_dag)  # REMOVE:
 
-    def extract_sprout(
-        self, response_id: str, sprout_id: int, topic: str, tree_id: int
-    ) -> ConversationDAG:
-        if not (response := self.find_node(response_id)):
-            raise ValueError(f"Invalid { response_id= }")
-        prompt = ConversationNode(
-            uuid=str(uuid.uuid4()),
-            partition="P",
-            sprout_id=sprout_id,
-            topic=topic,
-            tree_id=tree_id,
-        )
-        edge = ConversationEdge(source=response.uuid, target=prompt.uuid)
-        return ConversationDAG(nodes=[prompt], edges=[edge])
+        return sub_dag
 
     def attach_sprout(
         self, parent_id: str, sprout_dag: ConversationDAG
@@ -115,8 +107,7 @@ class ConversationDAG(BipartiteDAG):
             new_edges.add((parent_id, root_id))
 
         # Re-construct lists and validate everything structural (including bipartite constraints)
-        unified_dag = ConversationDAG(
+        return ConversationDAG(
             nodes=list(new_nodes.values()),
             edges=[ConversationEdge(source=s, target=t) for s, t in new_edges],
         )
-        return unified_dag

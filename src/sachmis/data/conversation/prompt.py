@@ -36,7 +36,11 @@ class Prompt(ConversationData):
 
     @classmethod
     def from_text(
-        cls, content: str, sprout_id: int, topic: str | None = None
+        cls,
+        content: str,
+        sprout_id: int,
+        tree_id: int,
+        topic: str | None = None,
     ) -> Self:
         """Load new Prompt from text and generate topic"""
 
@@ -47,10 +51,17 @@ class Prompt(ConversationData):
 
         topic: str = cls._find_topic(topic=topic, content=content)
 
-        prompt: Self = cls(topic=topic, content=content, sprout_id=sprout_id)
+        prompt: Self = cls(
+            topic=topic, content=content, sprout_id=sprout_id, tree_id=tree_id
+        )
         logger.info(f"Loaded: {prompt}")
 
         return prompt
+
+    @classmethod
+    def clone(cls, prompt: Self) -> Self:
+        logger.debug("cloning prompt")
+        return cls(**prompt.model_dump())
 
     @property
     def has_role(self) -> bool:

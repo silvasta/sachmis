@@ -25,8 +25,6 @@ class TreeExtractor(AbstractContextManager):
                 sprout_id=tree.next_sprout_id(),
                 full_dag=tree.export_dag(),
             )
-        # NEXT: no data_dag to Tree???
-        # NEXT: no data_dag to Tree???
         logger.debug("Tree Data extracted - Closing Tree for now...")
 
     def __exit__(self, exc_type, _exc_val, _exc_tb):

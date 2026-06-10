@@ -1,29 +1,41 @@
 from typing import Self
 
 from ..data import DataManager
-from ..data.conversation import ConversationDAG, DataDAG, Prompt, Response
+from ..data.conversation import ConversationDAG, Prompt, Response
+from ..data.conversation.fusion import SproutPackage
 
 
-class Sprout:  # IMPORTANT: BaseModel?
-    """Runtime Container for 1 DAG"""
+class Sprout:
+    """Runtime Container for 1 Model with DAG SubGraph"""
 
-    def __init__(
-        self,
-        data_dag: DataDAG,
-        data: DataManager,
-    ):
+    def __init__(self, package: SproutPackage, data: DataManager):
+        self.next_response_id: str = package.response_uuid
 
-        self.data_dag: DataDAG = data_dag
+        self.dag: ConversationDAG = package.dag_from_response
+        self.prompt: Prompt = package.prompt
+
+        self.has_previous_response: bool = (
+            package.previous_remote_id is not None
+        )
+        self.package: SproutPackage = package
         self.data: DataManager = data
 
-    # NEXT:
-    # - previous_response_id
-    # - images from prompt
-    # - files
-    @classmethod  # TASK: this or init?
-    def setup(cls, *args, **kwargs) -> Self:
-        # return cls()
-        raise NotImplementedError
+    @property
+    def response_node(self):
+        """Provide active Response Node"""
+
+    def check_ancestor(self) -> bool:
+        # NEXT: Forward DataManager
+        # NEXT: Forward DataManager
+        # NEXT: Forward DataManager
+        # NEXT: Forward DataManager
+        # NEXT: Forward DataManager
+
+        self.active_node
+        uid: str | None = self.data.handler.provide_grandfather_uuid()
+        if uid is None:
+            return False
+        return True
 
     def collect_raw_response(self, full_response: str):
         # NEXT: Forward DataManager
@@ -42,19 +54,3 @@ class Sprout:  # IMPORTANT: BaseModel?
         # usage=usage,
         # NEXT: Forward handler
         raise NotImplementedError
-
-    @property
-    def active_prompt(self) -> Prompt:
-        raise NotImplementedError
-
-    @property
-    def prompts(self) -> dict[str, Prompt]:
-        return self.data_dag.prompts
-
-    @property
-    def responses(self) -> dict[str, Response]:
-        return self.data_dag.responses
-
-    @property
-    def dag(self) -> ConversationDAG:
-        return self.data_dag.dag

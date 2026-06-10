@@ -35,10 +35,6 @@ class FileRollout(DataHandler):
 
     result_files: list[Path] = []
 
-    # NEXT:
-    def _prepare_prompt_text(self):
-        return self._prompt_text
-
     def __init__(self, prompt=True, forest=True):
         if prompt:
             self._load_prompt_text()
@@ -141,6 +137,10 @@ class FileRollout(DataHandler):
         logger.info(f"Loading prompt text from: {self.input_prompt_path=}")
         self._prompt_text: str = self.input_prompt_path.read_text()
         self.topic: str = Prompt.extract_topic(self._prompt_text)
+
+    def _prepare_prompt_text(self):
+        """Fill property from Base Class"""
+        return self._prompt_text
 
     # INFO: 1
     def scan_forest(self):

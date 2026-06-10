@@ -5,14 +5,17 @@ from pathlib import Path
 from loguru import logger
 from sstcore import PathGuard
 
+from sachmis.data.conversation.fusion import SproutPackage
+
 from ...config import SachmisConfig, get_config
-from ...exceptions import PromptError, SachmisDataError
+from ...exceptions import DataRuntimeError, PromptError, SachmisDataError
 from ...utils import printer
 from ..arboreal import ArborealTracker, Tree
 from ..conversation import (
     ConversationNode,
     DataDAG,
     Prompt,
+    Response,
     SelectedSproutData,
     SproutSelectData,
 )
@@ -29,33 +32,80 @@ class DataHandler:
     _topic: str = ""
     _tree_tracker: ArborealTracker[Tree] | None = None
     _initial_prompt: Prompt | None = None
-    _dag_of_entire_tree: DataDAG | None = None
 
+    # TODO: improve property and access (.._dag.dag?)
+    _dag_of_entire_tree: DataDAG | None = None
     _growing_dag: DataDAG | None = None
-    _sprout_registry: dict[str, ConversationNode] = {}
+
+    # LATER: more advanced registry, use some data type!
+    # - like 2-3 properties that automatically answer the questions
+    _sprout_registry: dict[str, str | None] = {}
 
     _result_files: list[Path] = []
 
+    def provide_grandfather_uuid(self, grand_child_uuid: str) -> str | None:
+        """Find Response before, so far without MultiPrompt support"""
+
+        for edge in self.tree_dag.dag.edges:
+            if edge.target == grand_child_uuid:
+                return edge.source
+
     # NEXT:
     @abstractmethod
-    def prepare_package(self, selected_model: SelectedSproutData) -> DataDAG:
-        """Load DataDAG or whatever"""
-        next_id = str(uuid.uuid4())
-        previous_response_node: ConversationNode = (
-            self.tree_dag.find_response_node(selected_model)
-        )
-        response_node: ConversationNode = self._create_response_node(next_id)
+    def prepare_package(self, selection: SelectedSproutData) -> SproutPackage:
+        """Load SproutPackage with everything needed for a new DAG"""
 
+        if previous_response_uuid := self._find_ancestor_uuid(selection):
+            remote_id: str | None = self.find_previous_response(
+                previous_response_uuid
+            )
+            logger.success("found previous_remote_id")
+        else:
+            remote_id = None
+
+        next_uuid: str = self._attach_new_node_to_root_prompt()
+        self._sprout_registry[next_uuid] = previous_response_uuid
+        logger.debug(f"attached to sprout_registry: {previous_response_uuid=}")
+
+        return SproutPackage(
+            response_uuid=next_uuid,
+            dag_from_response=self.growing_dag.dag.copy_subtree(next_uuid),
+            prompt=Prompt.clone(self.prompt),
+            previous_response_uuid=previous_response_uuid,
+            previous_remote_id=remote_id,
+        )
+
+    def find_previous_response(
+        self, previous_response_uuid: str
+    ) -> str | None:
+        if previous_response_uuid in self.tree_dag.responses:
+            previous: Response = self.tree_dag.responses[
+                previous_response_uuid
+            ]
+            return previous.remote_id
+        raise DataRuntimeError("Root should not end up here...")
+
+    def _find_ancestor_uuid(self, selection: SelectedSproutData) -> str | None:
+        # LATER: find entire Linear Tree of Ancestors
+        if selection.sprout_id == 0:  # case root (or fail)
+            return None
+        previous: ConversationNode = self.tree_dag.get_response_node(selection)
+        if previous.uuid not in self.tree_dag.dag.nodes:
+            raise SachmisDataError(f"Invalid uuid from {selection=}")
+        return previous.uuid
+
+    def _attach_new_node_to_root_prompt(self) -> str:
+        new_response_uuid = str(uuid.uuid4())
         self.growing_dag.dag.attach_leaf(
-            anchor=previous_response_node.id, node=response_node
-        )
+            target_uuid=self.prompt.unique_id,
+            new_node=self._create_response_node(new_response_uuid),
+        )  # WARN: rebuild the Graph?
+        logger.debug(f"response_node attached with {new_response_uuid=}")
+        return new_response_uuid
 
-        self._sprout_registry[next_id] = previous_response_node
-        return info
-
-    def _create_response_node(self, next_id) -> ConversationNode:
+    def _create_response_node(self, uuid) -> ConversationNode:
         return ConversationNode(
-            uuid=next_id,
+            uuid=uuid,
             partition="R",
             sprout_id=self.prompt.sprout_id,
             tree_id=self.prompt.tree_id,
@@ -146,7 +196,10 @@ class DataHandler:
     # INFO: 1
     def attach_tree_data(self, sprout_id: int, full_dag: DataDAG):
         self._initial_prompt: Prompt = Prompt.from_text(
-            content=self.prompt_text, sprout_id=sprout_id, topic=self.topic
+            content=self.prompt_text,
+            sprout_id=sprout_id,
+            topic=self.topic,
+            tree_id=self.tree_id,
         )
         self._dag_of_entire_tree: DataDAG = full_dag
         self._growing_dag: DataDAG = DataDAG.init_from(self._initial_prompt)

@@ -3,6 +3,8 @@ from typing import Self
 
 from loguru import logger
 
+from sachmis.data.conversation.fusion import SproutPackage
+
 from ..config import SachmisConfig, get_config
 from ..config.defaults import ModelParam
 from ..config.models import DummyFamily, Geminis, Groks
@@ -62,10 +64,16 @@ class Fire(AbstractContextManager):
         logger.info(f"Start of loading: {models=}")
 
         self.agents: list[Model] = []
+
         for model in models:
-            package = self.data.handler.prepare_package(model)
-            sprout = Sprout.setup(package)
+            package: SproutPackage = self.data.handler.prepare_package(model)
+
+            sprout = Sprout(subdag=package, data=self.data)
+
             load_model(model, sprout)
+
+        logger.info(f"Loaded: {self.agents=}")
+
         return self.agents
 
     def launch(self, use_async=False, dry_run=False):
