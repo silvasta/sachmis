@@ -1,3 +1,4 @@
+from sstcore.utils.print import ColorBox
 import time
 import uuid
 from collections.abc import Iterator
@@ -20,6 +21,8 @@ from ...exceptions import (
     DataRuntimeError,
 )
 from ...exceptions.arbo import ArborealTrackerError
+
+c = ColorBox()
 
 
 class ArborealTracker[ArboT: Arboreal](SstFile):  # LATER: ArboT?
@@ -194,6 +197,10 @@ class Arboreal[ArboT: Arboreal](BaseModel):
     def touch(self) -> datetime:
         self.last_updated: datetime = datetime.now(UTC)
         return self.last_updated
+
+    def __str__(self):
+        name: str = self.__class__.__name__
+        return c.green(f"{name} {self.tracker.local_id}")
 
     @property
     def stat(self):

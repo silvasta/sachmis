@@ -20,7 +20,7 @@ class PromptTransitionRules(StrEnum):
 
     @classmethod
     def explain(cls) -> str:
-        pass
+        raise NotImplementedError
 
     def valid_ancestor(self, response: ResponseTransitionRules) -> bool:
         match self:
@@ -78,7 +78,7 @@ class ResponseTransitionRules(StrEnum):
 
     @classmethod
     def explain(cls) -> str:
-        pass
+        raise NotImplementedError
 
     def valid_ancestor(self, prompt: PromptTransitionRules) -> bool:
         match self:

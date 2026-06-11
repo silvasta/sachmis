@@ -1,6 +1,8 @@
+from sachmis.utils import printer
 from typing import Any
 
 from loguru import logger
+from xai_sdk import Client
 
 from ...config import SachmisConfig, get_config
 from ..files import UploadFile, XaiUploadState
@@ -11,6 +13,8 @@ config: SachmisConfig = get_config()
 
 class XaiUploader(FileUploader):
     """Specific operations for xAI Upload"""
+
+    client: Client
 
     @property
     def target(self) -> str:
@@ -28,7 +32,6 @@ class XaiUploader(FileUploader):
         return XaiUploadState
 
     def _load_client(self):
-        from xai_sdk import Client
 
         self.client = Client(api_key=config.from_env(key="XAI_API_KEY"))
         logger.info("xAI Client loaded")
@@ -48,8 +51,7 @@ class XaiUploader(FileUploader):
         """Upload 1 file and attach remote state to UploadFile"""
 
         path = str(self.local_dir / file.local_path)
-        online_file: Any = self.client.files.upload(path)
-
+        online_file = self.client.files.upload(path)
         logger.success(f"Uploaded to xAI: {file.name}")
 
         return XaiUploadState(x_id=online_file.id)

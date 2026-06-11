@@ -71,7 +71,7 @@ class Biome(Arboreal[Forest]):
             config.save_settings()
             logger.info(f"Updated active Biome in Names to{biome_file.name}")
 
-        logger.success(f"{self.tracker_info.stat} Active Biome! {biome_file=}")
+        logger.success(f"{self.tracker} Active Biome! {biome_file=}")
 
     ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
     ### -- Arboreal - Access to Members

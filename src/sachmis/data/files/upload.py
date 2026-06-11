@@ -1,8 +1,7 @@
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Annotated, Literal, Self
+from typing import Annotated, Literal
 
-from boltons.strutils import slugify
 from loguru import logger
 from pydantic import BaseModel, Field
 from sstcore.data import FileRegistry, SstFile
@@ -10,7 +9,7 @@ from sstcore.utils.parse import StyledName
 
 
 class UploadState(BaseModel):
-    last_upload: datetime = Field(default_factory=datetime.now(UTC))
+    last_upload: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     @property
     def age(self) -> timedelta:
@@ -55,14 +54,18 @@ class UploadFile(SstFile):
 
     remote_states: dict[str, RemoteState] = Field(default_factory=dict)
 
-    name_at_load: str = Field(default_factory=lambda path: path.name)
+    # @classmethod
+    # FIX: problem for absorb, path is changed before file is moved to that!
+    # - consider absorbing (copy etc) moves from old stem to path with new stem
+    # - ATTENTION: use STEM not NAME! otherwise: file_tex
 
-    @classmethod
-    def with_slug_name(cls, local_path: Path) -> Self:
-        name_at_load: str = local_path.name
-        slug_name: str = slugify(name_at_load)
-        slug_path: Path = local_path.with_name(slug_name)
-        return cls(local_path=slug_path, name_at_load=name_at_load)
+    # stem_at_load: str = Field(default_factory=lambda path: path.stem)
+    #
+    # def with_slug_name(cls, local_path: Path) -> Self:
+    #     stem_at_load: str = local_path.stem
+    #     slug_stem: str = slugify(stem_at_load)
+    #     slug_path: Path = local_path.with_stem(slug_stem)
+    #     return cls(local_path=slug_path, stem_at_load=stem_at_load)
 
     @property
     def remotes(self) -> str:
@@ -110,4 +113,5 @@ class UploadRegistry(FileRegistry[UploadFile]):
     """Registry specifically for UploadFiles"""
 
     def _create_local_file(self, local_path: Path) -> UploadFile:
-        return UploadFile.with_slug_name(local_path=local_path)
+        # FIX: slug
+        return UploadFile(local_path=local_path)

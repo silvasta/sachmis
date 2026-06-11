@@ -2,8 +2,10 @@ from pathlib import Path
 
 from loguru import logger
 from sstcore.data import SstFile, SstFileRegistry
+from sstcore.utils import PathFilter
 
 from ..config import SachmisConfig, get_config
+from ..exceptions import DataRuntimeError
 from ..utils.print import printer
 from .files import Role, RoleRegistry, UploadFile, UploadRegistry
 
@@ -27,21 +29,26 @@ class CampManager:
     ):
         config: SachmisConfig = get_config()
 
-        # TEST:
-        # TASK: how to handle / sync with Forest?
+        # Files Setup
+        self.files = files or UploadRegistry(
+            local_root=Path(config.paths.file_dir)
+        )
+        if not hasattr(self.files, "scanner") or self.files.scanner is None:
+            self.files.setup_scanner(PathFilter())
 
-        self.files: UploadRegistry = files or UploadRegistry(
-            local_root=Path(config.paths.file_dir),
+        # Images Setup
+        self.images = images or SstFileRegistry(
+            local_root=Path(config.paths.image_dir)
         )
-        self.images: SstFileRegistry = images or SstFileRegistry(
-            local_root=Path(config.paths.image_dir),
-        )
-        self.roles: RoleRegistry = roles or RoleRegistry(
+        if not hasattr(self.images, "scanner") or self.images.scanner is None:
+            self.images.setup_scanner(PathFilter())
+
+        # Roles Setup
+        self.roles = roles or RoleRegistry(
             local_root=Path(config.paths.camp_role_dir)
-            # LATER: add tracking of role performance
         )
-        new_roles: list[Role] = self.mirror_roles(paths=config.paths.role_dir)
-        printer.lines_with_len("New Roles", lines=new_roles)
+        if not hasattr(self.roles, "scanner") or self.roles.scanner is None:
+            self.roles.setup_scanner(PathFilter())
 
         logger.info("setup complete")
 
@@ -84,3 +91,23 @@ class CampManager:
     def mirror_roles(self, paths: Path | list[Path]) -> list[Role]:
         """Copy images at path location into camp and registry"""
         return self.roles.mirror_from_path(paths)
+
+    def prepare_and_load(self, files: list[Path] | None) -> list[UploadFile]:
+        # LATER: integrate pick here?
+        # - probably not the pick but the match and load after pick
+
+        prepared_files: list[UploadFile] = []
+
+        if files:  # Mirror = copy for CLI provided links
+            prepared_files.extend(self.files.mirror_from_path(source=files))
+
+        local_files: Path = get_config().paths.local_file_dir
+
+        if local_files.exists():
+            prepared_files.extend(self.files.absorb_from_path(local_files))
+
+        for file in prepared_files:
+            if not file.confirm_local_status(self.files.local_root):
+                raise DataRuntimeError(f"Failed to Import {file=}")
+
+        return prepared_files

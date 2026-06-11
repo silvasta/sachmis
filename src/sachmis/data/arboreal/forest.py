@@ -60,13 +60,14 @@ class Forest(Arboreal[Tree]):
             local_id=local_id,
             roles=camp.roles,
             files=camp.files,
-            images=camp.images,
         )
 
     def get_camp(self) -> CampManager:
         """Attach registry to new CampManager"""
         return CampManager(
-            roles=self.roles, files=self.files, images=self.images
+            roles=self.roles,
+            files=self.files,
+            images=self.images,
         )
 
     def attach_camp_back_by_mirror(self, camp: CampManager):

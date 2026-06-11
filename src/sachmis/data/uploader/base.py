@@ -1,3 +1,4 @@
+from sstcore.utils.print import ColorBox
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
@@ -12,6 +13,7 @@ from ..files import RemoteState, UploadFile, UploadState
 TUploadState = TypeVar("TUploadState", bound=UploadState)
 
 config: SachmisConfig = get_config()
+c: ColorBox = ColorBox()
 
 
 @dataclass
@@ -84,6 +86,7 @@ class FileUploader(ABC):
             case (True, False):
                 logger.debug(f"File ready for upload: {file.name}")
                 state: RemoteState = self._upload_local_file(file)
+                logger.info(state)
                 file.attach_remote(state)
             case (False, True):
                 logger.warning("File is online but missing local!")
@@ -135,7 +138,6 @@ class FileUploader(ABC):
 
         printer.title(f"Fetching files from: {self.print_name}")
         remote_files: list[Any] = self._fetch_all_files()
-        printer(remote_files)
 
         file_descriptions: list[str] = []
         for file in remote_files:
@@ -147,11 +149,12 @@ class FileUploader(ABC):
                 logger.error(f"Problem with {file=}:\n{e}")
                 file_descriptions.append("problem...")
 
-        header = f"Files on {self.print_name}: {len(file_descriptions)}"
-        title = (  # NOTE: this title better for status?
-            f"{self.remote_state_cls.__name__} for files at {self.local_dir}"
+        header = (
+            f"Files on {c.cyan(self.print_name)}: {len(file_descriptions)}"
         )
-        printer.lines(lines=file_descriptions, header=header, title=title)
+        title = f"{c.s(self.remote_state_cls.__name__)}"
+        printer.title(header, title)
+        printer(file_descriptions)
 
     @abstractmethod
     def _remote_file_description(self, file: Any) -> str:
@@ -160,6 +163,7 @@ class FileUploader(ABC):
     def delete_all_uploaded_files(self):
         """Clear remote, may break stored messages for further usage!"""
 
+        # TASK: proper management file delete
         remote_files: list[Any] = self._fetch_all_files()
         logger.info("Start deleting files")
         n_deleted = 0
@@ -266,21 +270,23 @@ class FileUploader(ABC):
             only_remote=only_remote,
         )
 
-        printer.success(f"Statistics for {self.__class__.__name__}")
+        printer.special(f"Statistics for {self.__class__.__name__}")
 
         # IDEA: function of CompareResult
-        frac = f"{len(intersection)}/{n_files}"
-        printer.lines(
-            lines=[file.description for file in intersection],
-            header=f"Intersection of Local and Remote Files {frac}",
-            title=f"Intersection - {self.print_name}",
-        )
-
         frac = f"{len(only_local)}/{n_files}"
         printer.lines(
             lines=[file.description for file in only_local],
             header=f"Files only in Local registry {frac}",
             title=f"Local - {self.print_name}",
+            style="blue",
+        )
+
+        frac = f"{len(intersection)}/{n_files}"
+        printer.lines(
+            lines=[file.description for file in intersection],
+            header=f"Intersection of Local and Remote Files {frac}",
+            title=f"Intersection - {self.print_name}",
+            style="green",
         )
 
         frac = f"{len(only_remote)}/{n_files}"
@@ -288,6 +294,7 @@ class FileUploader(ABC):
             lines=only_remote,
             header=f"Files only in Remote registry {frac}",
             title=f"Global - {self.print_name}",
+            style="orange3",
         )
         return result
 

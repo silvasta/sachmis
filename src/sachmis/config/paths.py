@@ -144,6 +144,7 @@ class Paths(SstPaths[Names, Defaults]):
 
     @property
     @PathGuard.file(default_content="", raise_error=True)
+    # FIX: no file outside forest!
     def input_prompt(self) -> Path:
         return Path.cwd() / self._names.prompt
 

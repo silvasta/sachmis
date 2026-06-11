@@ -59,6 +59,9 @@ class Tree(Arboreal):
         self.data_dag.dag.attach_sprout(target, dag.dag)
         logger.success("Tree absorbed DAG")
 
+        self.draw()
+
+    def draw(self):
         try:
             self.dag.draw()
         except Exception as error:

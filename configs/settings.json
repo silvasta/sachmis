@@ -16,28 +16,11 @@
     "prompt": "prompt.md",
     "tree_pattern": "t_{tree_id}_{topic}",
     "prompt_pattern": "p_{sprout_id}_{topic}",
-    "response_pattern": "r_{sprout_id}_{model}_{topic}",
-    "tree_file": "t_{id}_{topic}.json",
-    "sprout_stem": "c_{id}_{spec}_{topic}",
-    "remotes": {
-      "pattern": "{name} Remotes: {remotes}",
-      "keys": [
-        "name",
-        "remotes"
-      ],
-      "style_pattern": "[{style1}]{name}[/] Remotes: [{style2}]{remotes}[/]",
-      "styles": [
-        "blue",
-        "green"
-      ]
-    }
+    "response_pattern": "r_{sprout_id}_{model}_{topic}"
   },
   "defaults": {
     "timestamp_format": "%Y-%m-%d_%H-%M-%S",
-    "input_date_formats": [
-      "%d-%m-%Y",
-      "%Y-%m-%d"
-    ],
+    "input_date_formats": ["%d-%m-%Y", "%Y-%m-%d"],
     "dot_env_content": "",
     "model_base": {
       "value": 4
@@ -95,11 +78,7 @@
       "subapp": true
     },
     "log_and_print": {
-      "conversation_bag": {
-        "printer": true,
-        "log": true
-      },
-      "data_prompt_attach": {
+      "PLACEHOLDER": {
         "printer": true,
         "log": true
       }
@@ -107,7 +86,7 @@
     "topic": "Time to select a Topic"
   },
   "log": {
-    "print_at_setup": true,
+    "print_at_setup": false,
     "setup_source": "Custom: config.settings.log",
     "log_dir": "/home/silvan/PolyBox/Code/sachmis/latest/logs",
     "log_filename": "sachmis.log",
@@ -115,11 +94,7 @@
     "retention": "1 week",
     "rotation": "5 MB"
   },
-  "last_updated": "2026-06-08T14:50:32.254030Z",
-  "updates": [
-    "2026-06-05T21:48:55.850034Z",
-    "2026-06-05T22:46:05.238632Z",
-    "2026-06-08T14:50:32.254030Z"
-  ],
+  "last_updated": "2026-06-10T21:33:13.697334Z",
+  "updates": ["2026-06-10T21:33:01.348406Z", "2026-06-10T21:33:13.697334Z"],
   "update_maxlen": 79
 }

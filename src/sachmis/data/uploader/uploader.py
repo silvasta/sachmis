@@ -4,7 +4,7 @@ from loguru import logger
 
 from ...config import SachmisConfig, get_config
 from ..files import RemoteState, UploadFile
-from .base import FileUploader
+from .base import CompareResult, FileUploader
 from .google import GoogleUploader
 from .xai import XaiUploader
 
@@ -37,6 +37,16 @@ def create_single_uploader(
 class Uploader:
     _uploaders: dict[str, RemoteUploader] = {}
 
+    def __init__(self, xai=False, google=False):
+        if xai:
+            self.prepare("xai")
+        if google:
+            self.prepare("google")
+
+    @property
+    def clients(self) -> list[RemoteUploader]:
+        return list(self._uploaders.values())
+
     def prepare(self, target: str) -> RemoteUploader:
         """Create Uploader if not cached and provide Instance"""
         if target not in self._uploaders:
@@ -53,7 +63,7 @@ class Uploader:
         logger.debug(f"attaching files: {(before := len(files))}")
         uploaded_files: list[UploadFile] = []
 
-        for file, uploader in product(files, self._uploaders.values()):
+        for file, uploader in product(files, self.clients):
             try:
                 uploader.upload_local_file(file, ensure_after_upload)
                 uploaded_files.append(file)
@@ -72,3 +82,15 @@ class Uploader:
             logger.warning(f"Files not perfect: {before=} but { after=}")
 
         return uploaded_files
+
+    def show_all_files(self):
+        for uploader in self.clients:
+            uploader.show_all_files()
+
+    def compare_with_remote_files(self, files: list[UploadFile]):
+        for uploader in self.clients:
+            _result: CompareResult = uploader.compare_with_remote_files(files)
+
+    def delete_all_uploaded_files(self):
+        for uploader in self.clients:
+            uploader.delete_all_uploaded_files()
