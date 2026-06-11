@@ -4,13 +4,11 @@ from xai_sdk import Client
 from xai_sdk.chat import Response, file, image, system, user
 from xai_sdk.sync.chat import Chat
 
-# from tenacity import retry, stop_after_attempt, wait_exponential
 from ...config import SachmisConfig, get_config
 from ...config.defaults import GrokParam, ModelParam
 from ...config.models import Groks
 from ...data.files import XaiUploadState
 from ...exceptions import SachmisDataError
-from .. import retry
 from .agent import Model
 
 config: SachmisConfig = get_config()
@@ -44,7 +42,7 @@ class Grok(Model):
             "model": self.model.api_name,
             "store_messages": self.param.store_messages,
         }
-        if id := self.sprout.previous_response_id:
+        if id := self.sprout.previous_remote_id:
             logger.debug("got locator")
             param |= {"previous_response_id": id}
             logger.info(f"{self.model} attaches previous response with: {id=}")
@@ -117,7 +115,7 @@ class Grok(Model):
 
     def _extract_usage(self) -> dict | None:
         try:
-            return json_format.MessageToDict(self._raw_response.usage)  # ty:ignore
+            return json_format.MessageToDict(self._raw_response.usage)
         except Exception as e:
             logger.error(f"Usage {self.model.unique}:\n{e}")
             return None

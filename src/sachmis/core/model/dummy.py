@@ -66,4 +66,5 @@ class DummyModel(Model):
         return {"cost": "a lot"}
 
     def _calculate_usage_cost(self, usage: dict) -> bool:
+        _usage = usage
         return False

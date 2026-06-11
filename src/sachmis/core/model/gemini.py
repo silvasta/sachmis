@@ -44,11 +44,10 @@ class Gemini(Model):
                     thinking_budget=self.param.thinking_budget
                 ),
             }
-        # TASK:
-        # if self.previous_response_id:
-        #     logger.info(
-        #         "Answer to Gemini here but, prepare file structure first!"
-        #     )
+        if self.has_previous_id:
+            logger.info(  # TASK: Gemini Previous
+                "Answer to Gemini here but, prepare file structure first!"
+            )
 
     def _attach_role(self, role: str):
         self.content_config |= {"system_instruction": role}
@@ -133,4 +132,5 @@ class Gemini(Model):
 
     def _calculate_usage_cost(self, usage: dict) -> bool:
         printer("NotImplemented! Usage calculation for Gemini")
+        _usage = usage
         return False

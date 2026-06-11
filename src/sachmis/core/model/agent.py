@@ -6,6 +6,7 @@ from loguru import logger
 from ...config import SachmisConfig, get_config
 from ...config.defaults import ModelParam
 from ...config.models import ModelFamily
+from ...data.conversation import Prompt
 from ...utils.print import printer
 from ..sprout import Sprout
 
@@ -40,6 +41,11 @@ class Model(ABC):
     def has_previous_id(self) -> bool:
         """Look at Sprout and find previous Response ID"""
         return self.sprout.previous_remote_id is not None
+
+    @property
+    def prompt(self) -> Prompt:
+        """Look at Sprout and find previous Response ID"""
+        return self.sprout.prompt
 
     @abstractmethod
     def _load_param(self, param: ModelParam | None) -> ModelParam:
