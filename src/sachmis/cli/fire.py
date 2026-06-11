@@ -9,7 +9,7 @@ from ..core import capstone
 from ..core.model import Model
 from ..data import DataManager
 from ..data.camp import CampManager, UploadFile
-from ..data.conversation import SelectedSproutData, SproutSelectData
+from ..data.conversation import SelectedSproutData
 from ..exceptions.data import DataRuntimeError
 from ..tui import selector
 from ..utils.parse import parse_raw_models
@@ -164,18 +164,8 @@ def _prepare_file_args(
                 case _:
                     logger.error(f"Multiple files with: {path}, {file=}")
 
-    if files:  # Mirror = copy for CLI provided links
-        prepared_files.extend(camp.files.mirror_from_path(source=files))
-
-    if (local_files := get_config().paths.local_file_dir).exists():
-        camp.files.absorb_from_path(local_files)
-        # LATER: remove  the folder (or just content) afterwards?
-
-    for file in prepared_files:
-        if not file.confirm_local_status(camp.files.local_root):
-            raise DataRuntimeError(f"Failed to Import {file=}")
-
-    printer.md(f"...{len(prepared_files)} files selected for pipeline")
+    prepared_files.extend(camp.prepare_and_load(files))
+    printer.title(f"...{len(prepared_files)} files selected for pipeline")
 
     return prepared_files
 
@@ -184,7 +174,7 @@ def _prepare_image_args(
     camp: CampManager, images: list[Path] | None, pick_image: bool
 ) -> list[SstFile]:  # LATER:: as function of camp
 
-    # REFACTOR: files and images, simple function from Camp
+    # REFACTOR: files and images, simple function of Camp
     printer.title("Preparing Images...")
 
     prepared_images: list[SstFile] = []

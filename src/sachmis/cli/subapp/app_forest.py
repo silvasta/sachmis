@@ -28,8 +28,8 @@ def trees():
 
     for t in trees:
         tree: Tree = Tree.read_mode(t.local_path)
-        printer.title(tree.tree_stem)
-        printer.tree_graph(tree.sample_conversation_tree())
+        printer.title(tree)
+        printer.tree_graph(tree.draw())
 
 
 @app.command()

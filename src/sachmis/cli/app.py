@@ -25,7 +25,7 @@ app.command()(fire)
 
 # important
 app.command()(command.init)
-app.command("roll")(command.rollout)
+# app.command("roll")(command.rollout)
 
 # utils
 app.command("models")(command.model_display)
