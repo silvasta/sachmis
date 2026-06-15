@@ -3,10 +3,9 @@ from typing import Any
 
 from loguru import logger
 
-from sachmis.config import SachmisConfig, get_config
-from sachmis.data.files import GoogleUploadState, UploadFile
-
-from .uploader import FileUploader
+from ...config import SachmisConfig, get_config
+from ..files import GoogleUploadState, UploadFile
+from .base import FileUploader
 
 config: SachmisConfig = get_config()
 
