@@ -10,6 +10,7 @@ class Geminis(ModelFamily):
     G31F = "g31f"
     G3I = "g3i"
     GR = "gr"
+    G35f = "g35f"
 
     # NOTE: Ideas
     # https://ai.google.dev/gemini-api/docs/robotics-overview
@@ -32,6 +33,7 @@ class Geminis(ModelFamily):
             Geminis.G31F: "gemini-3.1-flash-lite-preview",
             Geminis.G3I: "gemini-3-pro-image-preview",
             Geminis.GR: "gemini-robotics-er-1.6-preview",
+            Geminis.G35f: "gemini-3.5-flash",
         }[self]
 
     @property
