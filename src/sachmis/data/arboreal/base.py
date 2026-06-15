@@ -1,4 +1,3 @@
-from sstcore.utils.print import ColorBox
 import time
 import uuid
 from collections.abc import Iterator
@@ -11,6 +10,7 @@ from filelock import FileLock
 from loguru import logger
 from pydantic import BaseModel, Field, PrivateAttr, ValidationError
 from sstcore.data import SstFile
+from sstcore.utils.print import ColorBox
 
 from ...config import SachmisConfig, get_config
 from ...exceptions import (

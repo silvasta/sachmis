@@ -1,5 +1,5 @@
 """
-Organize FileTree of Base Directory with Forest front side
+Organize FileTree of Base Directory as Front Side of Forest
 
 """
 
@@ -32,7 +32,10 @@ def plot():  # NEXT: tree plot
     _tree: PathTreeNode = build_path_tree(paths=[], root_name="name")
 
 
-class RolloutRegistry(FileRegistry[SstFile]):
+# FIX: _create_local_file() will most likely fail?
+# - new FrontFile file tracker
+# - or derive from SstFileRegistry
+class FrontFileRegistry(FileRegistry[SstFile]):
     tree_parser: ParsedName
     prompt_parser: ParsedName
     response_parser: ParsedName
@@ -112,24 +115,27 @@ class RolloutRegistry(FileRegistry[SstFile]):
     @classmethod
     def ready(cls) -> Self:
         """Prepare tools, load Registry, scan Forest and be Ready!"""
-
-        logger.info("Load ProjectFilter, FolderScanner and RolloutRegistry!")
+        logger.info(
+            "Loading ProjectFilter, FolderScanner and OutputFileRegistry!"
+        )
         # PARAM: default filter stuff, maybe to config.defaults?
         filter = ProjectFilter(exclude={".camp"}, require_any={".md"})
         scanner = FolderScanner(scan_root=config.paths.base_dir, filter=filter)
-        rollout: Self = cls(
+        output_files: Self = cls(
             local_root=config.paths.base_dir,
             scanner=scanner,
             tree_parser=config.names.tree_parser,
             prompt_parser=config.names.prompt_parser,
             response_parser=config.names.response_parser,
         )
-        rollout.analyze_rollout_status(attach=True)
-        rollout.tree()
+        output_files.analyze_output_file_status(attach=True)
+        output_files.tree()
 
-        return rollout
+        return output_files
 
-    def analyze_rollout_status(self, attach=True, clear=True) -> list[SstFile]:
+    def analyze_output_file_status(
+        self, attach=True, clear=True
+    ) -> list[SstFile]:
         """Select from yielded Paths with Pattern and attach Files"""
 
         if clear and self.files:
@@ -151,7 +157,7 @@ class RolloutRegistry(FileRegistry[SstFile]):
         if attach and (n := len(new_files)):
             for file in new_files:
                 self.attach(file)
-            logger.info(f"Attached {n} Files to RolloutRegistry")
+            logger.info(f"Attached {n} Files to OutputFileRegistry")
 
         return new_files
 

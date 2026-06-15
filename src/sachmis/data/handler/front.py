@@ -11,11 +11,13 @@ from ...config.names import id_keywords_backwards
 from ...exceptions import SachmisDataError, SachmisLaunchError
 from ...utils import model_from_unique, printer
 from ..conversation import Prompt, Response, SproutSelectData
-from ..files import RolloutRegistry
-from .handler import DataHandler
 
 
 class Status(StrEnum):
+    """Status of CWD Folder and Files"""
+
+    # NEXT: define status
+
     UNDEFINED = auto()
     ROOT = auto()
     SINGLE = auto()
@@ -23,7 +25,7 @@ class Status(StrEnum):
     CROWD = auto()
 
 
-class FileRollout(DataHandler):
+class FrontFileHandler:
     """Manage Prompt and Response write to Forest dir"""
 
     status: Status = Status.UNDEFINED

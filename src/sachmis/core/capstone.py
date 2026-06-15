@@ -4,14 +4,13 @@ from typing import Self
 from loguru import logger
 
 from sachmis.data.conversation.fusion import SproutPackage
-from sachmis.utils import printer
 
 from ..config import SachmisConfig, get_config
 from ..config.defaults import ModelParam
 from ..config.models import DummyFamily, Geminis, Groks, ModelFamily
 from ..data import DataManager
 from ..data.conversation import SelectedSproutData
-from ..data.handler import FileRollout
+from ..data.handler import FrontFileHandler
 from .context import ForestExtractor, TreeExtractor
 from .model import Gemini, Grok, Model, launch
 from .model.dummy import DummyModel
@@ -46,6 +45,7 @@ class Fire(AbstractContextManager):
 
     def __enter__(self) -> Self:
         self.data: DataManager = self.stack.enter_context(
+            # NEXT: chose task, eg. front file handling for Fire
             DataManager(handler=FileRollout())
         )
         self.forest: ForestExtractor = self.stack.enter_context(
@@ -54,6 +54,7 @@ class Fire(AbstractContextManager):
         logger.info("ForestExtractor: Stacked to Context")
 
         self.tree: TreeExtractor = self.stack.enter_context(
+            # NEXT: here or later?
             TreeExtractor(data=self.data)  # MOVE: after selection?
         )
         logger.info("TreeExtractor: Stacked to Context")

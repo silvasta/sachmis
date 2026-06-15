@@ -4,14 +4,14 @@ __all__: list[str] = [
     "RemoteUploader",
     "Role",
     "RoleRegistry",
-    "RolloutRegistry",
+    "OuptupFileRegistry",
     "UploadFile",
     "UploadRegistry",
     "UploadState",
     "XaiUploadState",
 ]
+from .output import OuptupFileRegistry
 from .role import Role, RoleRegistry
-from .rollout import RolloutRegistry
 from .upload import (
     GoogleUploadState,
     RemoteState,

@@ -10,6 +10,7 @@ from .base import Arboreal
 class Tree(Arboreal):
     """Top element inside Forest: entry point for every conversation"""
 
+    # NEXT:
     data_dag: DataDAG = Field(default_factory=DataDAG)
 
     @property
