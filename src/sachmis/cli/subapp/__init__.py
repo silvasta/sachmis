@@ -1,6 +1,7 @@
+from .app_forest import app as forest
 from .biome import app as biome
+from .debug import app as debug
 from .files import app as files
-from .forest import app as forest
 from .utils import app as utils
 
 __all__: list[str] = [
@@ -8,4 +9,5 @@ __all__: list[str] = [
     "forest",
     "files",
     "utils",
+    "debug",
 ]

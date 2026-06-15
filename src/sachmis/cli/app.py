@@ -1,60 +1,64 @@
-import os
-import sys
+from sstcore.cli.engine import SafeTyper
+from sstcore.exceptions import TuiSelectorError
+from sstcore.utils import printer
 
-import typer
-from loguru import logger
+from sachmis.exceptions import ArborealFileError
 
-IS_COMPLETION: bool = (  # TEST: is this actually useful/necessary?
-    "_SACHMIS_COMPLETE" in os.environ
-    or "--show-completion" in sys.argv
-    or "--install-completion" in sys.argv
-)
-
-logger.remove()  # Intercept all logs
-
-# Intercept logger to generate Typer auto-completion
-if not IS_COMPLETION:
-    _boot_handler = logger.add(sys.stderr, level="INFO")
-
-from sstcore.cli import attach_callback  # noqa: E402
-
-from ..config import SachmisConfig, get_config  # noqa: E402
-from . import command, subapp  # noqa: E402
+from ..config import SachmisConfig, get_config
+from ..exceptions import SachmisLaunchError
+from . import command, subapp
+from .fire import fire
+from .thunder import thunder
 
 config: SachmisConfig = get_config()
 
 
-def main():
-    app()
-
-
-# main
-app = typer.Typer(
+app = SafeTyper(
     name="sachmis",
     help="CLI for direct communication with LLMs",
-    no_args_is_help=True,
+    param=config.setup_info,
 )
-attach_callback(app, param=config.compose_setup_param())
 
 # core
-# app.command()(command.thunder)
-app.command()(command.fire)
-# app.command()(command.tree)  # NEXT: rename to sprout???
-# app.command()(command.loop)
+app.command()(thunder)
+app.command()(fire)
+
+# important
+app.command()(command.init)
+# app.command("roll")(command.rollout)
 
 # utils
-app.command()(command.init)
+app.command("models")(command.model_display)
+app.command()(command.rules)  # TODO: check
 app.command("config")(command.config_details)
-app.command()(command.models)
-# app.command()(command.roles)
 
 # nested
+app.add_typer(subapp.files)
 app.add_typer(subapp.biome)
 app.add_typer(subapp.forest)
-# app.add_typer(subapp.tree) # NEXT: change to tree handler?
-app.add_typer(subapp.files)
+# app.add_typer(subapp.tree) # TASK: change to tree handler?
 app.add_typer(subapp.utils)
 
+if config.defaults.debug.subapp:
+    app.add_typer(subapp.debug)
 
-if __name__ == "__main__":
-    main()
+# TASK: Global Error Handling
+# - SachmisDataError: confirm hanled in DataManager
+# - other globals?
+
+
+@app.register_error(SachmisLaunchError)
+def handle_arbo(error: SachmisLaunchError):
+    printer.warn(f"{printer.colors.red('Problem!')} {error=}")
+
+
+@app.register_error(TuiSelectorError)
+def handle_tui_selector_error(error: TuiSelectorError):
+    """Fails cleanly when an interactive selector UI is exited or aborted."""
+    printer.warn(f"Interface canceled: {error}")
+
+
+@app.register_error(ArborealFileError)
+def handle_arboreal_file_error(error: ArborealFileError):
+    """Standardized terminal fallback for structural I/O blocks."""
+    printer.danger(f"Critical Arboreal I/O Error: {error}")

@@ -1,17 +1,14 @@
-from itertools import product
-from pathlib import Path
-
-import typer
-from sstcore.cli import attach_callback, logger_catch
+from loguru import logger
+from sstcore.cli import SafeTyper, sargs
 
 from ...config import SachmisConfig, get_config
-from ...data import DataManager
+from ...data.arboreal import Forest
+from ...data.camp import CampManager
 from ...data.files import UploadFile
-from ...data.uploader import FileUploader, GoogleUploader, XaiUploader
+from ...data.uploader import Uploader
 from ...utils.print import printer
 from ..args import Google, Xai
 
-# MOVE:
 config: SachmisConfig = get_config()
 
 
@@ -19,104 +16,112 @@ def main() -> None:
     app()
 
 
-app = typer.Typer(
+app = SafeTyper(
     name="files",
     help="Manage local files used for prompt attach",
-    no_args_is_help=True,
 )
-attach_callback(app)
 
 
 @app.command()
-@logger_catch
-def load(fresh: bool = False):
-    """Load files from local folder into file registry and camp folder"""
-    # NEXT: data: setup for Forest, arborefactor
-    # TASK: silvasta.data.FolderScanner
-    with DataManager(forest_required=True) as data:
-        data.load_local_files_to_forest(clear_current_files=fresh)
+def show(details: bool = False):
+    """Show all files in camp registry"""
+    forest: Forest = Forest.read_mode(config.paths.forest_file)
+    camp: CampManager = forest.get_camp()
+    base_name: str = config.paths.base_dir.stem
+
+    if details:
+        printer(camp.files)
+
+    printer.title(f"Files in Camp of Base '{base_name}' {camp.files.n_files}")
+    printer([file.local_path for file in camp.files.files])
 
 
 @app.command()
-@logger_catch
-def local():
-    """Show all local files in Forest"""
-    # NEXT: data: setup for Forest, arborefactor
-    # TODO:  filter and display desired info
+def load(fresh: bool = False, files: sargs.Files = None):
+    """Load local files from folder into camp registry"""
 
-    with DataManager(forest_required=True, save_at_exit=False) as data:
-        files: list[UploadFile] = data.forest.files
+    printer("Not implemented, fresh: ", fresh)  # TODO: clear
 
-    printer.lines_from_list(
-        lines=[file.description for file in files],
-        header=f"Files in Base '{config.paths.base_dir.stem}': {len(files)}",
-        title=f"{config.paths.base_dir}",
-    )
+    with Forest.edit_mode(config.paths.forest_file) as forest:
+        camp: CampManager = forest.get_camp()
+        printer(f"Files before: {len(camp.files.files)}")
 
+        # FIX: panel stays empty (but works otherwise)
+        new_files: list[UploadFile] = camp.prepare_and_load(files)
+        printer.lines_with_len(
+            name="New Loaded Files",
+            lines=[file.local_path for file in new_files],
+            style="purple",
+        )
 
-@app.command()
-@logger_catch
-def push(xai: Xai = False, google: Google = False, ensure=True):
-    """Sync all files in Forest to remote registry"""
-    # NEXT: data: setup for Forest, arborefactor
-
-    uploaders: list[FileUploader] = _prepare_uploader(xai, google)
-
-    with DataManager(forest_required=True) as data:
-        files: list[UploadFile] = data.forest.files
-        for uploader, file in product(uploaders, files):
-            uploader.upload_local_file(file, ensure_after_upload=ensure)
+        printer.success(f"Attach Camp to {forest}")
+        forest.attach_camp_back_by_mirror(camp)
+        printer(f"Files after: {len(camp.files.files)}")
 
 
 @app.command()
-@logger_catch
 def online(xai: Xai = False, google: Google = False):
     """Show all files on remote registry"""
 
-    uploaders: list[FileUploader] = _prepare_uploader(
-        *_zero_is_all(xai, google)
-    )
-    for uploader in uploaders:
-        uploader.show_all_files()
+    uploader = Uploader(*_zero_is_all(xai, google))
+    uploader.show_all_files()
 
 
 @app.command()
-@logger_catch
+def push(xai: Xai = False, google: Google = False, ensure=True):
+    """Sync all files in Forest to remote registry"""
+
+    uploader = Uploader(*_zero_is_all(xai, google))
+
+    with Forest.edit_mode(config.paths.forest_file) as forest:
+        camp: CampManager = forest.get_camp()
+
+        registry_files: list[UploadFile] = camp.files.files
+        printer(registry_files)
+
+        uploaded_files: list[UploadFile] = uploader.load_files(
+            registry_files, ensure_after_upload=ensure
+        )
+        printer(uploaded_files)
+
+        logger.info(f"{len(registry_files)=}, {len(uploaded_files)=}")
+        printer(camp.files.files)
+
+        forest.attach_camp_back_by_mirror(camp)
+
+
+@app.command()
 def status(xai: Xai = False, google: Google = False):
     """Show remote status of all files in Forest"""
 
-    uploaders: list[FileUploader] = _prepare_uploader(
-        *_zero_is_all(xai, google)
-    )
-    with DataManager(forest_required=True, save_at_exit=False) as data:
-        local_files: list[UploadFile] = data.forest.files
+    uploader = Uploader(*_zero_is_all(xai, google))
 
-    for uploader in uploaders:
-        uploader.compare_with_remote_files(local_files)
+    uploader.compare_with_remote_files(
+        Forest.read_mode(config.paths.forest_file).files.files
+    )
 
 
 @app.command()
-@logger_catch
 def clear(xai: Xai = False, google: Google = False):
     """Delete all files in remote registry"""
 
-    uploaders: list[FileUploader] = _prepare_uploader(
-        xai, google, forest_required=False
-    )
-    uploader_text: str = " and ".join(u.print_name for u in uploaders)
+    uploader = Uploader(xai, google)  # No _zero_is_all!
+    if not uploader.clients:
+        printer.yellow("nothing to do...")
+        return
+
+    uploader_text: str = " and ".join(u.print_name for u in uploader.clients)
 
     text = f"All remote files on {uploader_text} will be deleted"
-    printer.title(text, style="bold white on red")
+    printer.danger(text)
 
     if input("Are you sure? (type 'yes' to confirm): ") == "yes":
-        for uploader in uploaders:
-            uploader.delete_all_uploaded_files()
+        uploader.delete_all_uploaded_files()
     else:
         printer.warn("Abandoned delete all files")
 
 
 @app.command()
-@logger_catch
 def delete():
     """Delete single file(s) in remote registry"""
     # TASK: create selection method
@@ -129,27 +134,3 @@ def delete():
 def _zero_is_all(*args):  # MOVE: to args? latest at second usage
     """Modify input bool args only if all False -> all True"""
     return args if any(args) else (True for _ in args)
-
-
-def _prepare_uploader(
-    xai: Xai = False, google: Google = False, forest_required=True
-) -> list[FileUploader]:
-
-    # Default path in FileUploader works only if cwd in_base
-    local_dir: list = [] if config.paths.in_base else [Path.cwd()]
-    if forest_required and local_dir:
-        raise FileNotFoundError(f"No Forest found around cwd: {local_dir}")
-
-    uploaders: list[FileUploader] = []
-
-    uploaders += [XaiUploader(*local_dir)] if xai else []
-    uploaders += [GoogleUploader(*local_dir)] if google else []
-
-    if not uploaders:
-        raise ValueError("No remote platform selected!")
-
-    return uploaders
-
-
-if __name__ == "__main__":
-    main()

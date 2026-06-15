@@ -1,7 +1,12 @@
-from sstcore.cli import logger_catch
+from itertools import product
 
-from ...config import SachmisConfig, get_config
-from ...config.model import Geminis, Groks, get_all_models
+from sstcore.cli import sargs
+
+from ...config import SachmisConfig, get_config, models
+from ...data.conversation import (
+    PromptTransitionRules,
+    ResponseTransitionRules,
+)
 from ...data.setup import create_new_base
 from ...utils.print import printer
 from .. import args
@@ -9,53 +14,68 @@ from .. import args
 config: SachmisConfig = get_config()
 
 
-@logger_catch
 def init(name: args.Name = config.names.base_dir):
     """Create new Base with Forest and Local Data Structure"""
     create_new_base(name)
 
 
-@logger_catch
-def models():  # TODO: rich table, statistics
+def model_display():  # TODO: rich table, statistics
     """Show all models of all providers"""
+    for model in models.all():
+        printer(model.cli)
 
-    printer.title("Groks")
-    for model in Groks:
-        printer.md(
-            f"-x {model.value:<6} {model:<14} **{model.api_name}**",
-            style="normal",
+    printer.model_table(models.uniques(), models.names(), models.api_names())
+
+
+def rules():
+    """Show Prompt / Response Relationship and Transitions"""
+
+    def _explain(rule: type):
+        printer.title(name := rule.__name__)
+        printer.header(
+            rule.__doc__, title=name, text_style="white", title_align="right"
         )
 
-    printer.title("Geminis")
-    for model in Geminis:
-        printer.md(
-            f"-g {model.value:<6} {model:<14} **{model.api_name}**",
-            style="normal",
+    _explain(PromptTransitionRules)
+    _explain(ResponseTransitionRules)
+
+    for prompt, response in list(
+        product(PromptTransitionRules, ResponseTransitionRules)
+    ):
+        r_pr1: bool = prompt.valid_ancestor(response)
+        r_pr2: bool = response.valid_successor(prompt)
+        if r_pr1 != r_pr2:
+            printer(f"{r_pr1=}-{r_pr2=}")
+            printer.red("Inconsistent TransitionRules!")
+
+        printer.conversation_transition_result(
+            prompt,
+            response,
+            result=r_pr1,
+            from_prompt=False,
         )
-    printer.lines_with_len(
-        name="All Models",
-        lines=[model.unique for model in get_all_models(with_dummy=True)],
-    )
-    printer.model_table(get_all_models())
+
+        r_rp1: bool = prompt.valid_successor(response)
+        r_rp2: bool = response.valid_ancestor(prompt)
+        if r_rp1 != r_rp2:
+            printer(f"{r_rp1=}-{r_rp2=}")
+            printer.red("Inconsistent TransitionRules!")
+
+        printer.conversation_transition_result(
+            prompt,
+            response,
+            result=r_rp1,
+            from_prompt=True,
+        )
 
 
-@logger_catch
-def roles():  # TODO: create "new role" function (somewhere else)
-    # TASK: where to place? solve together with local|global role
-    printer.danger("not available")
-
-
-@logger_catch
-def config_details(save: bool = False):
-    """Print config to Console, so far just dotenv_path"""
-    # MOVE: to silvasta? yes! some basic stats
-    config: SachmisConfig = get_config()
-
-    # TODO: save settings? load updates from json? or push updates down to json?
-    # REFACTOR: create subapp, config management etc
-    printer(config.compose_setup_param())  # LATER: show selection of paths
+def config_details(write_config: sargs.Write = False):
+    """Print config to Console, optional override the json settings"""
+    config: SachmisConfig = get_config()  # TODO: better selection
+    printer(config.setup_info)
     printer(config.settings)
-    printer(config.paths.dot_env)  # LATER: show selection of paths
-    printer(config.master_setting_file)  # LATER: show selection of paths
-    if save:
+    printer(config.paths.dot_env)
+    printer(config.setting_file)
+
+    if write_config:
         config.save_settings()
