@@ -2,56 +2,57 @@ from pathlib import Path
 
 from .base import ArborealError
 
+# TASK: check and confirm exception
 
-class ArborealFileMissingError(FileNotFoundError, ArborealError):
-    """Raised when an Arboreal file (for now, JSON) is missing"""
 
+class ArborealFileError(ArborealError):
+    def __init__(self, msg: str, arboreal: str, file: Path):
+        self.arboreal = arboreal
+        self.file = file
+        super().__init__(msg)
+
+
+class ArborealFileMissingError(ArborealFileError, FileNotFoundError):
     def __init__(self, arboreal: str, file: Path):
         msg = f"No {arboreal} found at target location: {file}"
-        super().__init__(msg)
+        ArborealFileError.__init__(self, msg, arboreal, file)
 
 
-class ArborealFileExistsError(FileExistsError, ArborealError):
-    """Raised when trying to create an Arboreal file that already exists"""
-
+class ArborealFileExistsError(ArborealFileError, FileExistsError):
     def __init__(self, arboreal: str, file: Path):
         msg = f"Found existing {arboreal} at target location: {file}"
-        super().__init__(msg)
+        ArborealFileError.__init__(self, msg, arboreal, file)
 
 
-class ArborealRegistryMissingError(KeyError, ArborealError):
+class ArborealRegistryError(ArborealError):
+    """Specific for Registry Files"""
+
+
+class ArborealRegistryMissingError(KeyError, ArborealRegistryError):
     """Raised when an ID is not found in an object's internal registry"""
 
     def __init__(self, parent: str, child: str, missing_id: str):
+        self.missing_id = missing_id
         msg = f"{parent} registry has no {child} with: {missing_id=}"
         super().__init__(msg)
 
 
-class ArborealRegistryDuplicateError(KeyError, ArborealError):
+class ArborealRegistryDuplicateError(KeyError, ArborealRegistryError):
     """Raised when an ID is already attached in an Arboreals internal registry"""
 
     def __init__(self, parent: str, child: str, duplicated_id: str):
+        self.missing_id = duplicated_id
         msg = f"{parent} registry already has {child} with: {duplicated_id=}"
         super().__init__(msg)
 
 
-class SproutResponseExistsError(AttributeError, ArborealError):
-    """Response already exists in Sprout runtime data"""
+class ArborealTrackerError(AttributeError, ArborealError):
+    """For lightweight Arboreal Tracker Files"""
 
-    # MOVE: SachmisDataError?
-    def __init__(self, unique_id: str):
-        msg = f"Cannot override existing response for Sprout: {unique_id=}"
+    def __init__(self, message=None, arbo_to_track=None):
+        if message:
+            msg: str = message
+        else:
+            arbo_to_track: str = arbo_to_track or "ArboT"
+            msg = f"Tracker diverged from {arbo_to_track=}"
         super().__init__(msg)
-
-
-class SproutResponseMissingError(KeyError, ArborealError):
-    """Response in already 'growed' Sprout missing"""
-
-    # MOVE: SachmisDataError?
-    def __init__(self, unique_id: str):
-        msg = f"Cannot find expected response for Sprout: {unique_id=}"
-        super().__init__(msg)
-
-
-class SproutRegistryError(ValueError, ArborealError):
-    """Problem with sub-Sprouts, invalid keys etc."""
