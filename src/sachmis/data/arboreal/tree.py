@@ -1,199 +1,69 @@
-from pathlib import Path
-from typing import Self
-
 from loguru import logger
+from pydantic import Field
 
-from ...config import SachmisConfig, get_config
-from ...exceptions import SachmisDataError, SproutRegistryError
-from ..prompt import Prompt
-from ..response import Response
-from .base import ArborealDisk, ArborealTracker
-from .sprout import Sprout
+from sachmis.utils import printer
+
+from ..conversation import ConversationDAG, DataDAG, Prompt, Response
+from .base import Arboreal
 
 
-class Tree(ArborealDisk[Sprout]):
+class Tree(Arboreal):
     """Top element inside Forest: entry point for every conversation"""
 
-    model: str  # model.unique
-    tree_stem: str
-
-    # INFO: all sprouts are tracked in _registry.tracker
-    # new attached sprouts are added in _registry._member, but unused
-    # sprouts itself are attached to other sprouts, starting at:
-    sprout: Sprout  # unique root sprout of all following sprouts
-
-    ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
-    ### -- Arboreal - Access to Members
-    ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
+    data_dag: DataDAG = Field(default_factory=DataDAG)
 
     @property
-    def n_sprouts(self) -> int:
-        return self.sprout.count_all_sprouts
+    def prompts(self) -> dict[str, Prompt]:
+        return self.data_dag.prompts
 
     @property
-    def sprouts(self) -> list[ArborealTracker]:
-        return self.registry.all_trackers
+    def responses(self) -> dict[str, Response]:
+        return self.data_dag.responses
 
     @property
-    def local_sprout_ids(self) -> list[int]:
-        return [s.local_id for s in self.registry.all_trackers]
+    def dag(self) -> ConversationDAG:
+        return self.data_dag.dag
 
-    def get_sprout_by_unique_id(self, id: str) -> Sprout:
-        tracker: ArborealTracker = self.registry.get_tracker(id)
-        return self.get_sprout_by_path(tracker.path)
+    @property
+    def n_prompts(self) -> int:
+        return len(self.prompts)
 
-    # MOVE: maybe close to Sprout._next_sprout_locator as backwards function
-    def get_sprout_by_path(self, path: Path) -> Sprout:
-        logger.debug(f"walkig tree for sprout with id: {path=}")
-        current_node: Sprout = self.sprout
-        try:
-            for next_node_num in path.parts:
-                next_id: int = int(next_node_num) - 1
-                current_node: Sprout = current_node.sprouts[next_id]
-        except ValueError, IndexError:
-            raise SproutRegistryError(
-                f"Invalid number for Sprout list access: {path=}"
-            ) from None
+    @property
+    def n_responses(self) -> int:
+        return len(self.responses)
 
-        return current_node
-
-    def find_previous_sprout(self, sprout: Sprout) -> Sprout | None:
-        if sprout.unique_id == self.sprout.unique_id:
-            raise SproutRegistryError("Master Tree Sprout not allowed here..")
-        try:
-            parent_path: Path = sprout.sprout_locator.parent
-            return self.get_sprout_by_path(parent_path)
-        except SproutRegistryError as err:
-            msg = f"Unable to locate parent of Sprout: {sprout.sprout_locator}"
-            logger.error(f"{msg}\n{err}")
-        return None
-
-    def attach_sprout(self, sprout: Sprout) -> ArborealTracker:
-        return self._attach(instance=sprout, path=sprout.sprout_locator)
-
-    def attach_new_sprout(
-        self, existing_sprout: Sprout, model: str, prompt: Prompt
-    ) -> Sprout:
-        new_sprout: Sprout = existing_sprout.attach_sprout_to_sprout(
-            model=model,
-            prompt=prompt,
-        )
-        self.attach_sprout(new_sprout)
-        return new_sprout
-
-    ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
-    ### -- Tree - Health checks, maybe -> ArborealDisk?
-    ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
-
-    # TODO: Tree health
-    # - maybe compare sprout walk to registry?
-    # - filter invalid sprouts
+    @property
+    def child_info(self):
+        return f"{self.n_prompts} Prompts and {self.n_responses} responses"
 
     ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
     ### -- Tree - Custom Functions and Attributes
     ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
 
-    @classmethod
-    def create_with_sprout(
-        cls, model: str, prompt: Prompt, tree_stem: str = ""
-    ) -> Self:
-        """Create new Tree with single Sprout attached"""
-        sprout: Sprout = Sprout(
-            model=model,
-            prompt=prompt,  # TODO: empty prompt or so?
-            response=None,
-            sprout_locator=Path(),
-            previous_response_id="",
-        )
-        tree_stem: str = tree_stem or prompt.slug_topic
-        tree: Self = cls(
-            model=model,
-            tree_stem=tree_stem,
-            sprout=sprout,
-        )
-        tree.attach_sprout(sprout)
+    def export_dag(self) -> DataDAG:
+        printer(self.data_dag)  # REMOVE:
+        return DataDAG(**self.data_dag.model_dump())
 
-        return tree
+    def attach_sub_dag(self, target, dag: DataDAG):
 
-    @classmethod
-    def extract_sprout(
-        cls,
-        tree_file: Path,
-        previous_sprout: Path | None,
-        model: str,
-        prompt: Prompt,
-    ) -> Sprout:
-        """Just quickly open the Tree, extract new uncompleted sprout, later load and add completed"""
+        for id, prompt in dag.prompts.items():
+            if id in self.prompts:
+                logger.error(f"Doubled Prompt: {prompt}")
 
-        logger.info("Loading Tree to extract new Sprout")
+        for id, response in dag.responses.items():
+            if id in self.responses:
+                logger.error(f"Doubled Response: {response}")
 
-        with cls.edit_mode(tree_file) as tree:
-            if previous_sprout is None:
-                existing: Sprout = tree.sprout
-            else:  # TEST: fails?
-                existing: Sprout = tree.provide_sprout(
-                    previous_sprout, model=model, prompt=prompt
-                )
-            new_sprout: Sprout = tree.attach_new_sprout(
-                existing_sprout=existing, model=model, prompt=prompt
-            )
-            new_sprout.set_extracted()
+        self.data_dag.dag.attach_sprout(target, dag.dag)
+        logger.success("Tree absorbed DAG")
 
-        return new_sprout
+        self.draw()
 
-    def provide_sprout(
-        self, previous_sprout: Path, model: str, prompt: Prompt
-    ) -> Sprout:
-        config: SachmisConfig = get_config()
+    def draw(self):
+        try:
+            self.dag.draw()
+        except Exception as error:
+            logger.error(f"Draw {error=} {type(error)}")
 
-        _dom, _locator, _spec, topic = config.names.sprout_stem(
-            previous_sprout.stem
-        ).values()
-        print(_dom)
-        print(_locator)
-        print(topic)
-        if _spec != model:
-            raise SachmisDataError(f"Incompatible: {_spec=} and {model=}")
-
-        sprout: Sprout = self.find_sprout_py_path_parts(
-            self.sprout, model, topic
-        )
-        return self.attach_new_sprout(
-            existing_sprout=sprout, model=model, prompt=prompt
-        )
-
-    def find_sprout_py_path_parts(
-        self, sprout: Sprout, model: str, topic: str
-    ) -> Sprout:
-        """Recursive function, try to match model and topic"""
-        if sprout.model == model and sprout.prompt.slug_topic == topic:
-            return sprout
-        for s in sprout.sprouts:
-            try:
-                return self.find_sprout_py_path_parts(s, model, topic)
-            except SproutRegistryError:
-                pass  # raise only for top-level sprout
-        raise SproutRegistryError(f"Missing sprout of {model}! {topic=}")
-
-    @classmethod
-    def reattach_sprout(cls, tree_file: Path, sprout: Sprout):
-        """Just quickly open the Tree, extract new uncompleted sprout, later load and add completed"""
-
-        logger.info("Loading Tree to reattch Sprout information")
-
-        with cls.edit_mode(tree_file) as tree:
-            tree_sprout: Sprout = tree.get_sprout_by_unique_id(
-                sprout.unique_id
-            )
-            if not (tree_sprout.extracted_at == sprout.extracted_at):
-                logger.warning(
-                    f"{tree_sprout.extracted_at=} not {sprout.extracted_at=}!"
-                )
-            tree_sprout.response: Response = sprout.completed_response
-            tree_sprout.loaded_at = sprout.loaded_at
-            tree_sprout.started_at = sprout.started_at
-            tree_sprout.completed_at = sprout.completed_at
-
-        logger.info("All information submitted, Tree closed")
-
-    # TASK: build sprout tree
+    def next_sprout_id(self):
+        return self._next_instance_id()
