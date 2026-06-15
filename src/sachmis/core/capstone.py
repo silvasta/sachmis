@@ -1,148 +1,84 @@
-import time
-from collections.abc import Callable
+from contextlib import AbstractContextManager, ExitStack
+from typing import Self
 
 from loguru import logger
 
-from ..config.model import Geminis, Groks, ModelFamily
-from ..config.model.dummy import DummyFamily
+from sachmis.data.conversation.fusion import SproutPackage
+from sachmis.utils import printer
+
+from ..config import SachmisConfig, get_config
+from ..config.defaults import ModelParam
+from ..config.models import DummyFamily, Geminis, Groks, ModelFamily
 from ..data import DataManager
-from ..data.arboreal import ArborealTracker, Forest, Sprout, Tree
-from ..utils.print import printer
-from .model import Gemini, Grok, Model
+from ..data.conversation import SelectedSproutData
+from ..data.handler import FileRollout
+from .context import ForestExtractor, TreeExtractor
+from .model import Gemini, Grok, Model, launch
 from .model.dummy import DummyModel
+from .sprout import Sprout
+
+config: SachmisConfig = get_config()
 
 
-def match_family(model, data, **kwargs) -> Model:
-    """Create instance of execution model from Enum family model"""
+def load_model(
+    model: ModelFamily, sprout: Sprout, param: ModelParam | None = None
+) -> Model:
+    """Create Execution Model from Enum Family Model"""
 
     if isinstance(model, Groks):
-        data.get_uploader(target=model.target)
-        return Grok(model, data, **kwargs)
+        sprout.data.uploader.prepare(target=model.target)
+        return Grok(model, sprout, param)
 
     if isinstance(model, Geminis):
-        data.get_uploader(target=model.target)
-        return Gemini(model, data, **kwargs)
+        sprout.data.uploader.prepare(target=model.target)
+        return Gemini(model, sprout, param)
 
     if isinstance(model, DummyFamily):
-        return DummyModel(model, data, **kwargs)
+        return DummyModel(model, sprout, param)
 
     raise ValueError(f"Unknown {model=}")
 
 
-def load_models(data: DataManager, models: list[ModelFamily]) -> list[Model]:
-    logger.info(f"Start of loading: {models=}")
+class Fire(AbstractContextManager):
+    def __init__(self):
+        self.stack: ExitStack = ExitStack()
+        self.agents: list[Model] = []
 
-    tree_tracker: list[ArborealTracker] = []
-
-    with Forest.edit_mode(data.forest_file) as forest:
-        logger.info("Load Forest and extract Trees")
-        for model in models:
-            tree_tracker.append(
-                forest.attach_new_tree(model=model.unique, prompt=data.prompt)
-                if data._next_fs_locator == 0
-                else forest.provide_tree(previous_sprout=data._previous_sprout)
-            )
-        data.load_camp(forest)
-
-    logger.info("Trees extracted, close and unlock Forest during task")
-
-    sprouts: list[Sprout] = []
-
-    for model, tracker in zip(models, tree_tracker, strict=True):
-        sprout: Sprout = Tree.extract_sprout(
-            tree_file=tracker.path,
-            previous_sprout=data._previous_sprout,
-            model=model.unique,
-            prompt=data.prompt,
+    def __enter__(self) -> Self:
+        self.data: DataManager = self.stack.enter_context(
+            DataManager(handler=FileRollout())
         )
-        data.track_extracted_sprout(sprout, tree_tracker=tracker)
-        logger.debug(f"extracted from Tree: {sprout.unique_id=}")
-        sprouts.append(sprout)
+        self.forest: ForestExtractor = self.stack.enter_context(
+            ForestExtractor(self.data)
+        )
+        logger.info("ForestExtractor: Stacked to Context")
 
-    logger.info("Sprouts extracted, close and unlock Trees during task")
+        self.tree: TreeExtractor = self.stack.enter_context(
+            TreeExtractor(data=self.data)  # MOVE: after selection?
+        )
+        logger.info("TreeExtractor: Stacked to Context")
 
-    attached_models: list[Model] = [
-        match_family(model, data=data, sprout=sprout)
-        for model, sprout in zip(models, sprouts, strict=True)
-    ]
+        logger.success("capstone.Fire session is ready")
+        return self
 
-    return attached_models
+    def load_models(self, models: list[SelectedSproutData]) -> list[Model]:
+        logger.info(f"Start of loading: {models=}")
 
+        self.agents: list[Model] = []
 
-def launch_models(agents: list[Model], use_async=False, dry_run=False):
-    """Pipeline dispatcher"""
+        for model in models:
+            package: SproutPackage = self.data.handler.prepare_package(model)
 
-    launch_methods: dict[tuple[bool, bool], Callable] = {
-        (False, False): launch_sequential,
-        (False, True): launch_async,
-        (True, False): launch_dry_run_sequential,
-        (True, True): launch_dry_run_async,
-    }
-    launch_methods[(dry_run, use_async)](agents)
+            sprout = Sprout(package, self.data)
 
+            self.agents.append(load_model(model.model, sprout))
 
-def launch_sequential(models: list[Model]):
-    from tqdm import tqdm
+        logger.info(f"Loaded: {self.agents=}")
 
-    logger.info("Start of sequential pipeline")
+        return self.agents
 
-    for model in tqdm(models):
-        try:
-            model.assemble_prompt()
-            model.fire()
-        except Exception as e:
-            logger.error(f"Problem with model: {model.model.unique}\n{e}")
+    def launch(self, use_async=False, dry_run=False):
+        launch.models(self.agents, use_async, dry_run)
 
-
-def launch_dry_run_sequential(models: list[Model]):
-    logger.info("DRYRUN - Start of sequential pipeline")
-    from tqdm import tqdm
-
-    for model in tqdm(models):
-        printer(model.model.api_name)
-        model.assemble_prompt()
-        time.sleep(1)
-
-
-# NOTE: fine so far, maybe replace tqdm
-
-
-def launch_async(models: list[Model]):
-    import asyncio
-
-    from tqdm.asyncio import tqdm
-
-    logger.info("Start of async pipeline")
-
-    # TASK: repair async
-
-    async def thunder(models: list[Model]):
-        printer.title(f"Launching Thunder with {len(models)} models")
-        tasks: list = [model.fire() for model in models]
-        results = await tqdm.gather(*tasks, return_exceptions=True)
-        for model, result in zip(models, results, strict=False):
-            model.assemble_prompt()  # WARN: model.assemble_prompt() needed, proper here?
-            if isinstance(result, Exception):
-                logger.error(
-                    f"Problem with model {model.model.unique}: {result}"
-                )
-            else:
-                logger.success(f"Model {model.model.unique} successful")
-
-    asyncio.run(thunder(models))
-
-
-def launch_dry_run_async(models: list[Model]):
-    logger.info("DRYRUN - Start of async pipeline")
-    import asyncio
-
-    from tqdm.asyncio import tqdm
-
-    async def thunder(models: list[Model]):
-        printer.title(f"Launching {len(models)} models")
-        for model in tqdm(models):
-            printer(model.model.api_name)
-            model.assemble_prompt()
-            await asyncio.sleep(1)
-
-    asyncio.run(thunder(models))
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        return self.stack.__exit__(exc_type, exc_val, exc_tb)
