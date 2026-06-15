@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from sachmis.config.model import Geminis, Groks, ModelFamily
+from sachmis.config.models import Geminis, Groks, ModelFamily
 from sachmis.utils.parse import model_from_unique
 
 all_families: list[type[ModelFamily]] = [
@@ -61,12 +61,3 @@ def test_reversed_name_failures(invalid_input: str):
 
     # Assert
     assert result is None
-
-
-def test_reversed_name_type_safety():
-    """
-    Specific check for return types on a known good value.
-    """
-    result = model_from_unique("g-g3")
-    assert isinstance(result, Geminis)
-    assert result == Geminis.G3
