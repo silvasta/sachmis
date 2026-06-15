@@ -36,7 +36,7 @@ class RolloutRegistry(FileRegistry[SstFile]):
     tree_parser: ParsedName
     prompt_parser: ParsedName
     response_parser: ParsedName
-    _scanner: FolderScanner
+    scanner: FolderScanner
     _sync_mode: PathGuard.SyncMode = PathGuard.SyncMode.OVERRIDE
 
     def get_trees(self):
@@ -119,7 +119,7 @@ class RolloutRegistry(FileRegistry[SstFile]):
         scanner = FolderScanner(scan_root=config.paths.base_dir, filter=filter)
         rollout: Self = cls(
             local_root=config.paths.base_dir,
-            _scanner=scanner,
+            scanner=scanner,
             tree_parser=config.names.tree_parser,
             prompt_parser=config.names.prompt_parser,
             response_parser=config.names.response_parser,
@@ -138,7 +138,7 @@ class RolloutRegistry(FileRegistry[SstFile]):
 
         new_files: list[SstFile] = []
 
-        for path in self._scanner.walk():
+        for path in self.scanner.walk():
             if tree_file := self._extract_if_path_is_tree(path):
                 new_files.append(tree_file)
 

@@ -227,4 +227,4 @@ class Paths(SstPaths[Names, Defaults]):
         self, write_dir: Path, id: int, model: str, topic: str
     ) -> Path:
         response_file: str = self._names.response_stem(id, model, topic)
-        return self.tree_dir / f"{response_file}.json"
+        return write_dir / f"{response_file}.json"

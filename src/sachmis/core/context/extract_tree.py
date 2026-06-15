@@ -2,6 +2,8 @@ from contextlib import AbstractContextManager
 
 from loguru import logger
 
+from sachmis.utils import printer
+
 from ...config import SachmisConfig, get_config
 from ...data import DataManager
 from ...data.arboreal import ArborealTracker, Tree
@@ -21,10 +23,7 @@ class TreeExtractor(AbstractContextManager):
             self.tracker: ArborealTracker = tree.sample_tracker(
                 path, local_id=data.handler.tree_tracker.local_id
             )
-            self.data.handler.extract_data_from_tree(
-                sprout_id=tree.next_sprout_id(),
-                full_dag=tree.export_dag(),
-            )
+            self.data.handler.extract_data_from_tree(tree)
         logger.debug("Tree Data extracted - Closing Tree for now...")
 
     def __exit__(self, exc_type, _exc_val, _exc_tb):
@@ -38,6 +37,8 @@ class TreeExtractor(AbstractContextManager):
         logger.debug("Loading Tree...")
         with Tree.edit_mode(self.tracker.path) as tree:
             self.data.handler.attach_data_back(tree)
+            printer.title("Tree")
+            printer(tree.data_dag)
 
         logger.debug("Tree closed - Data transferred back")
         return config.defaults.context.tree_end.swallow

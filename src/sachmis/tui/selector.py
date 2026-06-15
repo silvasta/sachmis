@@ -81,7 +81,7 @@ def role_path(roles: list[Path]) -> Path:
     # LATER: provide advanced setup, statistic and selection
 
     if selected := ListSelectorApp(items=items, multi_select=False).run():
-        logger.success(f"Selected {(role := selected[0]).name}")
+        logger.success(f"Selected {(role := Path(selected[0])).name}")
         return role
     raise TuiSelectorError
 

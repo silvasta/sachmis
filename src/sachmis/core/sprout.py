@@ -1,10 +1,11 @@
 from pathlib import Path
 
+from loguru import logger
 from ..config import SachmisConfig, get_config
 from ..config.models import ModelFamily
 from ..data import DataManager
 from ..data.conversation import (
-    ConversationDAG,
+    # ConversationDAG,
     Prompt,
     Response,
 )
@@ -16,7 +17,7 @@ class Sprout:
 
     def __init__(self, package: SproutPackage, data: DataManager):
         self.next_response_id: str = package.response_uuid
-        self.dag: ConversationDAG = package.dag_from_response
+        # self.dag: ConversationDAG = package.dag_from_response
         self.prompt: Prompt = package.prompt
         self.model: ModelFamily = package.model
         self.previous_remote_id: str | None = package.previous_remote_id
@@ -41,6 +42,7 @@ class Sprout:
         remote_id: str,
         usage: dict,
     ):
+        logger.info("collect")
         response = Response(  # Important! override unique_id
             unique_id=self.next_response_id,
             content=content,

@@ -68,7 +68,7 @@ class SelectedSproutData:
 class SproutPackage:
     response_uuid: str
     # intended for multistep during single runtime
-    dag_from_response: ConversationDAG
+    # dag_from_response: ConversationDAG
     prompt: Prompt
     model: ModelFamily
     previous_response_uuid: str | None
@@ -78,7 +78,7 @@ class SproutPackage:
 class DataDAG(BaseModel):
     prompts: dict[str, Prompt] = Field(default_factory=dict)
     responses: dict[str, Response] = Field(default_factory=dict)
-    dag: ConversationDAG
+    dag: ConversationDAG = Field(default_factory=ConversationDAG)
 
     def get_response_node(
         self, sprout: SelectedSproutData

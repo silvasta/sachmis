@@ -60,10 +60,10 @@
         "swallow": false
       },
       "data_error_arboreal": {
-        "swallow": true
+        "swallow": false
       },
       "data_error_sachmis": {
-        "swallow": true
+        "swallow": false
       },
       "data_end": {
         "swallow": false
@@ -71,7 +71,7 @@
     },
     "debug": {
       "model": {
-        "dummy": false,
+        "dummy": true,
         "grok": true,
         "gemini": true
       },

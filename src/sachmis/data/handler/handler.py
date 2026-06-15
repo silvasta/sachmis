@@ -54,21 +54,26 @@ class DataHandler:
     def attach_tracker(self, tracker: ArborealTracker[Tree]):  # REMOVE: ??
         self._tree_tracker: ArborealTracker[Tree] = tracker
 
-    def extract_data_from_tree(self, sprout_id: int, full_dag: DataDAG):
+    def extract_data_from_tree(self, tree: Tree):
         """Transform Tree Data to new Prompt and setup DAG"""
+        sprout_id = tree.next_sprout_id()
         self._initial_prompt: Prompt = Prompt.from_text(
             content=self.prompt_text,
             sprout_id=sprout_id,
             topic=self.topic,
             tree_id=self.tree_id,
         )
-        self._dag_of_entire_tree: DataDAG = full_dag
+
+        self._dag_of_entire_tree: DataDAG = tree.export_dag()
+        # if len(self._dag_of_entire_tree.dag.edges) == 0:
+        #     tree.dag.nodes.append(self._create_prompt_node())
         self._growing_dag: DataDAG = DataDAG.init_from(self._initial_prompt)
 
         printer.special("Tree DAG")
         printer(self._dag_of_entire_tree)
         printer.special("Sprout DAG")
         printer(self._growing_dag)
+        input()
 
         logger.info(f"DAG attached from Tree to {self.__class__.__name__}")
 
@@ -92,6 +97,7 @@ class DataHandler:
     def handle_response(self, response: Response):
         """Process the received Prompt or Response with your Schema"""
 
+        logger.info(f"Handling {response=}")
         if response.unique_id not in self._sprout_registry:
             raise SachmisDataError("Failed Response ID handling...")
 
@@ -123,17 +129,21 @@ class DataHandler:
         targets: set[str] = set(self._target_registry)
         match len(targets):
             case 0:
-                raise DataRuntimeError("No Root for Prompt detected")
+                printer(self.tree_dag)
+                printer(self.growing_dag)
+                if len(tree.dag.nodes) == 0:  # TODO: is_empty
+                    tree.data_dag = self.growing_dag.model_copy()
+                else:
+                    raise DataRuntimeError("No Root for Prompt detected")
             case 1:
                 logger.success("Single Ancestor for Prompt")
+                for _source, target in self._target_registry.items():
+                    tree.attach_sub_dag(target, self.growing_dag.model_copy())
+                    logger.success("DAG is back home")
             case _:
                 logger.warning("Multiple Ancestor for Prompt")
                 self._check_all_possible_targets(targets)
                 raise DataRuntimeError("To much Grandfathers...")
-
-        for _source, target in self._target_registry.items():
-            tree.attach_sub_dag(target, self.growing_dag.model_copy())
-            logger.success("DAG is back home")
 
     def _check_all_possible_targets(self, targets):
         all_nodes: set[str] = set(
@@ -175,7 +185,7 @@ class DataHandler:
 
         return SproutPackage(
             response_uuid=next_uuid,
-            dag_from_response=self.growing_dag.dag.copy_subtree(next_uuid),
+            # dag_from_response=self.growing_dag.dag.copy_subtree(next_uuid),
             prompt=Prompt.clone(self.prompt),
             model=selection.model,
             previous_response_uuid=previous_response_uuid,
@@ -257,6 +267,15 @@ class DataHandler:
         )  # WARN: rebuild the Graph?
         logger.debug(f"response_node attached with {new_response_uuid=}")
         return new_response_uuid
+
+    def _create_prompt_node(self) -> ConversationNode:
+        return ConversationNode(
+            uuid=self.prompt.unique_id,
+            partition="P",
+            sprout_id=self.prompt.sprout_id,
+            tree_id=self.prompt.tree_id,
+            topic=self.prompt.topic,
+        )
 
     def _create_response_node(self, uuid) -> ConversationNode:
         return ConversationNode(

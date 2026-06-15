@@ -47,6 +47,8 @@ class ConversationDAG(BipartiteDAG):
     def copy_subtree(self, root_node_id: str) -> ConversationDAG:
         """Recursively extracts a node and ALL of its descendants."""
 
+        printer(self._graph)
+        self.draw()
         if root_node_id not in self._graph:
             raise ValueError(f"Node '{root_node_id}' not found in the graph.")
 

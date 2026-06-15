@@ -34,7 +34,7 @@ def fire(
     pick_image: args.PickImage = False,
     # General Options
     use_async: args.Async = False,
-    dry_run: sargs.DryRun = True,
+    dry_run: sargs.DryRun = False,
     direct_fire: args.Fire = False,
 ):
     """Prepare Models with Local Prompt and Fire"""
@@ -90,7 +90,9 @@ def confirm_fire(models: list[Model], data: DataManager) -> bool:
     printer.lines(
         header=f"Role: {prompt.role.path.stem if prompt.role else 'No role selected!'}",
         title="Role",
-        lines=[prompt.role or "build more roles in camp"],
+        lines=[
+            prompt.role.content if prompt.role else "build more roles in camp"
+        ],
     )
 
     printer.lines_with_len(

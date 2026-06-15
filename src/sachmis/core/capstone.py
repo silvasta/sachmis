@@ -4,10 +4,11 @@ from typing import Self
 from loguru import logger
 
 from sachmis.data.conversation.fusion import SproutPackage
+from sachmis.utils import printer
 
 from ..config import SachmisConfig, get_config
 from ..config.defaults import ModelParam
-from ..config.models import DummyFamily, Geminis, Groks
+from ..config.models import DummyFamily, Geminis, Groks, ModelFamily
 from ..data import DataManager
 from ..data.conversation import SelectedSproutData
 from ..data.handler import FileRollout
@@ -20,7 +21,7 @@ config: SachmisConfig = get_config()
 
 
 def load_model(
-    model, sprout: Sprout, param: ModelParam | None = None
+    model: ModelFamily, sprout: Sprout, param: ModelParam | None = None
 ) -> Model:
     """Create Execution Model from Enum Family Model"""
 
@@ -70,7 +71,7 @@ class Fire(AbstractContextManager):
 
             sprout = Sprout(package, self.data)
 
-            load_model(model, sprout)
+            self.agents.append(load_model(model.model, sprout))
 
         logger.info(f"Loaded: {self.agents=}")
 

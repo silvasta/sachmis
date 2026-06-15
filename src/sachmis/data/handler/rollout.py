@@ -27,7 +27,6 @@ class FileRollout(DataHandler):
     """Manage Prompt and Response write to Forest dir"""
 
     status: Status = Status.UNDEFINED
-    target_dir: Path = Path.cwd()
     result_files: list[Path] = []
     write_dir: Path = Path.cwd()
 
@@ -40,6 +39,7 @@ class FileRollout(DataHandler):
 
     def _handle_response_end_processing(self, response: Response):
         config: SachmisConfig = get_config()
+        logger.info(f"Handling {response=}")
 
         if self.status == Status.UNDEFINED:
             self._check_cwd_and_tasks()
@@ -47,6 +47,8 @@ class FileRollout(DataHandler):
         response_file: Path = config.paths.response_file(
             self.write_dir, response.sprout_id, response.model, response.topic
         )
+        logger.info(response_file)
+
         response_file.write_text(response.content)
 
     def _check_cwd_and_tasks(self):
@@ -55,6 +57,7 @@ class FileRollout(DataHandler):
         if config.paths.cwd_in_top_dir:
             self.status: Status = Status.ROOT
             self.action_init()
+            self.rotate_prompt()
             return
 
         models: set[str] = self.registry.get_model_at_path()
@@ -93,7 +96,7 @@ class FileRollout(DataHandler):
         printer(tree_stem)
         self.filesystem_work_todo = False
         # IDEA: delayed and applied by decorator at path generation?
-        self.target_dir: Path = PathGuard.dir(tree_stem)
+        self.write_dir: Path = PathGuard.dir(tree_stem)
         logger.info(f"Target Dir created: {tree_stem}")
 
     def action_chain(self):
@@ -109,7 +112,7 @@ class FileRollout(DataHandler):
         previous_stem = config.names.response_stem(
             self.tree_id, self.selection_previous.model.unique, self.topic
         )
-        self.target_dir: Path = PathGuard.dir(previous_stem)
+        self.write_dir: Path = PathGuard.dir(previous_stem)
         logger.info(f"Target Dir created: {previous_stem}")
 
     def _print_entry(self):  # TODO: clean entry prints
@@ -127,7 +130,7 @@ class FileRollout(DataHandler):
         self.input_prompt_path: Path = config.paths.input_prompt
         logger.info(f"Loading prompt text from: {self.input_prompt_path=}")
         self._prompt_text: str = self.input_prompt_path.read_text()
-        self.topic: str = Prompt.extract_topic(self._prompt_text)
+        self._topic: str = Prompt.extract_topic(self._prompt_text)
 
     def _prepare_prompt_text(self):
         """Fill property from Base Class"""

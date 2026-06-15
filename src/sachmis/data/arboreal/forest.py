@@ -6,7 +6,6 @@ from sstcore.data import FileRegistry, SstFileRegistry
 
 from ...config import SachmisConfig, get_config
 from ...exceptions import ArborealRegistryMissingError
-from ...utils import printer
 from ..camp import CampManager
 from ..files import RoleRegistry, UploadRegistry
 from .base import Arboreal, ArborealTracker
@@ -60,6 +59,7 @@ class Forest(Arboreal[Tree]):
             local_id=local_id,
             roles=camp.roles,
             files=camp.files,
+            images=camp.images,
         )
 
     def get_camp(self) -> CampManager:
@@ -84,7 +84,7 @@ class Forest(Arboreal[Tree]):
         """Mirror, Log and Print"""  # TODO: update status
         new: list = forest.mirror_from_registry(external_registry=camp)
         name: str = camp.__class__.__name__
-        printer.lines(header=f"New Files from {name} to Forest", lines=new)
+        # printer.lines(header=f"New Files from {name} to Forest", lines=new)
         logger.info(f"loaded {len(new)} Files from Camp {name} to Forest")
 
     ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
@@ -92,10 +92,8 @@ class Forest(Arboreal[Tree]):
     ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
 
     def provide_tree(self, tree_id: int) -> ArborealTracker:
-
         if tree := self.find_tree_by_local_id(tree_id):
             return tree
-
         raise ArborealRegistryMissingError("Forest", "Tree", f"{tree_id=}")
 
     def find_tree_by_local_id(self, id: int) -> ArborealTracker | None:
