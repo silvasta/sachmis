@@ -1,9 +1,11 @@
+from contextlib import suppress
 from pathlib import Path
 from typing import Literal
 
 from loguru import logger
 from sstcore import PathGuard
 from sstcore.config import SstPaths
+from sstcore.utils import day_count
 from sstcore.utils.path import (
     recursive_parent,
     recursive_root,
@@ -11,6 +13,7 @@ from sstcore.utils.path import (
 
 from ..exceptions import (
     ArborealFileExistsError,
+    ArborealFileMissingError,
     NotInCampError,
     NotInForestError,
 )
@@ -22,47 +25,51 @@ class Paths(SstPaths[Names, Defaults]):
     """Assemble paths for project"""
 
     @property
+    def active_biome(self) -> bool:
+        return self.unconfirmed_biome_file.exists()
+
+    @property
     def biome_dir(self) -> Path:
         return self.data_home
 
-    @property
-    @PathGuard.file(raise_error=True)
-    def biome_file(self) -> Path:
-        """Current active Biome file"""
-        return self._biome_file()
+    def biome_file(self, filename: str | None = None) -> Path:
+        """Path to active Biome File or Error"""
+        try:
+            return PathGuard.file(target=self._biome_file(filename))
+        except FileNotFoundError as error:
+            logger.error(f"Missing biome: {error=}")
+        raise ArborealFileMissingError("Biome", self._biome_file())
 
-    @property
-    def active_biome(self) -> bool:
-        return self.unconfirmed_biome_file.exists()
+    def _biome_file(self, filename: str | None = None) -> Path:
+        """path constructor class"""
+        return self.biome_dir / (filename or self._names.biome_file)
 
     @property
     def unconfirmed_biome_file(self) -> Path:
         """unchecked composition of path and name"""
         return self._biome_file()
 
-    def _biome_file(self, biome_filename: str | None = None) -> Path:
-        """path constructor class"""
-        return self.biome_dir / (biome_filename or self._names.biome_file)
+    @property
+    def biome_files(self) -> set[Path]:
+        # LATER: ensure better, track state
+        return set(self.biome_dir.glob("*.json"))
+
+    @property
+    def num_biome_files(self) -> int:
+        return len(self.biome_files)
 
     def new_biome_file(self, name: str) -> Path:
         """Generate new biome_file path if it not already exists"""
 
-        # Ensure it works for 'name.json' or just 'name'
-        biome_filename: str = f"{name.strip('.json')}.json"
+        biome_filename: str = f"{name.rstrip('.json')}.json"
+        new_biome_file: Path = self._biome_file(biome_filename)
 
-        new_file: Path = self._biome_file(biome_filename)
+        if new_biome_file in self.biome_files:
+            raise ArborealFileExistsError("Biome", new_biome_file)
 
-        if new_file in self.biome_files:
-            raise ArborealFileExistsError("Biome", new_file)
+        logger.success(f"Created Path for new Biome: {new_biome_file=}")
 
-        logger.success(f"Created writable Path for new Biome: {new_file=}")
-
-        return new_file
-
-    @property
-    def biome_files(self) -> set[Path]:
-        # LATER: ensure no other .json in biome_dir
-        return set(self.biome_dir.glob("*.json"))
+        return new_biome_file
 
     @property
     def base_dir(self) -> Path:
@@ -74,17 +81,35 @@ class Paths(SstPaths[Names, Defaults]):
         return root
 
     @property
-    def in_forest(self) -> bool:
-        try:
-            _ = self.base_dir
-            return True
-        except NotInForestError:
-            return False
+    def cwd_in_top_dir(self) -> bool:
+        """Tree Folder Level: Error for outside Forest"""
+        return Path.cwd() == self.base_dir
+
+    def cwd_to_base_dir(self, strict=True) -> Path:
+        """Error for outside Forest, try with strict=False for ../../path"""
+        return PathGuard.relative(
+            target=Path.cwd(), root=self.base_dir, strict=strict
+        )
 
     @property
-    @PathGuard.dir
-    def camp_dir(self) -> Path:
-        return self.base_dir / self._names.camp_dir
+    def in_forest(self) -> bool:
+        with suppress(NotInForestError):
+            logger.debug(f"Inside {self.base_dir=}")
+            if self._this_executes_only_when_base_dir_exists():
+                return True
+        return False
+
+    def _this_executes_only_when_base_dir_exists(self) -> bool:
+        """Trick the ty-pe checker and provide clear suppress"""
+        return True
+
+    @property
+    def in_camp(self) -> bool:
+        with suppress(NotInForestError):
+            logger.debug(f"Inside {self.camp_dir_as_parent=}")
+            if self._this_executes_only_when_base_dir_exists():
+                return True
+        return False
 
     @property
     def camp_dir_as_parent(self):
@@ -96,12 +121,9 @@ class Paths(SstPaths[Names, Defaults]):
         return parent
 
     @property
-    def in_camp(self) -> bool:
-        try:
-            _ = self.camp_dir_as_parent
-            return True
-        except NotInCampError:
-            return False
+    @PathGuard.dir
+    def camp_dir(self) -> Path:
+        return self.base_dir / self._names.camp_dir
 
     @property
     def forest_file(self) -> Path:
@@ -115,10 +137,16 @@ class Paths(SstPaths[Names, Defaults]):
         return self.camp_dir / self._names.tree_dir
 
     @PathGuard.unique(ensure_parent=True)
-    def tree_file(self, id: int, model: str, stem: str) -> Path:
+    def tree_file(self, id: int, topic: str) -> Path:
         """Error if not in base"""
-        tree_file: str = self._names.tree_file([id, model, stem])
-        return self.tree_dir / tree_file
+        tree_file: str = self._names.tree_stem(id, topic)
+        return self.tree_dir / f"{tree_file}.json"
+
+    @property
+    @PathGuard.file(default_content="", raise_error=True)
+    # FIX: no file outside forest!
+    def input_prompt(self) -> Path:
+        return Path.cwd() / self._names.prompt
 
     @property
     @PathGuard.dir
@@ -148,15 +176,12 @@ class Paths(SstPaths[Names, Defaults]):
     def role_paths(
         self, mode: Literal["all", "local", "global"] = "all"
     ) -> list[Path]:
-        return [
-            # FIX: works  that now?
-            *(self.role_dir.glob("*") if mode == "all" or "global" else []),
-            *(
-                self.camp_role_dir.glob("*")
-                if mode == "all" or "local"
-                else []
-            ),
-        ]
+        roles: list[Path] = []
+        if mode in ("all", "global"):
+            roles.extend(self.role_dir.glob("*"))
+        if mode in ("all", "local"):
+            roles.extend(self.camp_role_dir.glob("*"))
+        return roles
 
     @property
     @PathGuard.dir
@@ -189,42 +214,17 @@ class Paths(SstPaths[Names, Defaults]):
 
     @PathGuard.unique
     def full_response(self, topic: str, model: str, suffix=".txt") -> Path:
-        # NOTE: better locator?
-        stem: str = self._names.sprout_stem.computed(
-            topic=topic, locator="B", spec=model
-        )
-        return self._path_from_stem(stem, suffix, self.full_response_dir)
+        stem = f"{day_count()}_{model}_{topic}{suffix}"
+        return self.full_response_dir / stem
 
     @PathGuard.unique(ensure_parent=True)
-    def prompt_file(
-        self,
-        topic: str,
-        locator: str,
-        root_dir: Path | None = None,
-        suffix: str = ".md",
-    ) -> Path:
-        """New prompt file name after usage and move"""
-        prompt_stem: str = self._names.sprout_stem.computed(
-            locator=locator, spec="prompt", topic=topic
-        )
-        return self._path_from_stem(prompt_stem, suffix, root_dir)
-
-    def _path_from_stem(
-        self, stem: str, suffix: str, root_dir: Path | None = None
-    ) -> Path:
-        suffix: str = suffix if suffix.startswith(".") else f".{suffix}"
-        return (root_dir or Path.cwd()) / f"{stem}{suffix}"
+    def prompt_file(self, write_dir: Path, id: int, topic: str) -> Path:
+        prompt_file: str = self._names.prompt_stem(id, topic)
+        return write_dir / f"{prompt_file}.json"
 
     @PathGuard.unique(ensure_parent=True)
-    def answer_file(
-        self,
-        topic: str,
-        locator: str,
-        model: str,
-        suffix=".md",
-        root_dir: Path | None = None,
+    def response_file(
+        self, write_dir: Path, id: int, model: str, topic: str
     ) -> Path:
-        answer_stem: str = self._names.sprout_stem.computed(
-            locator=locator, spec=model, topic=topic
-        )
-        return self._path_from_stem(answer_stem, suffix, root_dir)
+        response_file: str = self._names.response_stem(id, model, topic)
+        return write_dir / f"{response_file}.json"

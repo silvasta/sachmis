@@ -1,0 +1,100 @@
+{
+  "names": {
+    "project": "sstcore",
+    "data_dir": "data",
+    "plot_dir": "plots",
+    "setting_file": "sachmis_config.json",
+    "biome_file": "biome.json",
+    "response_dir": "full_response",
+    "role_dir": "Roles",
+    "forest_file": "forest.json",
+    "base_dir": "base",
+    "camp_dir": ".camp",
+    "tree_dir": "Trees",
+    "file_dir": "Files",
+    "image_dir": "Images",
+    "prompt": "prompt.md",
+    "tree_pattern": "t_{tree_id}_{topic}",
+    "prompt_pattern": "p_{sprout_id}_{topic}",
+    "response_pattern": "r_{sprout_id}_{model}_{topic}"
+  },
+  "defaults": {
+    "timestamp_format": "%Y-%m-%d_%H-%M-%S",
+    "input_date_formats": ["%d-%m-%Y", "%Y-%m-%d"],
+    "dot_env_content": "",
+    "model_base": {
+      "value": 4
+    },
+    "gemini": {
+      "value": 4,
+      "thinking_budget": -1
+    },
+    "grok": {
+      "value": 4,
+      "timeout": 3600,
+      "store_messages": true,
+      "n_agents": 4
+    },
+    "tenacity": {
+      "max_attempts": 5,
+      "wait_exponential": {
+        "multiplier": 60,
+        "min": 300,
+        "max": 1800
+      }
+    },
+    "cli": {
+      "missing_biome": "prompt"
+    },
+    "context": {
+      "forest_error": {
+        "swallow": false
+      },
+      "forest_end": {
+        "swallow": false
+      },
+      "tree_error": {
+        "swallow": false
+      },
+      "tree_end": {
+        "swallow": false
+      },
+      "data_error_arboreal": {
+        "swallow": false
+      },
+      "data_error_sachmis": {
+        "swallow": false
+      },
+      "data_end": {
+        "swallow": false
+      }
+    },
+    "debug": {
+      "model": {
+        "dummy": true,
+        "grok": true,
+        "gemini": true
+      },
+      "subapp": true
+    },
+    "log_and_print": {
+      "PLACEHOLDER": {
+        "printer": true,
+        "log": true
+      }
+    },
+    "topic": "Time to select a Topic"
+  },
+  "log": {
+    "print_at_setup": false,
+    "setup_source": "Custom: config.settings.log",
+    "log_dir": "/home/silvan/PolyBox/Code/sachmis/latest/logs",
+    "log_filename": "sachmis.log",
+    "log_level": "INFO",
+    "retention": "1 week",
+    "rotation": "5 MB"
+  },
+  "last_updated": "2026-06-10T21:33:13.697334Z",
+  "updates": ["2026-06-10T21:33:01.348406Z", "2026-06-10T21:33:13.697334Z"],
+  "update_maxlen": 79
+}
