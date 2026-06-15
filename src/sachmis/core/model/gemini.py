@@ -2,13 +2,11 @@ from google.genai import Client, types
 from google.genai.types import GenerateContentResponse
 from loguru import logger
 
-from sachmis.data.files import GoogleUploadState
-from sachmis.exceptions import SachmisDataError
-
-# from tenacity import retry, stop_after_attempt, wait_exponential
 from ...config import SachmisConfig, get_config
 from ...config.defaults import GeminiParam, ModelParam
-from ...config.model import Geminis
+from ...config.models import Geminis
+from ...data.files import GoogleUploadState
+from ...exceptions import SachmisDataError
 from ...utils.print import printer
 from .agent import Model
 
@@ -23,14 +21,13 @@ class Gemini(Model):
 
     def _load_param(self, param: ModelParam | None) -> GeminiParam:
         """Load defaults if param not set"""
-
+        # LATER: centralize
         if param is None:
             config: SachmisConfig = get_config()
             param: GeminiParam = config.defaults.gemini
-
         if isinstance(param, GeminiParam):
             return param
-
+        # LATER: imprve
         raise SachmisDataError(f"{self.__class__.__name__}: Invalid {param=}")
 
     def _load_client(self):
@@ -47,11 +44,10 @@ class Gemini(Model):
                     thinking_budget=self.param.thinking_budget
                 ),
             }
-        # TASK:
-        # if self.previous_response_id:
-        #     logger.info(
-        #         "Answer to Gemini here but, prepare file structure first!"
-        #     )
+        if self.has_previous_id:
+            logger.info(  # TASK: Gemini Previous
+                "Answer to Gemini here but, prepare file structure first!"
+            )
 
     def _attach_role(self, role: str):
         self.content_config |= {"system_instruction": role}
@@ -94,11 +90,6 @@ class Gemini(Model):
             else:
                 logger.warning(f"Failed: {upload_file=}")
 
-    # @retry( # LATER: retry
-    #     stop=stop_after_attempt(config.defaults.tenacity.max_attempts),
-    #     wait=wait_exponential(**config.defaults.tenacity.wait_exponential),
-    #     # TODO: before_sleep=before_sleep_log(logger, logging.WARNING)
-    # )
     def _get_response(self):
         response: GenerateContentResponse = (
             self.client.models.generate_content(
@@ -141,4 +132,5 @@ class Gemini(Model):
 
     def _calculate_usage_cost(self, usage: dict) -> bool:
         printer("NotImplemented! Usage calculation for Gemini")
+        _usage = usage
         return False

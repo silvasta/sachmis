@@ -4,13 +4,14 @@ from xai_sdk import Client
 from xai_sdk.chat import Response, file, image, system, user
 from xai_sdk.sync.chat import Chat
 
-# from tenacity import retry, stop_after_attempt, wait_exponential
 from ...config import SachmisConfig, get_config
 from ...config.defaults import GrokParam, ModelParam
-from ...config.model import Groks
+from ...config.models import Groks
 from ...data.files import XaiUploadState
 from ...exceptions import SachmisDataError
 from .agent import Model
+
+config: SachmisConfig = get_config()
 
 
 class Grok(Model):
@@ -22,18 +23,15 @@ class Grok(Model):
 
     def _load_param(self, param: ModelParam | None) -> GrokParam:
         """Load defaults if param not set"""
-
+        # LATER: centralize
         if param is None:
-            config: SachmisConfig = get_config()
             param: GrokParam = config.defaults.grok
-
         if isinstance(param, GrokParam):
             return param
-
+        # LATER: imprve
         raise SachmisDataError(f"{self.__class__.__name__}: Invalid {param=}")
 
     def _load_client(self):
-        config: SachmisConfig = get_config()
         self.client = Client(
             api_key=config.from_env(key="XAI_API_KEY"),
             timeout=self.param.timeout,
@@ -44,7 +42,7 @@ class Grok(Model):
             "model": self.model.api_name,
             "store_messages": self.param.store_messages,
         }
-        if id := self.sprout.previous_response_id:
+        if id := self.sprout.previous_remote_id:
             logger.debug("got locator")
             param |= {"previous_response_id": id}
             logger.info(f"{self.model} attaches previous response with: {id=}")
@@ -62,6 +60,9 @@ class Grok(Model):
         self.chat.append(user(prompt))
 
     def _attach_images(self):
+        # TASK: check image input again, base64 still needed?
+        # - create structure to collect used images
+        # - input images/FILES from file/pick/list/folder?
         for i in self.prompt.images:
             # FIX: apply base64 transform
             self.chat.append(
@@ -87,10 +88,6 @@ class Grok(Model):
             else:
                 logger.warning(f"Failed: {upload_file=}")
 
-    # @retry( # IMPORTANT: retry
-    #     stop=stop_after_attempt(config.defaults.tenacity.max_attempts),
-    #     wait=wait_exponential(**config.defaults.tenacity.wait_exponential),
-    #     # TODO: before_sleep=before_sleep_log(logger, logging.WARNING))
     def _get_response(self):
         response: Response = self.chat.sample()
         return response
@@ -118,7 +115,7 @@ class Grok(Model):
 
     def _extract_usage(self) -> dict | None:
         try:
-            return json_format.MessageToDict(self._raw_response.usage)  # ty:ignore
+            return json_format.MessageToDict(self._raw_response.usage)
         except Exception as e:
             logger.error(f"Usage {self.model.unique}:\n{e}")
             return None

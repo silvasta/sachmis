@@ -3,12 +3,10 @@ from loguru import logger
 from sachmis.config.defaults import ModelParam
 
 from ...config import SachmisConfig, get_config
-from ...config.model.dummy import DummyFamily
+from ...config.models import DummyFamily
 from .agent import Model
 
 config: SachmisConfig = get_config()
-
-# NEXT: models
 
 
 class DummyModel(Model):
@@ -68,4 +66,5 @@ class DummyModel(Model):
         return {"cost": "a lot"}
 
     def _calculate_usage_cost(self, usage: dict) -> bool:
+        _usage = usage
         return False
