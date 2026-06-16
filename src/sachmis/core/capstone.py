@@ -10,7 +10,7 @@ from ..config.defaults import ModelParam
 from ..config.models import DummyFamily, Geminis, Groks, ModelFamily
 from ..data import DataManager
 from ..data.conversation import SelectedSproutData
-from ..data.handler import FrontFileHandler
+from ..data.handler import FrontFileHandler  # NEXT:
 from .context import ForestExtractor, TreeExtractor
 from .model import Gemini, Grok, Model, launch
 from .model.dummy import DummyModel
@@ -20,7 +20,12 @@ config: SachmisConfig = get_config()
 
 
 def load_model(
-    model: ModelFamily, sprout: Sprout, param: ModelParam | None = None
+    model: ModelFamily,  # REMOVE:
+    # NEXT:
+    # NEXT:
+    # NEXT:
+    sprout: Sprout,
+    param: ModelParam | None = None,
 ) -> Model:
     """Create Execution Model from Enum Family Model"""
 

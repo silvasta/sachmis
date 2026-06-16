@@ -8,19 +8,23 @@ from ..config import SachmisConfig, get_config
 from ..config.models import select
 from .print import printer
 
+# TASK: example front file setup
 config: SachmisConfig = get_config()
 
+# INFO: FrontFileRegistry
 _tree: ParsedName = config.names.tree_parser
 _prompt: ParsedName = config.names.prompt_parser
 _answer: ParsedName = config.names.response_parser
 
 
+# TODO:
 def create_test_directory():
     printer.title("Start")
     printer(_root := test_dir())
     attach_root(models=random_models(3))
 
 
+# TODO:
 def attach_root(models):
     topic = TREES[tree_counter]
 
@@ -57,6 +61,9 @@ def test_dir() -> Path:
 ### TREE, SPROUT, ID
 ### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --
 
+
+# NEXT:
+# TODO: simulation pipelineO
 
 tree_counter = 0
 

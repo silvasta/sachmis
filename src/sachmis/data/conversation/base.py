@@ -1,5 +1,5 @@
 import uuid
-from typing import Any, Literal
+from typing import Any
 
 from boltons.strutils import slugify
 from pydantic import BaseModel, Field, model_validator
@@ -14,17 +14,14 @@ config: SachmisConfig = get_config()
 #     """This maybe as snapshot of DAG, for CLI and TUI"""
 
 
-class ConversationData(BaseModel):
+class SproutData(BaseModel):
     """Prepare Base for all Prompts and Responses"""
 
-    partition: Literal["P", "R"]
     unique_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
 
     tree_id: int = Field(ge=1)
     sprout_id: int = Field(ge=1)
-
     topic: str
-    content: str  # LATER: other data types
 
     no_slug_topic: str | None = None  # Saves the original un-slugified topic
 

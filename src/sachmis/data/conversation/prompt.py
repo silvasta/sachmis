@@ -14,8 +14,6 @@ config: SachmisConfig = get_config()
 
 
 class Prompt(ConversationData):
-    partition: Literal["P"] = "P"
-
     role: Role | None = None  # LATER: replace by layout
     files: list[UploadFile] = Field(default_factory=list)
     images: list[SstFile] = Field(default_factory=list)

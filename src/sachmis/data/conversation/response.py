@@ -1,21 +1,17 @@
-from pathlib import Path
-from typing import Literal
-
 from pydantic import Field
 
 from ...config import SachmisConfig, get_config
-from .base import ConversationData
+from .base import SproutData
 
 config: SachmisConfig = get_config()
 
 
-class Response(ConversationData):
-    partition: Literal["R"] = "R"
-
+class Response(SproutData):
     model: str
     remote_id: str
-
     usage: dict = Field(default_factory=dict)
+
+    content: str  # LATER: other data types
 
     def _prepare_text_from_content(self):
         return self.content

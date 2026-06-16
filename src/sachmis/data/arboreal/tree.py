@@ -1,62 +1,44 @@
 from loguru import logger
-from pydantic import Field
 
 from sachmis.utils import printer
 
-from ..conversation import ConversationDAG, DataDAG, Prompt, Response
+from ..conversation import SproutDAG
 from .base import Arboreal
 
 
 class Tree(Arboreal):
     """Top element inside Forest: entry point for every conversation"""
 
-    # NEXT:
-    data_dag: DataDAG = Field(default_factory=DataDAG)
-
-    @property
-    def prompts(self) -> dict[str, Prompt]:
-        return self.data_dag.prompts
-
-    @property
-    def responses(self) -> dict[str, Response]:
-        return self.data_dag.responses
-
-    @property
-    def dag(self) -> ConversationDAG:
-        return self.data_dag.dag
-
-    @property
-    def n_prompts(self) -> int:
-        return len(self.prompts)
-
-    @property
-    def n_responses(self) -> int:
-        return len(self.responses)
+    dag: SproutDAG
 
     @property
     def child_info(self):
-        return f"{self.n_prompts} Prompts and {self.n_responses} responses"
+        return f"{self.dag.n_prompts} Prompts and {self.dag.n_responses} responses"
 
     ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
     ### -- Tree - Custom Functions and Attributes
     ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
 
-    def export_dag(self) -> DataDAG:
-        printer(self.data_dag)  # REMOVE:
-        return DataDAG(**self.data_dag.model_dump())
+    def export_dag(self) -> SproutDAG:
+        printer(["Tree is Exporting:", self.dag])  # REMOVE:
+        return SproutDAG(**self.dag.model_dump())
 
-    def attach_sub_dag(self, target, dag: DataDAG):
+    def attach_sub_dag(self, target, dag: SproutDAG):
 
-        for id, prompt in dag.prompts.items():
-            if id in self.prompts:
-                logger.error(f"Doubled Prompt: {prompt}")
-
-        for id, response in dag.responses.items():
-            if id in self.responses:
-                logger.error(f"Doubled Response: {response}")
-
-        self.data_dag.dag.attach_sprout(target, dag.dag)
-        logger.success("Tree absorbed DAG")
+        # NEXT:
+        # NEXT:
+        # NEXT:
+        # NEXT:
+        # for id, prompt in dag.prompts.items():
+        #     if id in self.prompts:
+        #         logger.error(f"Doubled Prompt: {prompt}")
+        #
+        # for id, response in dag.responses.items():
+        #     if id in self.responses:
+        #         logger.error(f"Doubled Response: {response}")
+        #
+        # self.data_dag.dag.attach_sprout(target, dag.dag)
+        # logger.success("Tree absorbed DAG")
 
         self.draw()
 

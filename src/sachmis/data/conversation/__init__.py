@@ -10,11 +10,10 @@ They will finally merge in 'fusion' and perform under Sprout.
 
 __all__: list[str] = [
     "BipartiteDAG",
-    "ConversationDAG",
-    "ConversationData",
-    "ConversationEdge",
-    "ConversationNode",
-    "DataDAG",
+    "SproutNode",
+    "SproutEdge",
+    "SproutData",
+    "SproutDAG",
     "Prompt",
     "PromptTransitionRules",
     "Response",
@@ -23,10 +22,10 @@ __all__: list[str] = [
     "SelectedSproutData",
 ]
 
-from .base import ConversationData
+from .base import SproutData
 from .base_dag import BipartiteDAG
-from .dag import ConversationDAG, ConversationEdge, ConversationNode
-from .fusion import DataDAG, SelectedSproutData, SproutSelectData
+from .dag import SproutDAG, SproutEdge, SproutNode
+from .fusion import SelectedSproutData, SproutSelectData
 from .prompt import Prompt
 from .response import Response
 from .rules import PromptTransitionRules, ResponseTransitionRules
