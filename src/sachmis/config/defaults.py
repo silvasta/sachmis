@@ -3,21 +3,13 @@ from typing import Literal
 from pydantic import BaseModel, Field
 from sstcore.config import SstDefaults
 
-# LATER: separate Task Param and App defaults
-
-
-class TenacityDefaults(BaseModel):
-    max_attempts: int = 5
-
-    wait_exponential: dict[str, int] = {
-        "multiplier": 60,  # Base 1 minute
-        "min": 300,  # Minimum wait: 300 seconds (5 minutes)
-        "max": 1800,  # Maximum wait: 1800 seconds (30 minutes)
-    }
+### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --
+### Models
+### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --
 
 
 class ModelParam(BaseModel):
-    value: int = 4
+    """Base for all models"""
 
 
 class GrokParam(ModelParam):
@@ -31,19 +23,39 @@ class GeminiParam(ModelParam):
     thinking_budget: int | None = -1
 
 
-default_dot_env_content = """
-# Fill at least 1, delete others
-XAI_API_KEY=
-GEMINI_API_KEY=
-"""
+class ModelToggle(BaseModel):
+    dummy: bool = False
+    grok: bool = True
+    gemini: bool = True
+
+
+### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --
+### Retry
+### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --
+
+
+class TenacityDefaults(BaseModel):
+    max_attempts: int = 5
+
+    wait_exponential: dict[str, int] = {
+        "multiplier": 60,  # Base 1 minute
+        "min": 300,  # Minimum wait: 300 seconds (5 minutes)
+        "max": 1800,  # Maximum wait: 1800 seconds (30 minutes)
+    }
+
+
+### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --
+### Context
+### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --
 
 
 class ContextBase(BaseModel):
     swallow: bool = False
 
 
-class ContextParam(BaseModel):
-    # TASK: unify strategy
+class ContextDefaults(BaseModel):  # TASK: unify strategy
+    """Global Control of ContextManager.__exit__ behaviour (and more?)"""
+
     forest_error: ContextBase = Field(default_factory=ContextBase)
     forest_end: ContextBase = Field(default_factory=ContextBase)
 
@@ -59,47 +71,66 @@ class ContextParam(BaseModel):
     data_end: ContextBase = Field(default_factory=ContextBase)
 
 
-class ModelToggle(BaseModel):
-    dummy: bool = False
-    grok: bool = True
-    gemini: bool = True
+### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --
+### App
+### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --
+
+
+# class LogAndPrint(BaseModel):  # REMOVE: or find usage
+#     printer: bool = False
+#     log: bool = True
+#
+#
+# class LogAndPrintParam(BaseModel):  # REMOVE: or find usage
+#     PLACEHOLDER: LogAndPrint = Field(
+#         default_factory=lambda: LogAndPrint(printer=True, log=True)
+#     )
 
 
 class DebugToggle(BaseModel):
-    model: ModelToggle = Field(default_factory=ModelToggle)
-    subapp: bool = True  # PARAM: switch!
+    subapp: bool = True  # PARAM: switch! debug app not shown per default
+
+    pause_at_tree_extract: bool = True
+    print_at_tree_extract: bool = True
+    draw_tree_at_back_attach: bool = True
 
 
-class CliToggle(BaseModel):  # MOVE: ContextParam? NO! but move
-    missing_biome: Literal["create", "raise", "prompt"] = "prompt"
+class MissingDefaults(BaseModel):
+    """Behaviour for Action on Missing"""
+
+    # TODO: check where this is active!
+    biome: Literal["create", "raise", "prompt"] = "prompt"
 
 
-class LogAndPrint(BaseModel):
-    printer: bool = False
-    log: bool = True
+default_dot_env_content = """
+# Fill at least 1, delete others
+XAI_API_KEY=
+GEMINI_API_KEY=
+"""
 
 
-class LogAndPrintParam(BaseModel):
-    PLACEHOLDER: LogAndPrint = Field(
-        default_factory=lambda: LogAndPrint(printer=True, log=True)
-    )
+### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --
+### The Assembly
+### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --
 
 
 class Defaults(SstDefaults):
+    """Composition of App and Model Defaults controllable by JSON"""
+
     # Model and Task
-    model_base: ModelParam = Field(default_factory=ModelParam)
     gemini: GeminiParam = Field(default_factory=GeminiParam)
     grok: GrokParam = Field(default_factory=GrokParam)
+    active: ModelToggle = Field(default_factory=ModelToggle)
 
     # Pipeline
     tenacity: TenacityDefaults = Field(default_factory=TenacityDefaults)
 
-    # toggle
-    cli: CliToggle = Field(default_factory=CliToggle)
-    context: ContextParam = Field(default_factory=ContextParam)
-    debug: DebugToggle = Field(default_factory=DebugToggle)
+    # Context
+    context: ContextDefaults = Field(default_factory=ContextDefaults)
 
-    # util
-    log_and_print: LogAndPrintParam = Field(default_factory=LogAndPrintParam)
+    # App
+    # log_and_print: LogAndPrintParam = Field(default_factory=LogAndPrintParam)
+    debug: DebugToggle = Field(default_factory=DebugToggle)
+    on_missing: MissingDefaults = Field(default_factory=MissingDefaults)
     dot_env_content: str = default_dot_env_content
     topic: str = "Time to select a Topic"

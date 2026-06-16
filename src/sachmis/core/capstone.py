@@ -3,6 +3,7 @@ from typing import Self
 
 from loguru import logger
 
+# REMOVE:
 from sachmis.data.conversation.fusion import SproutPackage
 
 from ..config import SachmisConfig, get_config
@@ -10,7 +11,6 @@ from ..config.defaults import ModelParam
 from ..config.models import DummyFamily, Geminis, Groks, ModelFamily
 from ..data import DataManager
 from ..data.conversation import SelectedSproutData
-from ..data.handler import FrontFileHandler  # NEXT:
 from .context import ForestExtractor, TreeExtractor
 from .model import Gemini, Grok, Model, launch
 from .model.dummy import DummyModel
@@ -19,26 +19,22 @@ from .sprout import Sprout
 config: SachmisConfig = get_config()
 
 
-def load_model(
-    model: ModelFamily,  # REMOVE:
-    # NEXT:
-    # NEXT:
-    # NEXT:
-    sprout: Sprout,
-    param: ModelParam | None = None,
-) -> Model:
+def load_model(sprout: Sprout, param: ModelParam | None = None) -> Model:
     """Create Execution Model from Enum Family Model"""
+
+    model: ModelFamily = sprout.model
+    logger.debug(f"Dispatching {model=} with {param=}")
 
     if isinstance(model, Groks):
         sprout.data.uploader.prepare(target=model.target)
-        return Grok(model, sprout, param)
+        return Grok(sprout, param)
 
     if isinstance(model, Geminis):
         sprout.data.uploader.prepare(target=model.target)
-        return Gemini(model, sprout, param)
+        return Gemini(sprout, param)
 
     if isinstance(model, DummyFamily):
-        return DummyModel(model, sprout, param)
+        return DummyModel(sprout, param)
 
     raise ValueError(f"Unknown {model=}")
 
@@ -49,18 +45,14 @@ class Fire(AbstractContextManager):
         self.agents: list[Model] = []
 
     def __enter__(self) -> Self:
-        self.data: DataManager = self.stack.enter_context(
-            # NEXT: chose task, eg. front file handling for Fire
-            DataManager(handler=FileRollout())
-        )
+        self.data: DataManager = self.stack.enter_context(DataManager())
         self.forest: ForestExtractor = self.stack.enter_context(
             ForestExtractor(self.data)
         )
         logger.info("ForestExtractor: Stacked to Context")
 
         self.tree: TreeExtractor = self.stack.enter_context(
-            # NEXT: here or later?
-            TreeExtractor(data=self.data)  # MOVE: after selection?
+            TreeExtractor(data=self.data)
         )
         logger.info("TreeExtractor: Stacked to Context")
 
@@ -74,10 +66,8 @@ class Fire(AbstractContextManager):
 
         for model in models:
             package: SproutPackage = self.data.handler.prepare_package(model)
-
             sprout = Sprout(package, self.data)
-
-            self.agents.append(load_model(model.model, sprout))
+            self.agents.append(load_model(sprout))
 
         logger.info(f"Loaded: {self.agents=}")
 

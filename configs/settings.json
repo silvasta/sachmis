@@ -20,20 +20,23 @@
   },
   "defaults": {
     "timestamp_format": "%Y-%m-%d_%H-%M-%S",
-    "input_date_formats": ["%d-%m-%Y", "%Y-%m-%d"],
+    "input_date_formats": [
+      "%d-%m-%Y",
+      "%Y-%m-%d"
+    ],
     "dot_env_content": "",
-    "model_base": {
-      "value": 4
-    },
     "gemini": {
-      "value": 4,
       "thinking_budget": -1
     },
     "grok": {
-      "value": 4,
       "timeout": 3600,
       "store_messages": true,
       "n_agents": 4
+    },
+    "active": {
+      "dummy": false,
+      "grok": true,
+      "gemini": true
     },
     "tenacity": {
       "max_attempts": 5,
@@ -42,9 +45,6 @@
         "min": 300,
         "max": 1800
       }
-    },
-    "cli": {
-      "missing_biome": "prompt"
     },
     "context": {
       "forest_error": {
@@ -60,33 +60,28 @@
         "swallow": false
       },
       "data_error_arboreal": {
-        "swallow": false
+        "swallow": true
       },
       "data_error_sachmis": {
-        "swallow": false
+        "swallow": true
       },
       "data_end": {
         "swallow": false
       }
     },
     "debug": {
-      "model": {
-        "dummy": true,
-        "grok": true,
-        "gemini": true
-      },
-      "subapp": true
+      "subapp": true,
+      "pause_at_tree_extract": true,
+      "print_at_tree_extract": true,
+      "draw_tree_at_back_attach": true
     },
-    "log_and_print": {
-      "PLACEHOLDER": {
-        "printer": true,
-        "log": true
-      }
+    "on_missing": {
+      "biome": "prompt"
     },
     "topic": "Time to select a Topic"
   },
   "log": {
-    "print_at_setup": false,
+    "print_at_setup": true,
     "setup_source": "Custom: config.settings.log",
     "log_dir": "/home/silvan/PolyBox/Code/sachmis/latest/logs",
     "log_filename": "sachmis.log",
@@ -94,7 +89,10 @@
     "retention": "1 week",
     "rotation": "5 MB"
   },
-  "last_updated": "2026-06-10T21:33:13.697334Z",
-  "updates": ["2026-06-10T21:33:01.348406Z", "2026-06-10T21:33:13.697334Z"],
+  "last_updated": "2026-06-16T15:48:54.792094Z",
+  "updates": [
+    "2026-06-16T15:48:47.012574Z",
+    "2026-06-16T15:48:54.792094Z"
+  ],
   "update_maxlen": 79
 }

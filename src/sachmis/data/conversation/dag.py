@@ -1,7 +1,10 @@
-from typing import Literal
+from typing import Literal, Self
 
 import networkx as nx
+from loguru import logger
 from pydantic import Field
+
+from sachmis.config.models import ModelFamily
 
 from ...utils import printer
 from .base import SproutData
@@ -30,6 +33,10 @@ class PromptNode(SproutNode):
     def _data(self) -> Prompt:
         return self.prompt
 
+    @classmethod
+    def from_prompt(cls, prompt: Prompt) -> Self:
+        return cls(uuid=prompt.unique_id, prompt=prompt)
+
 
 class ResponseNode(SproutNode):
     partition: Literal["R"] = "R"
@@ -39,6 +46,10 @@ class ResponseNode(SproutNode):
     def _data(self) -> Response:
         return self.response
 
+    @classmethod
+    def from_response(cls, response: Response) -> Self:
+        return cls(uuid=response.unique_id, response=response)
+
 
 class SproutEdge(Edge):
     """Intended to apply Status or Weight to SproutEdge"""
@@ -47,6 +58,10 @@ class SproutEdge(Edge):
 class SproutDAG(BipartiteDAG):
     nodes: list[SproutNode] = Field(default_factory=list)
     edges: list[SproutEdge] = Field(default_factory=list)
+
+    @classmethod
+    def init(cls, prompt: Prompt) -> Self:
+        return cls(nodes=[PromptNode.from_prompt(prompt)])
 
     @property
     def prompts(self) -> list[Prompt]:
@@ -81,6 +96,24 @@ class SproutDAG(BipartiteDAG):
             for node in self.nodes
             if sprout_id == node.sprout_id
         ]
+
+    def find_previous_model_response_from_sprout(
+        self, model: ModelFamily, sprout_id: int
+    ) -> ResponseNode | None:
+
+        sprout_group: list[SproutNode] = self.find_sprout_group(sprout_id)
+        logger.debug(f"found {model=}: {sprout_group=}")
+
+        for node in sprout_group:  # TEST:
+            if node.partition == "P":
+                logger.debug(f"ignoring prompt: {node=}")
+            else:
+                assert isinstance(node, ResponseNode)
+                response: Response = node.response
+                printer(("Found: ", response))  # REMOVE:
+                if response.model == model:
+                    logger.success(f"Found: {node=}")
+                    return node
 
     def attach_leaf(self, target_uuid: str, new_node: SproutNode):
         if any(node.uuid == new_node.uuid for node in self.nodes):

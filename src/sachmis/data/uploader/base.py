@@ -1,10 +1,10 @@
-from sstcore.utils.print import ColorBox
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, TypeVar
 
 from loguru import logger
+from sstcore.utils.print import ColorBox
 
 from ...config import SachmisConfig, get_config
 from ...utils.print import printer

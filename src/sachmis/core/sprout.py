@@ -18,15 +18,12 @@ class Sprout:
     """Runtime Container for 1 Model with DAG SubGraph"""
 
     def __init__(self, package: SproutPackage, data: DataManager):
-        self.next_response_id: str = package.response_uuid
-        # self.dag: ConversationDAG = package.dag_from_response
+        # LATER: attach package and provide properties instead of attach all?
+        self.next_response_id: str = package.next_response_id
         self.prompt: Prompt = package.prompt
         self.model: ModelFamily = package.model
         self.previous_remote_id: str | None = package.previous_remote_id
-        self.previous_response_uuid: str | None = (
-            package.previous_response_uuid
-        )
-        # self.package: SproutPackage = package
+        self.previous_response_uuid: str | None = package.previous_response_id
         self.data: DataManager = data
 
     def collect_raw_response(self, full_response: str):
@@ -49,10 +46,11 @@ class Sprout:
             unique_id=self.next_response_id,
             content=content,
             remote_id=remote_id,
+            previous_response_id=self.previous_remote_id,
             usage=usage,
             topic=self.prompt.topic,
             sprout_id=self.prompt.sprout_id,
             tree_id=self.prompt.tree_id,
             model=self.model.unique,
         )
-        self.data.handler.handle_response(response)
+        self.data.handle_response(response)

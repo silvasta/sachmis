@@ -9,6 +9,7 @@ config: SachmisConfig = get_config()
 class Response(SproutData):
     model: str
     remote_id: str
+    previous_response_id: str | None
     usage: dict = Field(default_factory=dict)
 
     content: str  # LATER: other data types

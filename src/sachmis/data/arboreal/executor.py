@@ -14,11 +14,9 @@ from ...config import SachmisConfig, get_config
 from ...exceptions import ArborealFileExistsError, ArborealFileMissingError
 from .biome import Biome, BiomeStatus
 
-config: SachmisConfig = get_config()
-
-
+# MOVE: CLI, Core, Data.Arboreal?
 # TASK: ArborealExecutor?
-# MOVE: for Forest? Tree?
+# TODO: for Forest? Tree?
 
 
 class BiomeExecutor(BaseModel):
@@ -69,6 +67,7 @@ class BiomeExecutor(BaseModel):
         printer.warn("Action required to resolve Biome configuration:")
 
         # 1. Ask to Switch Biome if other biome files exist
+        config: SachmisConfig = get_config()
         if config.paths.num_biome_files > 0:
             if Confirm.ask(c.magenta("Switch to an existing Biome?")):
                 biomes: list[Path] = list(config.paths.biome_files)

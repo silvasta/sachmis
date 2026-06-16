@@ -90,7 +90,7 @@ PickModel = Annotated[
         "--pick-model",
         "-M",
         # LATER: try color in helpp
-        help="Pick anyway independant of FileSystem status!",
+        help="Pick anyway independent of FileSystem status!",
     ),
 ]
 

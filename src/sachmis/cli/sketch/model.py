@@ -36,11 +36,14 @@ def model_previous_id(
 
 
 def model_family_table(
+    selection: list[models.ModelFamily] | None = None,
     header: str = "Table with all Active Models",
     show_header=True,
     title=None,
 ):
     """load base paths from file, check existence, print result"""
+
+    displayed_models: list[models.ModelFamily] = selection or models.family()
 
     printer.title(header)
     table = Table(
@@ -55,7 +58,7 @@ def model_family_table(
 
     colors: list[str] = ["cyan", "magenta", "yellow", "green", "white"]
 
-    for model, color in zip(models.family(), cycle(colors), strict=False):
+    for model, color in zip(displayed_models, cycle(colors), strict=False):
         table.add_row(model.unique, str(model), model.api_name, style=color)
 
     printer(table)

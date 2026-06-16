@@ -18,15 +18,9 @@ class Model(ABC):
 
     _raw_response: Any | None = None
 
-    def __init__(
-        self,
-        model: ModelFamily,  # NOTE: could be removed, but...
-        sprout: Sprout,
-        param: ModelParam | None = None,
-    ):
-        logger.debug(f"Loading {model.api_name}")
+    def __init__(self, sprout: Sprout, param: ModelParam | None = None):
+        logger.debug(f"Loading {sprout.model.api_name}")
 
-        self.model: ModelFamily = model
         self.sprout: Sprout = sprout
         self.param: ModelParam = self._load_param(param)
 
@@ -36,6 +30,10 @@ class Model(ABC):
         self._prepare_chat()
 
         logger.info(f"Model loaded: {self.__class__.__name__}")
+
+    @property
+    def model(self) -> ModelFamily:
+        return self.sprout.model
 
     @property
     def has_previous_id(self) -> bool:

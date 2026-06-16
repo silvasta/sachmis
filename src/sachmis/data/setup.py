@@ -11,8 +11,7 @@ from ..utils.print import printer
 from .arboreal import ArborealTracker, Biome
 
 # REFACTOR: Module: setup base? data handler? conductor?
-# - attach to ROllOut
-# - replace logger with printer for CLI stuff, how to do both? how to swich?
+# - replace logger with printer for CLI stuff, how to do both? how to switch?
 
 
 def _ensure_base_dir(base_name: str, root_dir: Path | None = None):

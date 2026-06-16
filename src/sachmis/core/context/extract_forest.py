@@ -4,8 +4,7 @@ from loguru import logger
 
 from ...config import SachmisConfig, get_config
 from ...data import DataManager
-from ...data.arboreal import ArborealTracker, Forest
-from ...data.camp import CampManager
+from ...data.arboreal import ArborealTracker, Forest, Tree
 
 
 class ForestExtractor(AbstractContextManager):
@@ -18,17 +17,15 @@ class ForestExtractor(AbstractContextManager):
         self.data: DataManager = data
 
         with Forest.edit_mode(path := config.paths.forest_file) as forest:
-            self.tracker: ArborealTracker = forest.sample_tracker(path)
+            self.tracker: ArborealTracker[Forest] = forest.sample_tracker(path)
 
-            self.tree_tracker: ArborealTracker = (
+            tree_tracker: ArborealTracker[Tree] = (
                 forest.provide_tree(tree_id)
-                if (tree_id := data.handler.scanned_tree_id)
-                else forest.attach_new_tree(data.handler.topic)
+                if (tree_id := data.front.scanned_tree_id)
+                else forest.attach_new_tree(data.front.topic)
             )
-            data.handler.attach_tracker(self.tree_tracker)
-
-            self.camp: CampManager = forest.get_camp()
-            data.attach_camp(self.camp)
+            data.attach_handler(tree_tracker)
+            data.attach_camp(forest.get_camp())
 
         logger.debug("Forest Data extracted - Closing Forest for now...")
 
@@ -42,8 +39,8 @@ class ForestExtractor(AbstractContextManager):
 
         logger.debug("Loading Forest...")
         with Forest.edit_mode(self.tracker.path) as forest:
-            forest.attach_camp_back_by_mirror(self.camp)
-            # LATER: confirm Tree, maybe after first response is written
+            forest.attach_camp_back_by_mirror(self.data.camp)
+            # LATER: confirm Tree(id), maybe after first response written?
 
         logger.debug("Forest closed - Data transferred back")
         return config.defaults.context.forest_end.swallow

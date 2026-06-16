@@ -34,7 +34,7 @@ def all() -> list[ModelFamily]:
 def family() -> list[ModelFamily]:
     """Filter combination of all Model Families by Defaults from json"""
 
-    toggle: ModelToggle = get_config().defaults.debug.model
+    toggle: ModelToggle = get_config().defaults.active
 
     if any([toggle.dummy, not toggle.grok, not toggle.gemini]):
         logger.warning(f"ModelToggle away from default values! {toggle=}")

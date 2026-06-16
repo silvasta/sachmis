@@ -20,10 +20,11 @@ class TreeExtractor(AbstractContextManager):
         self.data: DataManager = data
 
         with Tree.edit_mode(path := data.handler.tree_tracker.path) as tree:
-            self.tracker: ArborealTracker = tree.sample_tracker(
+            self.tracker: ArborealTracker[Tree] = tree.sample_tracker(
                 path, local_id=data.handler.tree_tracker.local_id
             )
-            self.data.handler.extract_data_from_tree(tree)
+            self.data.extract_from_tree(tree)
+
         logger.debug("Tree Data extracted - Closing Tree for now...")
 
     def __exit__(self, exc_type, _exc_val, _exc_tb):
@@ -38,7 +39,7 @@ class TreeExtractor(AbstractContextManager):
         with Tree.edit_mode(self.tracker.path) as tree:
             self.data.handler.attach_data_back(tree)
             printer.title("Tree")
-            printer(tree.data_dag)
+            printer(tree.dag)
 
         logger.debug("Tree closed - Data transferred back")
         return config.defaults.context.tree_end.swallow

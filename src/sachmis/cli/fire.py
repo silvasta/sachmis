@@ -43,7 +43,7 @@ def fire(
         models: list[SelectedSproutData] = _prepare_model_args(session, models)
         agents: list[Model] = session.load_models(models)
 
-        # TASK: show models here first
+        # TODO: show models here first...?
 
         files: list[UploadFile] = _prepare_file_args(
             session.data.camp, files, pick_file
@@ -67,7 +67,10 @@ def fire(
 
         printer.success("Models finished to run, storing data, au revoir!")
         printer.title("Paths of generated Files")
-        printer(session.data.handler.result_files_relative())
+        printer(paths := session.data.front.result_files_relative())
+
+        # TODO: improve nvim handling
+        printer(f"nvim {' '.join(str(p) for p in paths)}")
 
     logger.info("All processes finished")
 
@@ -104,7 +107,8 @@ def confirm_fire(models: list[Model], data: DataManager) -> bool:
         name="Images",
         lines=[image.name for image in prompt.images],
     )
-    model_family_table()
+
+    model_family_table(selection=[model.sprout.model for model in models])
 
     printer.danger("Last check before deployment")
 
@@ -130,7 +134,7 @@ def _prepare_model_args(
         printer.header(text)
         return SelectedSproutData.from_zero(parsed_models)
 
-    match len(scanned_models := session.data.handler.models()):  # TEST:
+    match len(scanned_models := session.data.front.models()):  # TEST:
         case 0:
             return SelectedSproutData.from_zero(
                 selector.model_family(multi_select=True)

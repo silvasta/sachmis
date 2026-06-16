@@ -2,14 +2,12 @@ from itertools import product
 
 from sstcore.cli import sargs
 
-from ...config import SachmisConfig, get_config, models
-from ...data.conversation import (
-    PromptTransitionRules,
-    ResponseTransitionRules,
-)
+from ...config import SachmisConfig, get_config
+from ...data.conversation import PromptTransitionRules, ResponseTransitionRules
 from ...data.setup import create_new_base
 from ...utils.print import printer
 from .. import args
+from ..sketch.model import model_family_table
 
 config: SachmisConfig = get_config()
 
@@ -19,12 +17,9 @@ def init(name: args.Name = config.names.base_dir):
     create_new_base(name)
 
 
-def model_display():  # TODO: rich table, statistics
+def model_display():
     """Show all models of all providers"""
-    for model in models.all():
-        printer(model.cli)
-
-    printer.model_table(models.uniques(), models.names(), models.api_names())
+    model_family_table()
 
 
 def rules():

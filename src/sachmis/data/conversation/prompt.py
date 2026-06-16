@@ -1,4 +1,4 @@
-from typing import Literal, Self
+from typing import Self
 
 from boltons.strutils import slugify
 from loguru import logger
@@ -8,12 +8,12 @@ from sstcore.data import SstFile
 from ...config import SachmisConfig, get_config
 from ...exceptions import PromptError
 from ..files import Role, UploadFile
-from .base import ConversationData
+from .base import SproutData
 
 config: SachmisConfig = get_config()
 
 
-class Prompt(ConversationData):
+class Prompt(SproutData):
     role: Role | None = None  # LATER: replace by layout
     files: list[UploadFile] = Field(default_factory=list)
     images: list[SstFile] = Field(default_factory=list)
@@ -55,11 +55,6 @@ class Prompt(ConversationData):
         logger.info(f"Loaded: {prompt}")
 
         return prompt
-
-    @classmethod
-    def clone(cls, prompt: Self) -> Self:
-        logger.debug("cloning prompt")
-        return cls(**prompt.model_dump())
 
     @property
     def has_role(self) -> bool:

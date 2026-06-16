@@ -43,7 +43,7 @@ if config.defaults.debug.subapp:
     app.add_typer(subapp.debug)
 
 # TASK: Global Error Handling
-# - SachmisDataError: confirm hanled in DataManager
+# - SachmisDataError: confirm handled in DataManager
 # - other globals?
 
 

@@ -107,7 +107,7 @@ class Forest(Arboreal[Tree]):
             arboreal=tree, path=tree_file, local_id=local_id
         )
 
-    def attach_new_tree(self, topic: str) -> ArborealTracker:
+    def attach_new_tree(self, topic: str) -> ArborealTracker[Tree]:
         """Create new Tree with initial Sprout"""
         config: SachmisConfig = get_config()
 

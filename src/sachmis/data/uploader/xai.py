@@ -1,4 +1,3 @@
-from sachmis.utils import printer
 from typing import Any
 
 from loguru import logger
