@@ -4,7 +4,7 @@
     "data_dir": "data",
     "plot_dir": "plots",
     "setting_file": "sachmis_config.json",
-    "biome_file": "biome.json",
+    "biome_file": "test.json",
     "response_dir": "full_response",
     "role_dir": "Roles",
     "forest_file": "forest.json",
@@ -70,7 +70,8 @@
       "subapp": true,
       "pause_at_tree_extract": true,
       "print_at_tree_extract": true,
-      "draw_tree_at_back_attach": true
+      "draw_tree_at_back_attach": true,
+      "printer_debugs": true
     },
     "on_missing": {
       "biome": "prompt"
@@ -86,11 +87,18 @@
     "retention": "1 week",
     "rotation": "5 MB"
   },
-  "last_updated": "2026-06-17T09:25:15.555277Z",
+  "last_updated": "2026-06-17T23:51:30.856700Z",
   "updates": [
     "2026-06-16T15:48:47.012574Z",
     "2026-06-16T15:48:54.792094Z",
-    "2026-06-17T09:25:15.555277Z"
+    "2026-06-17T09:25:15.555277Z",
+    "2026-06-17T17:28:48.863586Z",
+    "2026-06-17T17:32:26.257571Z",
+    "2026-06-17T17:33:49.199481Z",
+    "2026-06-17T17:34:48.161722Z",
+    "2026-06-17T17:36:28.466314Z",
+    "2026-06-17T17:36:48.712153Z",
+    "2026-06-17T23:51:30.856700Z"
   ],
   "update_maxlen": 79
 }
