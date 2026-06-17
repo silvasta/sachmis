@@ -68,8 +68,9 @@ class Biome(Arboreal[Forest]):
         if biome_file.name == config.names.biome_file:
             logger.debug("path from Names already active in Biome")
         else:
+            config.names.biome_file = biome_file.name
             config.save_settings()
-            logger.info(f"Updated active Biome in Names to{biome_file.name}")
+            logger.info(f"Updated active Biome in Names to {biome_file.name}")
 
         logger.success(f"{self.tracker} Active Biome! {biome_file=}")
 

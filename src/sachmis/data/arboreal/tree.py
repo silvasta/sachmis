@@ -10,11 +10,17 @@ from .base import Arboreal
 class Tree(Arboreal):
     """Top element inside Forest: entry point for every conversation"""
 
+    # WARN: carries useless ArborealRegisty, how to handle?
+    # - maybe purpose: track other trees, like relatives
+    # - maybe delete: split Arboreal or make ArborealMixinWithRegistry or so
+
     dag: SproutDAG = Field(default_factory=SproutDAG)
 
     @property
     def child_info(self):
-        return f"{self.dag.n_prompts} Prompts and {self.dag.n_responses} responses"
+        prompts = f"{self.dag.n_prompts} Prompts"
+        responses = f"{self.dag.n_responses} Responses"
+        return f"{prompts} and {responses}"
 
     ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
     ### -- Tree - Custom Functions and Attributes
@@ -22,7 +28,7 @@ class Tree(Arboreal):
 
     def export_dag(self) -> SproutDAG:
         printer.debug("Tree is Exporting:", self.dag)
-        return SproutDAG(**self.dag.model_dump())
+        return SproutDAG(**self.dag.model_dump())  # TODO: model_copy?
 
     def attach_sub_dag(self, target: str, dag: SproutDAG):
 

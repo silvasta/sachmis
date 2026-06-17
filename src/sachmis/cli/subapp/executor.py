@@ -11,8 +11,8 @@ from sstcore.utils import printer
 from sstcore.utils.print import ColorBox
 
 from ...config import SachmisConfig, get_config
+from ...data.arboreal.biome import Biome, BiomeStatus
 from ...exceptions import ArborealFileExistsError, ArborealFileMissingError
-from .biome import Biome, BiomeStatus
 
 # MOVE: CLI, Core, Data.Arboreal?
 # TASK: ArborealExecutor?

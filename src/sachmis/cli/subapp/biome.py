@@ -9,8 +9,8 @@ from sstcore.utils.print import ColorBox
 from ...cli import args
 from ...config import SachmisConfig, get_config
 from ...data.arboreal import ArborealTracker, Biome
-from ...data.arboreal.executor import BiomeExecutor
 from ...utils.print import printer
+from .executor import BiomeExecutor
 
 
 def main() -> None:
@@ -57,10 +57,14 @@ def select():
 @app.command()
 def show():
     """Show all Biomes and load active Biome"""
-    executor = BiomeExecutor()
 
+    executor = BiomeExecutor()
     biome: Biome = executor.execute(_load)
-    logger.info(f"Biome Loaded {biome.n_forest=}, {biome.n_responses=}")
+
+    # INFO: check .debug app
+    # TASK: replace by stat, move to ArboView
+    logger.info(f"Loaded {biome.n_forest=}, {biome.n_responses=}")
+
     print_all_biome_files()
 
 
