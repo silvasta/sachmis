@@ -90,9 +90,12 @@ class ContextDefaults(BaseModel):  # TASK: unify strategy
 class DebugToggle(BaseModel):
     subapp: bool = True  # PARAM: switch! debug app not shown per default
 
+    # REMOVE:
     pause_at_tree_extract: bool = True
     print_at_tree_extract: bool = True
     draw_tree_at_back_attach: bool = True
+
+    printer_debugs: bool = False
 
 
 class MissingDefaults(BaseModel):

@@ -1,31 +1,50 @@
 from itertools import cycle
 
+from loguru import logger
 from rich.table import Table
+from sstcore.exceptions import NotImplementedDispatchError
 from sstcore.utils import Printer
 
 
 class SachmisPrinter(Printer):
-    def debug(self, title: str, *lines, bare=False):
-        self.title(
-            title,
-            title="debug print",
-            frame="orange_red1",
-        )
-        if not bare:
-            self(lines)
-        else:
-            for line in lines:
-                self.title(
-                    str(line),
-                    title="debug print",
-                    frame="navajo_white1",
-                )
-                self(line)
-        input(f"ENTER: {title}")
+    project_debugs: bool = False
+
+    def debug(self, target: str, *lines, simple=True, stop=False):
+        """Print debug stuff with unified interface and global toggle"""
+
+        if not self.project_debugs:
+            return
+
+        self._debug_title(text=target)
+
+        _print = self(lines) if simple else self._debug_line_by_line(*lines)
+
+        if stop:
+            input(f"ENTER: {target}")
+
+    def _debug_line_by_line(self, *lines):
+        sub_color: str = "navajo_white1"
+        for line in lines:
+            try:
+                self._debug_title(line, frame=sub_color)
+            except NotImplementedDispatchError as error:
+                logger.warning(f"Printer failed: {error=}")
+                self._debug_title(str(line), frame=sub_color)
+            self(line)
+
+    def _debug_title(self, text: str, frame: str = ""):
+        top_color: str = "orange_red1"
+        title: str = self.colors.white(f"{self.colorful} debug print")
+        self.title(text, title=title, frame=frame or top_color)
+
+    @property
+    def colorful(self):
+        return self.colors.s(self.__class__.__name__)
 
     def conversation_transition_result(
         self, prompt: str, response: str, result: bool, from_prompt: bool
     ):
+        # MOVE: maybe to cli.sketch
         source = f"Prompt {self.colors.cyan(prompt)}"
         target = f"Response {self.colors.magenta(response)}"
 
@@ -49,6 +68,7 @@ class SachmisPrinter(Printer):
         title=None,
     ):
         """load base paths from file, check existence, print result"""
+        # REMOVE: maybe already replaced in cli.sketch
 
         printer.title(header)
         table = Table(
