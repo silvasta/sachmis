@@ -16,6 +16,8 @@ from .response import Response
 class BaseSproutNode(Node):
     """Base Node for Prompt and Response"""
 
+    # TASK: override uuid from base with property!
+
     @property
     def sprout_id(self) -> int:
         return self._data.sprout_id
@@ -64,17 +66,31 @@ class SproutDAG(BipartiteDAG):
     nodes: list[SproutNode] = Field(default_factory=list)
     edges: list[SproutEdge] = Field(default_factory=list)
 
+    def __str__(self):
+        name = f"{self.__class__.__name__}"
+        prompts = f"{self.n_prompts} Prompts"
+        responses = f"{self.n_responses} Responses"
+        return f"{name} with {prompts} and {responses}"
+
     @classmethod
     def init(cls, prompt: Prompt) -> Self:
         return cls(nodes=[PromptNode.from_prompt(prompt)])
 
     @property
     def prompts(self) -> list[Prompt]:
-        return [node for node in self.nodes if isinstance(node, Prompt)]
+        return [
+            node.prompt  #
+            for node in self.nodes
+            if isinstance(node, PromptNode)
+        ]
 
     @property
     def responses(self) -> list[Response]:
-        return [node for node in self.nodes if isinstance(node, Response)]
+        return [
+            node.response  #
+            for node in self.nodes
+            if isinstance(node, ResponseNode)
+        ]
 
     @property
     def n_prompts(self) -> int:

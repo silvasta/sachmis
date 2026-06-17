@@ -66,19 +66,19 @@ class FrontFileHandler:
         self.scan_forest()
         self._print_for_init()
 
-    def _print_for_init(self):  # TODO: clean entry prints
+    def _print_for_init(self):  # NEXT: clean entry prints
         config: SachmisConfig = get_config()
         if not config.paths.in_forest:
             printer.danger("Outside Forest Dir!")
         else:
-            to_base: Path = config.paths.cwd_to_base_dir()
-            printer.title(["Location: ", to_base], frame="purple")
-            printer(Path.cwd())
+            relative_to_base = config.paths.cwd_to_base_dir()
+            printer.title(f"Location: {relative_to_base=}", frame="purple")
 
     def _load_prompt_text(self):
         config: SachmisConfig = get_config()
 
         self.input_prompt_path: Path = config.paths.input_prompt
+        # FIX: no PathGuard.file if wrong directory!
         logger.info(f"Loading prompt text from: {self.input_prompt_path=}")
 
         self._prompt_text: str = self.input_prompt_path.read_text()
@@ -99,6 +99,7 @@ class FrontFileHandler:
             self.scanned_tree_id: int = tree_schema.tree_id
 
     def get_sprout_groups(self) -> dict[str, list[SstFile]]:
+        # MOVE: to registry
         sprout_groups: dict[str, list[SstFile]] = (
             self.registry.get_folder_member_grouped_by_id_keyword()
         )
@@ -109,21 +110,21 @@ class FrontFileHandler:
         return self._filter_model_select_data_from_sprout_group()
 
     def _filter_model_select_data_from_sprout_group(self):
+
         all_models: set[str] = model_uniques()
-
-        # TEST:
-
         model_select_data: list[SproutSelectData] = []
 
+        printer.debug("Detect Model", all_models, model_select_data, bare=True)
+
         for sprout_id, sprout_files in self.get_sprout_groups().items():
-            self._print_model_select_data(sprout_id, sprout_files)
+            printer.debug(f"Detected Sprout: {sprout_id}", sprout_files)
 
             for file in sprout_files:
                 printer.title(f"Start of: {file}")
 
                 # Filter if keyword is in models
                 if model_unique := file.keywords & all_models:
-                    printer.success(f"Found Model: {model_unique=}")
+                    logger.debug(f"Found Model: {model_unique=}")
                     if len(model_unique) != 1:
                         raise SachmisDataError("Error in Registry Keywords")
                     data: SproutSelectData = self._create_model_select_data(
@@ -137,21 +138,18 @@ class FrontFileHandler:
         self, file: SstFile, model_unique: str
     ) -> SproutSelectData:
 
-        # TEST:
+        logger.debug(f"Creating ModelSelectData for {model_unique}: {file=}")
+
+        printer.debug("Create Model Select Data", model_unique, file)
 
         if not (model := model_from_unique(model_unique)):
             raise SachmisDataError(f"Bad Parameter in {file}")
 
-        return SproutSelectData.from_file(
+        return SproutSelectData.from_file(  # NEXT: rename: ModelSelectData
             model=model,
             tree_id=id_keywords_backwards("tree", file.keywords),
             sprout_id=id_keywords_backwards("sprout", file.keywords),
         )
-
-    def _print_model_select_data(self, sprout_id, sprout_files):  # REMOVE
-        printer.special(f"Start of Detected Sprout: {sprout_id}")
-        printer([file for file in sprout_files])
-        printer.banner("Go")
 
     def handle_response(self, response: Response):
         config: SachmisConfig = get_config()

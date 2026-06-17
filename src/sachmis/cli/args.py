@@ -6,11 +6,14 @@ import typer
 ### --- --- --- --- --- --- --- --- --- --- ---
 ### --- General
 ### --- --- --- --- --- --- --- --- --- --- ---
-
 Name = Annotated[
     str,
-    typer.Option("--name", "-n", help="Name of Current Target"),
+    typer.Argument(
+        help="Name of the target, default from config",
+        show_default=True,
+    ),
 ]
+
 
 Async = Annotated[
     bool,
@@ -65,7 +68,7 @@ Google = Annotated[
 ### --- --- --- --- --- --- --- --- --- --- ---
 
 Models = Annotated[
-    list[str] | None,  # REMOVE: None?
+    list[str] | None,
     # INFO: using Argument instead of Option allows easy list!
     typer.Argument(
         # "--model",

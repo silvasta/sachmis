@@ -43,10 +43,10 @@ class Names(SstNames):
             return sprout_schema.id_keyword
         if sprout_schema := self.response_schema_safe(name):
             return sprout_schema.id_keyword
-        if strict:
-            raise ValueError(f"id_keyword parsing failed, unknown: {name=}")
-        else:
+        if not strict:
             return "FAIL"
+        else:
+            raise ValueError(f"id_keyword parsing failed, unknown: {name=}")
 
     @cached_property
     def tree_parser(self) -> ParsedName:
@@ -127,13 +127,20 @@ def id_keywords_backwards(
     target: Literal["sprout", "tree"], keywords: set[str]
 ) -> int:
     parser: ParsedName[IdKeywordSchema] = id_keyword_parser()
+    # NEXT: fix id_keyword_parser
+    # NEXT: fix id_keyword_parser
+    # NEXT: fix id_keyword_parser
+    # NEXT: fix id_keyword_parser
+    # NEXT: fix id_keyword_parser
+    # NEXT: fix id_keyword_parser
+    # NEXT: fix id_keyword_parser
     for keyword in keywords:
         try:
             if (schema := parser(keyword)).category == target:
                 return schema.cat_id
         except ValidationError, ValueError:
-            pass
-    raise ValidationError("Failed to Parse!")
+            pass  # TODO: dispatch ValidationError
+    raise ValueError("Failed to Parse!")
 
 
 class NameSchema(BaseModel):

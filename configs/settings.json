@@ -78,7 +78,7 @@
     "topic": "Time to select a Topic"
   },
   "log": {
-    "print_at_setup": true,
+    "print_at_setup": false,
     "setup_source": "Custom: config.settings.log",
     "log_dir": "/home/silvan/PolyBox/Code/sachmis/latest/logs",
     "log_filename": "sachmis.log",
@@ -86,7 +86,11 @@
     "retention": "1 week",
     "rotation": "5 MB"
   },
-  "last_updated": "2026-06-16T15:48:54.792094Z",
-  "updates": ["2026-06-16T15:48:47.012574Z", "2026-06-16T15:48:54.792094Z"],
+  "last_updated": "2026-06-17T09:25:15.555277Z",
+  "updates": [
+    "2026-06-16T15:48:47.012574Z",
+    "2026-06-16T15:48:54.792094Z",
+    "2026-06-17T09:25:15.555277Z"
+  ],
   "update_maxlen": 79
 }

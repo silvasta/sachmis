@@ -7,7 +7,7 @@ from sstcore.tui import ListSelectorApp
 from sstcore.utils.print import ColorBox
 
 from ...cli import args
-from ...config import get_config
+from ...config import SachmisConfig, get_config
 from ...data.arboreal import ArborealTracker, Biome
 from ...data.arboreal.executor import BiomeExecutor
 from ...utils.print import printer
@@ -23,10 +23,12 @@ app = SafeTyper(
 )
 
 
+config: SachmisConfig = get_config()
+
+
 @app.command()
-def setup(name: args.Name = ""):
+def setup(name: args.Name = config.names.biome_file):
     """Create new Biome with global data structure"""
-    name: str = name or get_config().names.biome_file
     executor = BiomeExecutor()
     executor.execute(executor.create_new_biome, name)
 

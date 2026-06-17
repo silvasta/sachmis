@@ -5,6 +5,24 @@ from sstcore.utils import Printer
 
 
 class SachmisPrinter(Printer):
+    def debug(self, title: str, *lines, bare=False):
+        self.title(
+            title,
+            title="debug print",
+            frame="orange_red1",
+        )
+        if not bare:
+            self(lines)
+        else:
+            for line in lines:
+                self.title(
+                    str(line),
+                    title="debug print",
+                    frame="navajo_white1",
+                )
+                self(line)
+        input(f"ENTER: {title}")
+
     def conversation_transition_result(
         self, prompt: str, response: str, result: bool, from_prompt: bool
     ):

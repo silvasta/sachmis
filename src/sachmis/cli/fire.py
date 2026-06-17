@@ -40,7 +40,14 @@ def fire(
     """Prepare Models with Local Prompt and Fire"""
 
     with capstone.Fire() as session:
+        printer.debug(
+            "Start of Context",
+            session,
+            session.data.handler,
+        )
+
         models: list[SelectedSproutData] = _prepare_model_args(session, models)
+
         agents: list[Model] = session.load_models(models)
 
         # TODO: show models here first...?
@@ -127,7 +134,14 @@ def confirm_fire(models: list[Model], data: DataManager) -> bool:
 def _prepare_model_args(
     session: capstone.Fire, models: list[str] | None, multi_select=True
 ) -> list[SelectedSproutData]:
-    printer.title("Selecting Models...")
+
+    printer.debug(
+        "Start of Selector",
+        models,
+        session.data.front.models(),
+        bare=True,
+    )
+    printer.title("Model Selection")
 
     if models and (parsed_models := parse_raw_models(models)):
         text = f"{len(parsed_models)} Models parsed for Pipeline"

@@ -74,11 +74,12 @@ class FrontFileRegistry(FileRegistry[SstFile]):
         raise SachmisLaunchError("Invalid Location, Sprout has not Tree!")
 
     def get_model_at_path(self, path: Path | None = None) -> set[str]:
+        parent_dir: Path = path or Path.cwd()
 
         all_models: set[str] = model_uniques()
-        local_models: set[str] = set()  # WARN: ignoring ancestor tree for now
+        local_models: set[str] = set()
 
-        for file in self.get_files_by_path(path or Path.cwd()):
+        for file in self.get_files_by_parent(parent_dir):
             if model := file.keywords & all_models:
                 local_models.add(model.pop())
 
@@ -88,28 +89,32 @@ class FrontFileRegistry(FileRegistry[SstFile]):
     def get_folder_member_grouped_by_id_keyword(
         self, path: Path | None = None
     ) -> dict[str, list[SstFile]]:
-        """Provide"""
+
         united_keywords: set[str] = set()
         shared_keywords: set[str] = self.all_keywords()
         groups: dict[str, list[SstFile]] = defaultdict(list)
 
-        for file in self.get_files_by_path(path or Path.cwd()):
+        printer.debug("LocalDir Files", self.get_files_by_parent())
+
+        for file in self.get_files_by_parent(path):
             united_keywords |= file.keywords
-            shared_keywords & file.keywords
+            shared_keywords &= file.keywords
             id: str = config.names.id_keyword(file.local_path, strict=False)
             # TASK: attach File? new FileType? with any information
             groups[id].append(file)
 
-        printer.special(
-            [
-                "Inspecting get_neighbours:",
-                "united_keywords",
-                united_keywords,
-                "shared_keywords",
-                shared_keywords,
-            ]
+        # REMOVE: start
+        header = "Inspecting get_neighbours"
+        printer.dict_table(groups, header=header)
+        printer.debug(
+            header,
+            "united_keywords",
+            united_keywords,
+            "shared_keywords",
+            shared_keywords,
         )
-        printer.dict_table(groups)
+        # REMOVE: end
+
         return groups
 
     @classmethod

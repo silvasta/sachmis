@@ -2,7 +2,6 @@ import uuid
 
 from loguru import logger
 
-from ...config import SachmisConfig, get_config
 from ...exceptions import SachmisDataError
 from ...utils import printer
 from ..arboreal import ArborealTracker, Tree
@@ -22,6 +21,12 @@ class DataHandler:
 
     def __init__(self, tracker: ArborealTracker[Tree]):
         self._tree_tracker: ArborealTracker[Tree] = tracker
+
+    def __repr__(self):
+        name = f"{self.__class__.__name__}"
+        tree_dag = f"Tree_{self.tree_id} ({self._dag_of_entire_tree})"
+        internal_dag = f"Internal Graph ({self._growing_dag})"
+        return f"{name} for {tree_dag} and with {internal_dag}"
 
     @property
     def tree_tracker(self) -> ArborealTracker[Tree]:
@@ -67,14 +72,8 @@ class DataHandler:
         self._print_extracted_dag()
 
     def _print_extracted_dag(self):
-        config: SachmisConfig = get_config()
-        if config.defaults.debug.print_at_tree_extract:
-            printer.special("Tree DAG")
-            printer(self._dag_of_entire_tree)
-            printer.special("Sprout DAG")
-            printer(self._growing_dag)
-        if config.defaults.debug.pause_at_tree_extract:
-            input()
+        printer.debug("Tree DAG", self._dag_of_entire_tree, bare=True)
+        printer.debug("Sprout DAG", self._growing_dag, bare=True)
 
     def prepare_package(self, selection: SelectedSproutData) -> SproutPackage:
         """Load SproutPackage with everything needed sfor a new DAG"""
@@ -125,7 +124,7 @@ class DataHandler:
     def attach_data_back(self, tree: Tree):
         """Send the new created part of the DAG to the Tree"""
 
-        # TEST:
+        self._print_extracted_dag()
 
         if len(tree.dag.nodes) == 0:
             tree.dag = self.growing_dag

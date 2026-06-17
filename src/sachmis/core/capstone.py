@@ -1,16 +1,15 @@
+from collections import deque
 from contextlib import AbstractContextManager, ExitStack
 from typing import Self
 
 from loguru import logger
-
-# REMOVE:
-from sachmis.data.conversation.fusion import SproutPackage
 
 from ..config import SachmisConfig, get_config
 from ..config.defaults import ModelParam
 from ..config.models import DummyFamily, Geminis, Groks, ModelFamily
 from ..data import DataManager
 from ..data.conversation import SelectedSproutData
+from ..data.conversation.fusion import SproutPackage
 from .context import ForestExtractor, TreeExtractor
 from .model import Gemini, Grok, Model, launch
 from .model.dummy import DummyModel
@@ -40,8 +39,10 @@ def load_model(sprout: Sprout, param: ModelParam | None = None) -> Model:
 
 
 class Fire(AbstractContextManager):
+    """Lead the CLI execution of the fire command"""
+
     def __init__(self):
-        self.stack: ExitStack = ExitStack()
+        self.stack: ExitStack[bool | None] = ExitStack()
         self.agents: list[Model] = []
 
     def __enter__(self) -> Self:
@@ -78,3 +79,13 @@ class Fire(AbstractContextManager):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         return self.stack.__exit__(exc_type, exc_val, exc_tb)
+
+    def __repr__(self):
+        name = f"{self.__class__.__name__}Contex"
+        if hasattr(self.stack, "_exit_callbacks"):
+            if isinstance(self.stack._exit_callbacks, deque):
+                stack = f"{len(self.stack._exit_callbacks)} Stacks"
+        else:
+            stack = "Exitstack"
+        models = f"{len(self.agents)} loaded Models"
+        return f"{name} with {stack} and {models}"

@@ -2,10 +2,8 @@ from sstcore.cli.engine import SafeTyper
 from sstcore.exceptions import TuiSelectorError
 from sstcore.utils import printer
 
-from sachmis.exceptions import ArborealFileError
-
 from ..config import SachmisConfig, get_config
-from ..exceptions import SachmisLaunchError
+from ..exceptions import ArborealFileError, SachmisLaunchError
 from . import command, subapp
 from .fire import fire
 from .thunder import thunder
