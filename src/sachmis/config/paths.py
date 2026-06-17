@@ -220,11 +220,11 @@ class Paths(SstPaths[Names, Defaults]):
     @PathGuard.unique(ensure_parent=True)
     def prompt_file(self, write_dir: Path, id: int, topic: str) -> Path:
         prompt_file: str = self._names.prompt_stem(id, topic)
-        return write_dir / f"{prompt_file}.json"
+        return write_dir / f"{prompt_file}.md"
 
     @PathGuard.unique(ensure_parent=True)
     def response_file(
         self, write_dir: Path, id: int, model: str, topic: str
     ) -> Path:
         response_file: str = self._names.response_stem(id, model, topic)
-        return write_dir / f"{response_file}.json"
+        return write_dir / f"{response_file}.md"

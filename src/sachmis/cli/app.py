@@ -55,7 +55,7 @@ def handle_arbo(error: SachmisLaunchError):
 @app.register_error(TuiSelectorError)
 def handle_tui_selector_error(error: TuiSelectorError):
     """Fails cleanly when an interactive selector UI is exited or aborted."""
-    printer.warn(f"Interface canceled: {error}")
+    printer.danger(f"Selector failed: {error}")
 
 
 @app.register_error(ArborealFileError)

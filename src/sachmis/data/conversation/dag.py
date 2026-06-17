@@ -1,4 +1,4 @@
-from typing import Literal, Self
+from typing import Annotated, Literal, Self
 
 import networkx as nx
 from loguru import logger
@@ -13,7 +13,7 @@ from .prompt import Prompt
 from .response import Response
 
 
-class SproutNode(Node):
+class BaseSproutNode(Node):
     """Base Node for Prompt and Response"""
 
     @property
@@ -25,7 +25,7 @@ class SproutNode(Node):
         raise NotImplementedError
 
 
-class PromptNode(SproutNode):
+class PromptNode(BaseSproutNode):
     partition: Literal["P"] = "P"
     prompt: Prompt
 
@@ -38,7 +38,7 @@ class PromptNode(SproutNode):
         return cls(uuid=prompt.unique_id, prompt=prompt)
 
 
-class ResponseNode(SproutNode):
+class ResponseNode(BaseSproutNode):
     partition: Literal["R"] = "R"
     response: Response
 
@@ -49,6 +49,11 @@ class ResponseNode(SproutNode):
     @classmethod
     def from_response(cls, response: Response) -> Self:
         return cls(uuid=response.unique_id, response=response)
+
+
+type SproutNode = Annotated[
+    PromptNode | ResponseNode, Field(discriminator="partition")
+]
 
 
 class SproutEdge(Edge):

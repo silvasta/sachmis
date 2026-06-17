@@ -388,6 +388,6 @@ class Arboreal[ArboT: Arboreal](BaseModel):
 
         self._ensure_tracker(path=file)
         self.touch()
-        file.write_text(self.model_dump_json())
+        file.write_text(self.model_dump_json(indent=2))
 
         logger.info(f"{arbo} saved with {self.child_info}")

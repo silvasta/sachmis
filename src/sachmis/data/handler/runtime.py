@@ -131,8 +131,19 @@ class DataHandler:
             tree.dag = self.growing_dag
             logger.success("Attached new DAG to empty Tree")
         else:
+            previous: list[str] = [
+                v for v in self._sprout_registry.values() if v
+            ]
+            match n_previous := len(previous):
+                case 0:
+                    logger.error(self._sprout_registry)
+                    raise ValueError("Missing previous id")
+                case _:
+                    response_to_attach: str = previous.pop()
+                    logger.debug(f"found {n_previous=}")
+
             tree.attach_sub_dag(
-                self.prompt.unique_id,
+                response_to_attach,
                 self.growing_dag.model_copy(),
             )
             logger.success("DAG is back home")

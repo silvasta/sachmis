@@ -1,4 +1,5 @@
 from loguru import logger
+from pydantic import Field
 
 from ...config import SachmisConfig, get_config
 from ...utils import printer
@@ -9,7 +10,7 @@ from .base import Arboreal
 class Tree(Arboreal):
     """Top element inside Forest: entry point for every conversation"""
 
-    dag: SproutDAG
+    dag: SproutDAG = Field(default_factory=SproutDAG)
 
     @property
     def child_info(self):
@@ -49,12 +50,15 @@ class Tree(Arboreal):
 
         # debug / log
         config: SachmisConfig = get_config()
+
         if config.defaults.debug.draw_tree_at_back_attach:
+            printer.title("Tree")
             self.draw()
 
     def draw(self):
         try:
             self.dag.draw()
+            printer.title("Draw done...")
         except Exception as error:
             logger.error(f"Draw {type(error)}: {error=}")
 
