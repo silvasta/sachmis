@@ -1,9 +1,9 @@
-from sstcore.cli.engine import SafeTyper
+from sstcore.cli import SafeTyper
 from sstcore.exceptions import TuiSelectorError
-from sstcore.utils import printer
 
 from ..config import SachmisConfig, get_config
 from ..exceptions import ArborealFileError, SachmisLaunchError
+from ..utils import printer
 from . import command, subapp
 from .fire import fire
 from .thunder import thunder
@@ -37,8 +37,14 @@ app.add_typer(subapp.forest)
 # app.add_typer(subapp.tree) # TASK: change to tree handler?
 app.add_typer(subapp.utils)
 
+
+# DEBUG
 if config.defaults.debug.subapp:
     app.add_typer(subapp.debug)
+# TODO: some debug section? maybe own file?
+if config.defaults.debug.printer_debugs:
+    printer.project_debugs = True
+# DEBUG
 
 # TASK: Global Error Handling
 # - SachmisDataError: confirm handled in DataManager
