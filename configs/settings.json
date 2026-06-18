@@ -83,7 +83,7 @@
     "setup_source": "Custom: config.settings.log",
     "log_dir": "/home/silvan/PolyBox/Code/sachmis/latest/logs",
     "log_filename": "sachmis.log",
-    "log_level": "INFO",
+    "log_level": "DEBUG",
     "retention": "1 week",
     "rotation": "5 MB"
   },

@@ -7,6 +7,7 @@ from sstcore.utils.print import ColorBox
 
 from ..config import SachmisConfig, get_config
 from ..exceptions import ArborealError, DataRuntimeError, SachmisDataError
+from ..utils import printer
 from .arboreal import ArborealTracker, Biome, Tree
 from .camp import CampManager
 from .conversation import Response
@@ -20,7 +21,7 @@ config: SachmisConfig = get_config()
 class DataManager:
     """Global orchestrator for medium-level Data tasks"""
 
-    # TASK: check and compare: what if Forest has other Biome?
+    # TASK: check and compare: what if Forest has other Biome than before?
 
     _handler: DataHandler | None = None  # LATER: prepare for multiple Trees
 
@@ -30,10 +31,9 @@ class DataManager:
 
     def __init__(self):
         """Setup and check required: Biome, Forest"""
-
-        # TODO: better intro text
         self.biome_file: Path = config.paths.biome_file()
         logger.info(f"Biome: {self.biome_file}")
+        printer(self)
 
     ### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --
     ### START of Representation
@@ -70,14 +70,17 @@ class DataManager:
             if all_handler is not None
             else self._all_not_none_handler()
         )
-        return f"{_manager}({', '.join(_all_not_none_handler)})"
+        return f"{_manager}[{', '.join(_all_not_none_handler)}]"
 
     @property
     def colorful(self) -> str:
         c: ColorBox = ColorBox.with_mode("bold")
-        manager: str = c.s(type(self).__name__)
-        handler: list[str] = [c.red(h) for h in self._all_not_none_handler()]
-        return self._assemble_str(handler, manager)
+        manager: str = c(type(self).__name__, color="royal_blue1")
+        handler: list[str] = [
+            c(handler, color="steel_blue1")
+            for handler in self._all_not_none_handler()
+        ]
+        return c(self._assemble_str(handler, manager), color="white")
 
     @property
     def _cli(self) -> str:
@@ -100,9 +103,19 @@ class DataManager:
 
     def __exit__(self, exception_type, exception_value, _exception_trace_back):
         logger.info("DataManager: Close data from context")
+        c: ColorBox = ColorBox.with_mode("bold")
 
         if exception_type is not None:
-            logger.error(f"DataManager - Error: {exception_type.__name__}")
+            error = exception_type.__name__
+            logger.error(f"DataManager - {error}: {exception_value}")
+            printer.header(
+                f"{c.red(error)} {exception_value}",
+                frame="red",
+                subtitle=f"{self._cli}",
+                subtitle_align="right",
+            )
+
+            input()
 
             if issubclass(exception_type, ArborealError):
                 # IMPORTANT: check if handle arbos separate, and what else

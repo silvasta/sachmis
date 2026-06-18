@@ -27,7 +27,12 @@ class Tree(Arboreal):
     ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
 
     def export_dag(self) -> SproutDAG:
-        printer.debug("Tree Export", self, self.dag._cli, stop=True)  # NEXT:
+        printer.debug(
+            "Tree Export",
+            self,
+            self.dag._cli,
+            # stop=True,
+        )
         return SproutDAG(**self.dag.model_dump())  # TODO: model_copy?
 
     def attach_sub_dag(self, target: str, dag: SproutDAG):

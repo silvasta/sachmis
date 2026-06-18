@@ -40,19 +40,7 @@ def fire(
     """Prepare Models with Local Prompt and Fire"""
 
     with capstone.Fire() as session:
-        logger.info(f"{session.data.handler}")
-        logger.info(f"{ session.data.handler= }")
-        printer.debug(  # NEXT:
-            "Start of Context",
-            session,
-            session.data.handler,
-            f"{session.data.handler=}",
-            session.data.handler._cli,
-            stop=True,
-        )
-
         models: list[SelectedSproutData] = _prepare_model_args(session, models)
-
         agents: list[Model] = session.load_models(models)
 
         # TODO: show models here first...?
@@ -142,9 +130,12 @@ def _prepare_model_args(
 
     printer.debug(
         "Start of Selector",
-        models,
         session.data.front.models(),
-        simple=False,
+        stop=True,
+        # NEXT: select
+        # NEXT: select
+        # NEXT: select
+        # NEXT: select
     )
     printer.title("Model Selection")
 

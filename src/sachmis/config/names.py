@@ -3,6 +3,7 @@ from functools import cached_property
 from pathlib import Path
 from typing import Literal
 
+from loguru import logger
 from pydantic import BaseModel, ValidationError
 from sstcore.config import SstNames
 from sstcore.utils.parse import ParsedName
@@ -36,7 +37,8 @@ class Names(SstNames):
     response_pattern: str = "r_{sprout_id}_{model}_{topic}"
 
     def id_keyword(self, name: str | Path, strict=True) -> str:
-        """Get id plus category from Prompt, Response of Tree"""
+        """Get id plus category from Prompt, Response or Tree"""
+        # REMOVE: or combine with below
         if tree_schema := self.tree_schema_safe(name):
             return tree_schema.id_keyword
         if sprout_schema := self.prompt_schema_safe(name):
@@ -111,44 +113,14 @@ class Names(SstNames):
             return self.response_schema(name)
 
 
-class IdKeywordSchema(BaseModel):
-    category: str
-    cat_id: int
-
-
-def id_keyword_parser() -> ParsedName:
-    return ParsedName[IdKeywordSchema](
-        pattern="{category}_id_{cat_id}",
-        model_cls=IdKeywordSchema,
-    )
-
-
-def id_keywords_backwards(
-    target: Literal["sprout", "tree"], keywords: set[str]
-) -> int:
-    parser: ParsedName[IdKeywordSchema] = id_keyword_parser()
-    # NEXT: fix id_keyword_parser
-    # NEXT: fix id_keyword_parser
-    # NEXT: fix id_keyword_parser
-    # NEXT: fix id_keyword_parser
-    # NEXT: fix id_keyword_parser
-    # NEXT: fix id_keyword_parser
-    # NEXT: fix id_keyword_parser
-    for keyword in keywords:
-        try:
-            if (schema := parser(keyword)).category == target:
-                return schema.cat_id
-        except ValidationError, ValueError:
-            pass  # TODO: dispatch ValidationError
-    raise ValueError("Failed to Parse!")
-
-
 class NameSchema(BaseModel):
     topic: str
 
     @property
     def id_keyword(self) -> str:
-        return f"{self._category}_id_{self._id}"
+        parser: ParsedName[IdKeywordSchema] = id_keyword_parser()
+        # f"{self._category}_id_{self._id}"
+        return parser((self._category, self._id))
 
     @property
     def _category(self):
@@ -214,3 +186,34 @@ class ResponseNameSchema(SproutNameSchema):
     @property
     def _extra(self) -> set[str]:
         return {self.model}
+
+
+class IdKeywordSchema(BaseModel):
+    category: str
+    cat_id: int
+
+
+def id_keyword_parser() -> ParsedName:
+    return ParsedName[IdKeywordSchema](
+        pattern="{category}_id_{cat_id}",
+        model_cls=IdKeywordSchema,
+        strip_increments=False,  # needed to avoid strip id!
+    )
+
+
+def id_keywords_backwards(
+    target: Literal["sprout", "tree"], keywords: set[str]
+) -> int:
+    parser: ParsedName[IdKeywordSchema] = id_keyword_parser()
+
+    for keyword in keywords:
+        try:
+            schema: IdKeywordSchema = parser(keyword)
+            if schema and schema.category == target:
+                return schema.cat_id
+        except ValidationError, ValueError:
+            continue
+
+    logger.error(f"id_keywords_backwards: {target=}, {keywords=}")
+
+    raise ValueError("Failed to Parse!")

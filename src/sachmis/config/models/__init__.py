@@ -42,6 +42,7 @@ def family() -> list[ModelFamily]:
     return select(toggle.dummy, toggle.grok, toggle.gemini)
 
 
+# IDEA: @cache?
 def uniques() -> set[str]:
     return {model.unique for model in family()}
 

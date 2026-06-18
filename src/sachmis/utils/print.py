@@ -25,12 +25,12 @@ class SachmisPrinter(Printer):
     def _debug_line_by_line(self, *lines):
         sub_color: str = "navajo_white1"
         for line in lines:
+            self._debug_title(line.__class__.__name__, frame=sub_color)
             try:
-                self._debug_title(line, frame=sub_color)
+                self(line)
             except NotImplementedDispatchError as error:
                 logger.warning(f"Printer failed: {error=}")
-                self._debug_title(str(line), frame=sub_color)
-            self(line)
+                self(str(line))
 
     def _debug_title(self, text: str, frame: str = ""):
         top_color: str = "orange_red1"

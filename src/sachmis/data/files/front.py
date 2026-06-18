@@ -18,7 +18,6 @@ from ...config import SachmisConfig, get_config
 from ...config.models import uniques as model_uniques
 from ...config.names import TreeNameSchema
 from ...exceptions import SachmisLaunchError
-from ...utils import printer
 
 config: SachmisConfig = get_config()
 
@@ -86,39 +85,24 @@ class FrontFileRegistry(FileRegistry[SstFile]):
         logger.info(f"Found {len(local_models)} Models in CWD")
         return local_models
 
-    def get_folder_member_grouped_by_id_keyword(
+    def get_sprout_groups(
         self, path: Path | None = None
     ) -> dict[str, list[SstFile]]:
+        """Group all Files at Location by sprout_id"""
 
         united_keywords: set[str] = set()
         shared_keywords: set[str] = self.all_keywords()
-        groups: dict[str, list[SstFile]] = defaultdict(list)
-
-        printer.debug(
-            "LocalDir Files", self.get_files_by_parent(), stop=True
-        )  # NEXT:
+        sprout_groups: dict[str, list[SstFile]] = defaultdict(list)
 
         for file in self.get_files_by_parent(path):
             united_keywords |= file.keywords
             shared_keywords &= file.keywords
-            id: str = config.names.id_keyword(file.local_path, strict=False)
-            # TASK: attach File? new FileType? with any information
-            groups[id].append(file)
+            sprout_id: str = config.names.id_keyword(
+                file.local_path, strict=False
+            )
+            sprout_groups[sprout_id].append(file)
 
-        # REMOVE: start
-        header = "Inspecting get_neighbours"
-        printer.dict_table(groups, header=header)
-        printer.debug(
-            header,
-            "united_keywords",
-            united_keywords,
-            "shared_keywords",
-            shared_keywords,
-            stop=True,
-        )
-        # REMOVE: end
-
-        return groups
+        return sprout_groups
 
     @classmethod
     def ready(cls) -> Self:

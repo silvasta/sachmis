@@ -30,7 +30,8 @@ class DataHandler:
     def __repr__(self):
         handler: str = type(self).__name__
 
-        # IDEA: merge getattr into retrun f-strings? or completely avoid getattr?
+        # IDEA: merge getattr into return f-strings?
+        # - or completely avoid getattr?
         tree_tracker = getattr(self, "_tree_tracker", None)
         initial_prompt = getattr(self, "_initial_prompt", None)
         dag_of_entire_tree = getattr(self, "_dag_of_entire_tree", None)
@@ -64,11 +65,26 @@ class DataHandler:
         internal_dag: str = c.green(self._internal_dag_name(color=True))
         return self._assemble_str(tree_dag, internal_dag, handler)
 
+    # @property
+    # def _cli(self) -> str:
+    #     c: ColorBox = ColorBox.with_mode("bold")
+    #     handler: str = c.red(type(self).__name__)
+    #     tree_dag: str = c.green(self._tree_dag_name(color=True))
+    #     internal_dag: str = c.green(self._internal_dag_name(color=True))
+    #     return f"{handler}(\n{tree_dag}\nand\n{internal_dag})"
+    # IDEA: use like multiline formatting:
+    #   DataHandler(
+    #       TreeDag
+    #           and
+    #       GrowingDag
+    # )
+
     @property
     def _cli(self) -> str:  # TODO: colorful as styled_name
         return self.colorful
 
     def _tree_dag_name(self, color=False) -> str:
+
         return f"Tree_{self.tree_id}{_surrounding(self._tree_dag_str(color))}"
 
     def _internal_dag_name(self, color=False) -> str:
@@ -132,16 +148,22 @@ class DataHandler:
         self._dag_of_entire_tree: SproutDAG = tree.export_dag()
         self._growing_dag: SproutDAG = SproutDAG.init(self._initial_prompt)
 
-        logger.info(f"DAG attached from Tree to {self.__class__.__name__}")
+        logger.debug(f"result: {self}")
         self._print_extracted_dag()
 
     def _print_extracted_dag(self):
-        printer.debug("Tree DAG", self.tree_dag._cli)
-        printer.debug("Sprout DAG", self.growing_dag._cli, stop=True)  # NEXT:
+        printer(self._cli)
+        # printer.debug("Tree DAG", self.tree_dag._cli)
+        # printer.debug("Sprout DAG", self.growing_dag._cli, stop=True)  # NEXT:
 
     def prepare_package(self, selection: SelectedSproutData) -> SproutPackage:
         """Load SproutPackage with everything needed sfor a new DAG"""
 
+        # NEXT: selection->data
+        # NEXT: selection->data
+        # NEXT: selection->data
+        # NEXT: selection->data
+        # NEXT: selection->data
         logger.debug(f"Creating package for {selection=}")
 
         if selection.sprout_id == 0:  # case root (or fail)

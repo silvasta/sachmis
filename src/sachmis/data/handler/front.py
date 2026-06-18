@@ -152,59 +152,34 @@ class FrontFileHandler:
         else:
             self.scanned_tree_id: int = tree_schema.tree_id
 
-    def get_sprout_groups(self) -> dict[str, list[SstFile]]:
-        # MOVE: to registry
-        sprout_groups: dict[str, list[SstFile]] = (
-            self.registry.get_folder_member_grouped_by_id_keyword()
-        )
-        logger.info(f"Found {len(sprout_groups.keys())} Sprouts in CWD")
-        return sprout_groups
-
     def models(self) -> list[SproutSelectData]:
-        return self._filter_model_select_data_from_sprout_group()
+        """Provide Successor Models from CWD for Selection"""
 
-    def _filter_model_select_data_from_sprout_group(self):
-
-        all_models: set[str] = model_uniques()
         model_select_data: list[SproutSelectData] = []
 
-        printer.debug(  # NEXT:
-            "Detect Model",
-            all_models,
-            model_select_data,
-            simple=False,
-            stop=True,
+        sprout_groups: dict[str, list[SstFile]] = (
+            self.registry.get_sprout_groups()
         )
+        logger.info(f"Found {len(sprout_groups.keys())} Sprouts in CWD")
 
-        for sprout_id, sprout_files in self.get_sprout_groups().items():
-            printer.debug(  # NEXT:
-                f"Detected Sprout: {sprout_id}", sprout_files, stop=True
-            )
-
-            for file in sprout_files:
-                printer.title(f"Start of: {file}")
-
-                # Filter if keyword is in models
-                if model_unique := file.keywords & all_models:
-                    logger.debug(f"Found Model: {model_unique=}")
-                    if len(model_unique) != 1:
-                        raise SachmisDataError("Error in Registry Keywords")
-                    data: SproutSelectData = self._create_model_select_data(
-                        file, model_unique.pop()
-                    )
-                    model_select_data.append(data)
+        for _sprout_id_keyword, sprout_files in sprout_groups.items():
+            targets: dict[str, SstFile] = self._filter_by_model(sprout_files)
+            model_select_data.extend(self._create_select_data(targets))
 
         return model_select_data
 
+    def _create_select_data(
+        self, targets: dict[str, SstFile]
+    ) -> list[SproutSelectData]:
+        return [
+            self._create_model_select_data(unique, file)
+            for unique, file in targets.items()
+        ]
+
     def _create_model_select_data(
-        self, file: SstFile, model_unique: str
+        self, model_unique: str, file: SstFile
     ) -> SproutSelectData:
-
-        logger.debug(f"Creating ModelSelectData for {model_unique}: {file=}")
-
-        printer.debug(  # NEXT:
-            "Create Model Select Data", model_unique, file, stop=True
-        )
+        logger.debug(f"creating ModelSelectData for {model_unique=}: {file}")
 
         if not (model := model_from_unique(model_unique)):
             raise SachmisDataError(f"Bad Parameter in {file}")
@@ -214,6 +189,18 @@ class FrontFileHandler:
             tree_id=id_keywords_backwards("tree", file.keywords),
             sprout_id=id_keywords_backwards("sprout", file.keywords),
         )
+
+    def _filter_by_model(
+        self, sprout_files: list[SstFile]
+    ) -> dict[str, SstFile]:
+        filtered_files: dict[str, SstFile] = {}
+        for file in sprout_files:
+            if model_unique := file.keywords & model_uniques():
+                logger.debug(f"found: {model_unique=}")
+                if len(model_unique) != 1:
+                    raise SachmisDataError("strange keyword matching...")
+                filtered_files[model_unique.pop()] = file
+        return filtered_files
 
     def handle_response(self, response: Response):
         config: SachmisConfig = get_config()
