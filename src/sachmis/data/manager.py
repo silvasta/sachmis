@@ -3,7 +3,7 @@ from typing import Self
 
 from loguru import logger
 from sstcore.data import SstFile
-from sstcore.utils.print import ColorBox
+from sstcore.utils.paint import ColorBox
 
 from ..config import SachmisConfig, get_config
 from ..exceptions import ArborealError, DataRuntimeError, SachmisDataError

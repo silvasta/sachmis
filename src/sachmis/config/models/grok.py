@@ -1,5 +1,5 @@
 from loguru import logger
-from sstcore.utils.print import ColorBox
+from sstcore.utils.paint import ColorBox
 
 from .family import ModelFamily
 

@@ -3,7 +3,7 @@ from typing import Annotated, Literal, Self
 import networkx as nx
 from loguru import logger
 from pydantic import Field
-from sstcore.utils.print import ColorBox
+from sstcore.utils.paint import ColorBox
 
 from ...config.models import ModelFamily
 from ...utils import printer

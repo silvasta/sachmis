@@ -1,5 +1,5 @@
 from sstcore.cli import SafeTyper
-from sstcore.utils.print import ColorBox
+from sstcore.utils.paint import ColorBox
 
 from ...config import SachmisConfig, get_config
 from ...data.arboreal import ArborealTracker, Forest, Tree

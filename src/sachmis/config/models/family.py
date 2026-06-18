@@ -1,7 +1,7 @@
 from abc import ABCMeta, abstractmethod
 from enum import Enum, EnumMeta
 
-from sstcore.utils.print import ColorBox
+from sstcore.utils.paint import ColorBox
 
 # INFO: this is the Model Param Schema for fixed external data
 

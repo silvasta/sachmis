@@ -4,7 +4,7 @@ from pathlib import Path
 from loguru import logger
 from sstcore import PathGuard
 from sstcore.data import SstFile
-from sstcore.utils.print import ColorBox
+from sstcore.utils.paint import ColorBox
 
 from ...config import SachmisConfig, get_config
 from ...config.models import uniques as model_uniques

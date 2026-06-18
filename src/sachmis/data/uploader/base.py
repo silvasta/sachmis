@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any, TypeVar
 
 from loguru import logger
-from sstcore.utils.print import ColorBox
+from sstcore.utils.paint import ColorBox
 
 from ...config import SachmisConfig, get_config
 from ...utils.print import printer

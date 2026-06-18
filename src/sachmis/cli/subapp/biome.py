@@ -4,7 +4,7 @@ from loguru import logger
 from sstcore.cli import SafeTyper
 from sstcore.exceptions import TuiSelectorError
 from sstcore.tui import ListSelectorApp
-from sstcore.utils.print import ColorBox
+from sstcore.utils.paint import ColorBox
 
 from ...cli import args
 from ...config import SachmisConfig, get_config

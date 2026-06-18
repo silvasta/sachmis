@@ -8,7 +8,7 @@ from pydantic import BaseModel, ConfigDict
 from rich.prompt import Confirm
 from sstcore.tui import ListSelectorApp
 from sstcore.utils import printer
-from sstcore.utils.print import ColorBox
+from sstcore.utils.paint import ColorBox
 
 from ...config import SachmisConfig, get_config
 from ...data.arboreal.biome import Biome, BiomeStatus

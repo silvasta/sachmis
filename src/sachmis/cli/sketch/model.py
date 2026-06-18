@@ -1,7 +1,7 @@
 from itertools import cycle
 
 from rich.table import Table
-from sstcore.utils.print import ColorBox
+from sstcore.utils.paint import ColorBox
 
 from ...config import models
 from ...core.model import Model

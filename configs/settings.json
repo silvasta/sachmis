@@ -28,7 +28,7 @@
     "grok": {
       "timeout": 3600,
       "store_messages": true,
-      "n_agents": 4
+      "n_agents": 16
     },
     "active": {
       "dummy": true,

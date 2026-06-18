@@ -1,7 +1,7 @@
 import uuid
 
 from loguru import logger
-from sstcore.utils.print import ColorBox
+from sstcore.utils.paint import ColorBox
 
 from ...exceptions import SachmisDataError
 from ...utils import printer
