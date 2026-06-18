@@ -195,7 +195,7 @@ class IdKeywordSchema(BaseModel):
 
 def id_keyword_parser() -> ParsedName:
     return ParsedName[IdKeywordSchema](
-        pattern="{category}_id_{cat_id}",
+        pattern="{category}_id_{cat_id}",  # PARAM:
         model_cls=IdKeywordSchema,
         strip_increments=False,  # needed to avoid strip id!
     )

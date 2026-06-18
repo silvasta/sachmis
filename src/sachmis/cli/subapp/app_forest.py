@@ -1,4 +1,5 @@
 from sstcore.cli import SafeTyper
+from sstcore.utils.print import ColorBox
 
 from ...config import SachmisConfig, get_config
 from ...data.arboreal import ArborealTracker, Forest, Tree
@@ -15,50 +16,49 @@ app = SafeTyper(
 )
 
 
-def trees():
+@app.command()
+def trees(id: int = 0):  # TASK:  generic for Arbo
     """Show statistics of active Forest"""
     config: SachmisConfig = get_config()
 
-    # TASK:  generic for Arbo
-    active: str = "[bold]Active:[/]"
-    printer.title(f"{active} {config.paths.forest_file}", style="warning")
+    printer.title(f"Loading {config.paths.forest_file}", style="warning")
 
     forest: Forest = Forest.read_mode(config.paths.forest_file)
     trees: list[ArborealTracker] = forest.trees
 
     for t in trees:
+        if id and t.local_id != id:
+            continue
         tree: Tree = Tree.read_mode(t.local_path)
-        printer.title(tree)
-        printer.tree_graph(tree.draw())
+        printer.title(tree.colorful)
+        # LATER: sample SimpleTree for: printer.tree_graph()
+        printer(tree)
+        tree.draw()
 
 
 @app.command()
-def stat():
+def stat():  # TASK:  generic for Arbo
     """Show statistics of active Forest"""
-    # TASK:  generic for Arbo
     config: SachmisConfig = get_config()
+    c: ColorBox = ColorBox.with_mode("bold")
 
-    active: str = "[bold]Active:[/]"
-    printer.title(f"{active} {config.paths.forest_file}", style="warning")
+    printer.title(f"Loading {config.paths.forest_file}", style="warning")
 
     forest: Forest = Forest.read_mode(config.paths.forest_file)
     trees: list[ArborealTracker] = forest.trees
 
-    to_print: list[str] = []
-    for tree in trees:
-        name: str = tree.path.stem
-        to_print.append(f"[bold black on white]{name}[/] - {tree.path}")
-
-    printer.lines_with_len(
-        name="Trees",
-        lines=to_print,
-    )
     printer.path_exists_table([tree.path for tree in trees])
 
+    g3 = "spring_green3"
+    g4 = "spring_green4"
+    start = "TreeStatistic"
     for tree in trees:
         loaded_tree: Tree = Tree.read_mode(tree.path)
-        # TODO: SimpleTree with nice statistics!
-        printer(tree.path.name, loaded_tree)
+        printer.header(f"{c(start, g3)} - {tree.stem}", frame=g3)
+        printer.header(f"{c(start, g3)} - {tree.stem}", frame=g4)
+        printer.header(f"{c(start, g4)} - {tree.stem}", frame=g3)
+        printer.header(f"{c(start, g4)} - {tree.stem}", frame=g4)
+        printer(loaded_tree)
 
 
 if __name__ == "__main__":

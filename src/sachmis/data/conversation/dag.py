@@ -12,15 +12,27 @@ from .base_dag import BipartiteDAG, Edge, Node
 from .prompt import Prompt
 from .response import Response
 
+# NEXT: load to prompt, send
+
 
 class BaseSproutNode(Node):
     """Base Node for Prompt and Response"""
 
+    # AI: good idea?
     # TASK: override uuid from base with property!
 
     @property
     def sprout_id(self) -> int:
         return self._data.sprout_id
+
+    def sprout_stem(self) -> str:
+        # AI: this returns:
+        # - prompt: "p_1_ask-for-str"
+        #   prompt_pattern: str = "p_{sprout_id}_{topic}"
+        # - response: "r_1_d-d1_ask-for-str"
+        #   response_pattern: str = "r_{sprout_id}_{model}_{topic}"
+        # that would be perfect as identifier! if needed with cropped topic/maxlen
+        return self._data.sprout_stem
 
     @property
     def _data(self) -> SproutData:
@@ -65,34 +77,6 @@ class SproutEdge(Edge):
 class SproutDAG(BipartiteDAG):
     nodes: list[SproutNode] = Field(default_factory=list)
     edges: list[SproutEdge] = Field(default_factory=list)
-
-    ### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --
-    ### START of Representation
-    ### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --
-
-    def __str__(self):
-        name: str = self.__class__.__name__
-        prompts = f"{self.n_prompts} Prompts"
-        responses = f"{self.n_responses} Responses"
-        return f"{name}[{prompts}, {responses}]"
-
-    # NOTE: __repr__ by pydantic, no intercept!
-
-    @property
-    def colorful(self) -> str:  # TODO: colorful as styled_name
-        c: ColorBox = ColorBox.with_mode("bold")
-        name: str = c.magenta(self.__class__.__name__)
-        prompts = f"{self.n_prompts} {c.cyan('Prompts')}"
-        responses = f"{self.n_responses} {c.r('Responses')}"
-        return c.white(f"{name}[{prompts}, {responses}]")
-
-    @property
-    def _cli(self) -> str:  # TODO: colorful as styled_name
-        return self.colorful
-
-    ### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --
-    ### END of Representation
-    ### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --
 
     @classmethod
     def init(cls, prompt: Prompt) -> Self:
@@ -236,3 +220,33 @@ class SproutDAG(BipartiteDAG):
             nodes=list(new_nodes.values()),
             edges=[SproutEdge(source=s, target=t) for s, t in new_edges],
         )
+
+    ### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --
+    ### START of Representation
+    ### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --
+
+    # LATER: move, maybe mixin
+
+    def __str__(self):
+        name: str = self.__class__.__name__
+        prompts = f"{self.n_prompts} Prompts"
+        responses = f"{self.n_responses} Responses"
+        return f"{name}[{prompts}, {responses}]"
+
+    # NOTE: __repr__ by pydantic, no intercept!
+
+    @property
+    def colorful(self) -> str:  # TODO: colorful as styled_name
+        c: ColorBox = ColorBox.with_mode("bold")
+        name: str = c.magenta(self.__class__.__name__)
+        prompts = f"{self.n_prompts} {c.cyan('Prompts')}"
+        responses = f"{self.n_responses} {c.r('Responses')}"
+        return c.white(f"{name}[{prompts}, {responses}]")
+
+    @property
+    def _cli(self) -> str:  # TODO: colorful as styled_name
+        return self.colorful
+
+    ### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --
+    ### END of Representation
+    ### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --
