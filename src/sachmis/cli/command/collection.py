@@ -65,7 +65,7 @@ def rules():
 
 
 def config_details(write_config: sargs.Write = False):
-    """Print config to Console, optional override the json settings"""
+    """Print config to Console, optional override json settings"""
     config: SachmisConfig = get_config()  # TODO: better selection
     printer(config.setup_info)
     printer(config.settings)

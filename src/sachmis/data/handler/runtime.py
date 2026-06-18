@@ -1,6 +1,7 @@
 import uuid
 
 from loguru import logger
+from sstcore.utils.print import ColorBox
 
 from ...exceptions import SachmisDataError
 from ...utils import printer
@@ -22,11 +23,74 @@ class DataHandler:
     def __init__(self, tracker: ArborealTracker[Tree]):
         self._tree_tracker: ArborealTracker[Tree] = tracker
 
+    ### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --
+    ### START of Representation
+    ### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --
+
     def __repr__(self):
-        name = f"{self.__class__.__name__}"
-        tree_dag = f"Tree_{self.tree_id} ({self._dag_of_entire_tree})"
-        internal_dag = f"Internal Graph ({self._growing_dag})"
-        return f"{name} for {tree_dag} and with {internal_dag}"
+        handler: str = type(self).__name__
+
+        # IDEA: merge getattr into retrun f-strings? or completely avoid getattr?
+        tree_tracker = getattr(self, "_tree_tracker", None)
+        initial_prompt = getattr(self, "_initial_prompt", None)
+        dag_of_entire_tree = getattr(self, "_dag_of_entire_tree", None)
+        growing_dag = getattr(self, "_growing_dag", None)
+        sprout_registry = getattr(self, "_sprout_registry", {})
+
+        return (  # LATER: check for loop over handlers, check {_handler!r}
+            f"{handler}("
+            f"_tree_tracker={tree_tracker}, "
+            f"_initial_prompt={initial_prompt}, "
+            f"_dag_of_entire_tree={dag_of_entire_tree}, "
+            f"_growing_dag={growing_dag}, "
+            f"_sprout_registry={sprout_registry}"
+            f")"
+        )
+
+    def __str__(self) -> str:
+        return self._assemble_str()
+
+    def _assemble_str(self, tree_dag="", internal_dag="", handler=""):
+        _handler: str = handler or type(self).__name__
+        _tree_dag = tree_dag or self._tree_dag_name()
+        _internal_dag = internal_dag or self._internal_dag_name()
+        return f"{_handler}({_tree_dag} and {_internal_dag})"
+
+    @property
+    def colorful(self) -> str:  # TODO: colorful as styled_name
+        c: ColorBox = ColorBox.with_mode("bold")
+        handler: str = c.red(type(self).__name__)
+        tree_dag: str = c.green(self._tree_dag_name(color=True))
+        internal_dag: str = c.green(self._internal_dag_name(color=True))
+        return self._assemble_str(tree_dag, internal_dag, handler)
+
+    @property
+    def _cli(self) -> str:  # TODO: colorful as styled_name
+        return self.colorful
+
+    def _tree_dag_name(self, color=False) -> str:
+        return f"Tree_{self.tree_id}{_surrounding(self._tree_dag_str(color))}"
+
+    def _internal_dag_name(self, color=False) -> str:
+        return f"Internal{_surrounding(self._internal_dag_str(color))}"
+
+    def _tree_dag_str(self, color=False) -> str:
+        if self._dag_of_entire_tree is None:
+            return "N/A"
+        if not color:
+            return str(self._dag_of_entire_tree)
+        return self._dag_of_entire_tree._cli
+
+    def _internal_dag_str(self, color=False) -> str:
+        if self._growing_dag is None:
+            return "N/A"
+        if not color:
+            return str(self._growing_dag)
+        return self._growing_dag._cli
+
+    ### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --
+    ### END of Representation
+    ### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --
 
     @property
     def tree_tracker(self) -> ArborealTracker[Tree]:
@@ -72,8 +136,8 @@ class DataHandler:
         self._print_extracted_dag()
 
     def _print_extracted_dag(self):
-        printer.debug("Tree DAG", self._dag_of_entire_tree, bare=True)
-        printer.debug("Sprout DAG", self._growing_dag, bare=True)
+        printer.debug("Tree DAG", self.tree_dag._cli)
+        printer.debug("Sprout DAG", self.growing_dag._cli, stop=True)  # NEXT:
 
     def prepare_package(self, selection: SelectedSproutData) -> SproutPackage:
         """Load SproutPackage with everything needed sfor a new DAG"""
@@ -146,3 +210,7 @@ class DataHandler:
                 self.growing_dag.model_copy(),
             )
             logger.success("DAG is back home")
+
+
+def _surrounding(inside: str) -> str:
+    return "{{" + inside + "}}"

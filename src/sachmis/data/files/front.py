@@ -94,7 +94,9 @@ class FrontFileRegistry(FileRegistry[SstFile]):
         shared_keywords: set[str] = self.all_keywords()
         groups: dict[str, list[SstFile]] = defaultdict(list)
 
-        printer.debug("LocalDir Files", self.get_files_by_parent())
+        printer.debug(
+            "LocalDir Files", self.get_files_by_parent(), stop=True
+        )  # NEXT:
 
         for file in self.get_files_by_parent(path):
             united_keywords |= file.keywords
@@ -112,6 +114,7 @@ class FrontFileRegistry(FileRegistry[SstFile]):
             united_keywords,
             "shared_keywords",
             shared_keywords,
+            stop=True,
         )
         # REMOVE: end
 

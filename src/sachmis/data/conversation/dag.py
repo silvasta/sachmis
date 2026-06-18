@@ -3,9 +3,9 @@ from typing import Annotated, Literal, Self
 import networkx as nx
 from loguru import logger
 from pydantic import Field
+from sstcore.utils.print import ColorBox
 
-from sachmis.config.models import ModelFamily
-
+from ...config.models import ModelFamily
 from ...utils import printer
 from .base import SproutData
 from .base_dag import BipartiteDAG, Edge, Node
@@ -66,11 +66,33 @@ class SproutDAG(BipartiteDAG):
     nodes: list[SproutNode] = Field(default_factory=list)
     edges: list[SproutEdge] = Field(default_factory=list)
 
+    ### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --
+    ### START of Representation
+    ### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --
+
     def __str__(self):
-        name = f"{self.__class__.__name__}"
+        name: str = self.__class__.__name__
         prompts = f"{self.n_prompts} Prompts"
         responses = f"{self.n_responses} Responses"
-        return f"{name} with {prompts} and {responses}"
+        return f"{name}[{prompts}, {responses}]"
+
+    # NOTE: __repr__ by pydantic, no intercept!
+
+    @property
+    def colorful(self) -> str:  # TODO: colorful as styled_name
+        c: ColorBox = ColorBox.with_mode("bold")
+        name: str = c.magenta(self.__class__.__name__)
+        prompts = f"{self.n_prompts} {c.cyan('Prompts')}"
+        responses = f"{self.n_responses} {c.r('Responses')}"
+        return c.white(f"{name}[{prompts}, {responses}]")
+
+    @property
+    def _cli(self) -> str:  # TODO: colorful as styled_name
+        return self.colorful
+
+    ### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --
+    ### END of Representation
+    ### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --
 
     @classmethod
     def init(cls, prompt: Prompt) -> Self:

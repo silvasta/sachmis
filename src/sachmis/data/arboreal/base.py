@@ -33,7 +33,12 @@ class ArboView:  # LATER: check similar for SstFile
             return getattr(self.tracker, "local_id", None)
 
     @property
-    def cli(self) -> str:
+    def _cli(self) -> str:  # MOVE: general mixin?
+        """Custom colorized short label for CLI headers and explicit UI prints."""
+        return self.colorful
+
+    @property
+    def colorful(self) -> str:
         """Custom colorized short label for CLI headers and explicit UI prints."""
         name: str = self.__class__.__name__
         local_id: int = self._get_local_id() or -1
@@ -42,7 +47,7 @@ class ArboView:  # LATER: check similar for SstFile
     @property
     def time_stat(self) -> str:
         """Colorized statistic for printer"""
-        return f"{self.cli}: created at {self.local_created_at}"
+        return f"{self._cli}: created at {self.local_created_at}"
 
     @property
     def local_created_at(self) -> str:

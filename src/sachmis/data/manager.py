@@ -3,13 +3,13 @@ from typing import Self
 
 from loguru import logger
 from sstcore.data import SstFile
-
-from sachmis.data.conversation import Response
+from sstcore.utils.print import ColorBox
 
 from ..config import SachmisConfig, get_config
 from ..exceptions import ArborealError, DataRuntimeError, SachmisDataError
 from .arboreal import ArborealTracker, Biome, Tree
 from .camp import CampManager
+from .conversation import Response
 from .files import Role, UploadFile
 from .handler import DataHandler, FrontFileHandler
 from .uploader import Uploader
@@ -20,8 +20,9 @@ config: SachmisConfig = get_config()
 class DataManager:
     """Global orchestrator for medium-level Data tasks"""
 
-    # LATER: prepare for multiple Trees
-    _handler: DataHandler | None = None
+    # TASK: check and compare: what if Forest has other Biome?
+
+    _handler: DataHandler | None = None  # LATER: prepare for multiple Trees
 
     _front: FrontFileHandler | None = None
     _camp: CampManager | None = None
@@ -30,11 +31,61 @@ class DataManager:
     def __init__(self):
         """Setup and check required: Biome, Forest"""
 
-        # TASK: check and compare: what if Forest has other Biome?
-
         # TODO: better intro text
         self.biome_file: Path = config.paths.biome_file()
         logger.info(f"Biome: {self.biome_file}")
+
+    ### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --
+    ### START of Representation
+    ### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --
+
+    def __repr__(self):
+        manager: str = type(self).__name__
+        return (  # LATER: check for loop over handlers, check {_handler!r}
+            f"{manager}("
+            f"_handler={self._handler}, "
+            f"_front={self._front}, "
+            f"_camp={self._camp}, "
+            f"_uploader={self._uploader}"
+            f")"
+        )
+
+    def _all_not_none_handler(self) -> list[str]:
+        handlers: list = [
+            self._handler,
+            self._front,
+            self._camp,
+            self._uploader,
+        ]
+        return [type(h).__name__ for h in handlers if h is not None]
+
+    def __str__(self) -> str:
+        return self._assemble_str(self._all_not_none_handler())
+
+    def _assemble_str(self, all_handler: list[str] | None = None, manager=""):
+        """Dispatch for __str__ and colorful: defaults for __str__"""
+        _manager: str = manager or type(self).__name__
+        _all_not_none_handler: list[str] = (
+            all_handler
+            if all_handler is not None
+            else self._all_not_none_handler()
+        )
+        return f"{_manager}({', '.join(_all_not_none_handler)})"
+
+    @property
+    def colorful(self) -> str:
+        c: ColorBox = ColorBox.with_mode("bold")
+        manager: str = c.s(type(self).__name__)
+        handler: list[str] = [c.red(h) for h in self._all_not_none_handler()]
+        return self._assemble_str(handler, manager)
+
+    @property
+    def _cli(self) -> str:
+        return self.colorful
+
+    ### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --
+    ### END of Representation
+    ### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --
 
     ### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --
     ### ContextManager stuff

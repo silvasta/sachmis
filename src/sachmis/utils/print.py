@@ -34,12 +34,12 @@ class SachmisPrinter(Printer):
 
     def _debug_title(self, text: str, frame: str = ""):
         top_color: str = "orange_red1"
-        title: str = self.colors.white(f"{self.colorful} debug print")
+        title: str = self.colors.white(f"{self.colorful} debug prints")
         self.title(text, title=title, frame=frame or top_color)
 
     @property
     def colorful(self):
-        return self.colors.s(self.__class__.__name__)
+        return self._colorize(self.__class__.__name__, style="royal_blue1 ")
 
     def conversation_transition_result(
         self, prompt: str, response: str, result: bool, from_prompt: bool
