@@ -37,7 +37,7 @@ def family() -> list[ModelFamily]:
     toggle: ModelToggle = get_config().defaults.active
 
     if any([toggle.dummy, not toggle.grok, not toggle.gemini]):
-        logger.warning(f"ModelToggle away from default values! {toggle=}")
+        logger.warning(f"ModelToggle away from default values!\n{toggle=}")
 
     return select(toggle.dummy, toggle.grok, toggle.gemini)
 

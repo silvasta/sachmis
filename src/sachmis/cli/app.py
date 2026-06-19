@@ -1,7 +1,6 @@
 from sstcore.cli import SafeTyper
 from sstcore.exceptions import TuiSelectorError
 
-from ..config import config
 from ..config.manager import config_loader
 from ..exceptions import ArborealFileError, SachmisLaunchError
 from ..utils import printer
@@ -16,7 +15,9 @@ app = SafeTyper(
 )
 
 # core
+printer.danger("Thunder")
 app.command()(thunder)
+printer.danger("Fire")
 app.command()(fire)
 
 # important
@@ -36,11 +37,8 @@ app.add_typer(subapp.utils)
 
 
 # DEBUG
-if config().defaults.debug.subapp:
-    app.add_typer(subapp.debug)
-# TODO: some debug section? maybe own file?
-if config().defaults.debug.printer_debugs:
-    printer.project_debugs = True
+app.add_typer(subapp.debug)
+printer.project_debugs = True
 # DEBUG
 
 # TASK: Global Error Handling
