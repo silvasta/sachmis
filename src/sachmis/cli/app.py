@@ -1,11 +1,10 @@
 from sstcore.cli import SafeTyper
-from sstcore.exceptions import TuiSelectorError
 
 from ..config.manager import config_loader
-from ..exceptions import ArborealFileError, SachmisLaunchError
 from ..utils import printer
 from . import command, subapp
 from .fire import fire
+from .handlers import attach_handlers
 from .thunder import thunder
 
 app = SafeTyper(
@@ -15,9 +14,9 @@ app = SafeTyper(
 )
 
 # core
-printer.danger("Thunder")
+# printer.warn("Thunder")
+# printer.danger("Fire")
 app.command()(thunder)
-printer.danger("Fire")
 app.command()(fire)
 
 # important
@@ -36,28 +35,8 @@ app.add_typer(subapp.forest)
 app.add_typer(subapp.utils)
 
 
-# DEBUG
+# TASK: where to place? DEBUG
 app.add_typer(subapp.debug)
 printer.project_debugs = True
-# DEBUG
 
-# TASK: Global Error Handling
-# - SachmisDataError: confirm handled in DataManager
-# - other globals?
-
-
-@app.register_error(SachmisLaunchError)
-def handle_arbo(error: SachmisLaunchError):
-    printer.warn(f"{printer.colors.red('Problem!')} {error=}")
-
-
-@app.register_error(TuiSelectorError)
-def handle_tui_selector_error(error: TuiSelectorError):
-    """Fails cleanly when an interactive selector UI is exited or aborted."""
-    printer.danger(f"Selector failed: {error}")
-
-
-@app.register_error(ArborealFileError)
-def handle_arboreal_file_error(error: ArborealFileError):
-    """Standardized terminal fallback for structural I/O blocks."""
-    printer.danger(f"Critical Arboreal I/O Error: {error}")
+attach_handlers(app)

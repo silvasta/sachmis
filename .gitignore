@@ -25,3 +25,4 @@ plots
 /src/sachmis/data/arboreal/summary.xml
 /layouts/lib
 /configs/bak
+/.sst_scanner_cache.json

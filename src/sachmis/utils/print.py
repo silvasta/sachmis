@@ -9,13 +9,13 @@ from sstcore.utils import Printer
 class SachmisPrinter(Printer):
     project_debugs: bool = False
 
-    def debug(self, target: str, *lines, simple=True, stop=False):
+    def debug(self, target: str, *lines, simple=True, stop=False, title=""):
         """Print debug stuff with unified interface and global toggle"""
 
         if not self.project_debugs:
             return
 
-        self._debug_title(text=target)
+        self._debug_title(text=target, title=title)
 
         _print = self(lines) if simple else self._debug_line_by_line(*lines)
 
@@ -32,9 +32,11 @@ class SachmisPrinter(Printer):
                 logger.warning(f"Printer failed: {error=}")
                 self(str(line))
 
-    def _debug_title(self, text: str, frame: str = ""):
+    def _debug_title(self, text: str, frame: str = "", title=""):
         top_color: str = "orange_red1"
-        title: str = self.colors.white(f"{self.colorful} debug prints")
+        title: str = title or self.colors.white(
+            f"{self.colors.b('Debug')}{self.colorful}"
+        )
         self.title(text, title=title, frame=frame or top_color)
 
     @property
