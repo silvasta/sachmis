@@ -3,11 +3,8 @@ from collections.abc import Callable
 
 from loguru import logger
 
-from ...config import SachmisConfig, get_config
 from ...utils import printer
 from .agent import Model
-
-config: SachmisConfig = get_config()
 
 
 def models(agents: list[Model], use_async=False, dry_run=False):

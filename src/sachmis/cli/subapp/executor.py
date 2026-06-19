@@ -10,7 +10,7 @@ from sstcore.tui import ListSelectorApp
 from sstcore.utils import printer
 from sstcore.utils.paint import ColorBox
 
-from ...config import SachmisConfig, get_config
+from ...config import config
 from ...data.arboreal.biome import Biome, BiomeStatus
 from ...exceptions import ArborealFileExistsError, ArborealFileMissingError
 
@@ -67,10 +67,9 @@ class BiomeExecutor(BaseModel):
         printer.warn("Action required to resolve Biome configuration:")
 
         # 1. Ask to Switch Biome if other biome files exist
-        config: SachmisConfig = get_config()
-        if config.paths.num_biome_files > 0:
+        if config().paths.num_biome_files > 0:
             if Confirm.ask(c.magenta("Switch to an existing Biome?")):
-                biomes: list[Path] = list(config.paths.biome_files)
+                biomes: list[Path] = list(config().paths.biome_files)
                 tui = ListSelectorApp(items=biomes, multi_select=False)
                 if selected := tui.run():
                     biome_file = Path(selected[0])
@@ -104,19 +103,19 @@ class BiomeExecutor(BaseModel):
 
     @staticmethod
     def _log_filesystem_status(cls) -> None:  # TODO: toggle
-        config: SachmisConfig = get_config()
         logger.debug("start detecting")
-        num_biome_files: int = config.paths.num_biome_files
-        logger.debug(f"found {num_biome_files=} in {config.paths.biome_dir=}")
-        biome_files: set[Path] = config.paths.biome_files
+        num_biome_files: int = config().paths.num_biome_files
+        logger.debug(
+            f"found {num_biome_files=} in {config().paths.biome_dir=}"
+        )
+        biome_files: set[Path] = config().paths.biome_files
         logger.debug(f"current status: {biome_files=}")
 
     @staticmethod
     def _print_directory_status() -> None:  # TODO: toggle
-        config: SachmisConfig = get_config()
-        text = f"{_b('BiomeDir')} {_p(config.paths.biome_dir)}"
+        text = f"{_b('BiomeDir')} {_p(config().paths.biome_dir)}"
         printer.success(text)
-        match n_biome := config.paths.num_biome_files:
+        match n_biome := config().paths.num_biome_files:
             case 0:
                 text = f"{c.red('Zero')} Biome Files found!"
                 printer.danger(text)
@@ -126,7 +125,7 @@ class BiomeExecutor(BaseModel):
             case _:
                 text = f"{c.green(n_biome)} Biome Files found!"
                 printer.success(text)
-                printer.lines(list(config.paths.biome_files))
+                printer.lines(list(config().paths.biome_files))
 
 
 c: ColorBox = printer.colorbox()

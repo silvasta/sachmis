@@ -2,15 +2,13 @@ from google.genai import Client, types
 from google.genai.types import GenerateContentResponse
 from loguru import logger
 
-from ...config import SachmisConfig, get_config
+from ...config import config
 from ...config.defaults import GeminiParam, ModelParam
 from ...config.models import Geminis
 from ...data.files import GoogleUploadState
 from ...exceptions import SachmisDataError
 from ...utils.print import printer
 from .agent import Model
-
-config: SachmisConfig = get_config()
 
 
 class Gemini(Model):
@@ -23,8 +21,7 @@ class Gemini(Model):
         """Load defaults if param not set"""
         # LATER: centralize
         if param is None:
-            config: SachmisConfig = get_config()
-            param: GeminiParam = config.defaults.gemini
+            param: GeminiParam = config().defaults.gemini
         if isinstance(param, GeminiParam):
             return param
         # LATER: imprve
@@ -32,7 +29,7 @@ class Gemini(Model):
 
     def _load_client(self):
         self.client = Client(
-            api_key=config.from_env(key="GEMINI_API_KEY"),
+            api_key=config().from_env(key="GEMINI_API_KEY"),
         )
 
     def _prepare_chat(self):

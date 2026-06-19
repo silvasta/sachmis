@@ -2,7 +2,7 @@ from pathlib import Path
 
 from loguru import logger
 
-from ..config import SachmisConfig, get_config
+from ..config import config
 from ..config.models import ModelFamily
 from ..data import DataManager
 from ..data.conversation import Prompt, Response
@@ -27,8 +27,7 @@ class Sprout:
         self.data: DataManager = data
 
     def collect_raw_response(self, full_response: str):
-        config: SachmisConfig = get_config()
-        full_response_path: Path = config.paths.full_response(
+        full_response_path: Path = config().paths.full_response(
             topic=self.prompt.topic, model=self.model.unique
         )
         self.data._add_temporary_full_response(

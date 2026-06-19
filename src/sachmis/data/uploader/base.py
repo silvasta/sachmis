@@ -6,13 +6,12 @@ from typing import Any, TypeVar
 from loguru import logger
 from sstcore.utils.paint import ColorBox
 
-from ...config import SachmisConfig, get_config
+from ...config import config
 from ...utils.print import printer
 from ..files import RemoteState, UploadFile, UploadState
 
 TUploadState = TypeVar("TUploadState", bound=UploadState)
 
-config: SachmisConfig = get_config()
 c: ColorBox = ColorBox()
 
 
@@ -51,7 +50,7 @@ class FileUploader(ABC):
         """Derived class of UploadState"""
 
     def __init__(self, local_dir: Path | None = None):
-        self.local_dir: Path = local_dir or config.paths.file_dir
+        self.local_dir: Path = local_dir or config().paths.file_dir
         self._load_client()
         logger.debug(f"{self.__class__.__name__} ready")
 

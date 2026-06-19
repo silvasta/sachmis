@@ -1,9 +1,7 @@
 from pydantic import Field
 
-from ...config import SachmisConfig, get_config
+from ...config import config
 from .base import SproutData
-
-config: SachmisConfig = get_config()
 
 
 class Response(SproutData):
@@ -18,6 +16,6 @@ class Response(SproutData):
         return self.content
 
     def _assemble_stem(self) -> str:
-        return config.names.response_stem(
+        return config().names.response_stem(
             id=self.sprout_id, model=self.model, topic=self.topic
         )

@@ -1,7 +1,7 @@
 from loguru import logger
 from pydantic import Field
 
-from ...config import SachmisConfig, get_config
+from ...config import config
 from ...utils import printer
 from ..conversation import SproutDAG
 from .base import Arboreal
@@ -59,9 +59,7 @@ class Tree(Arboreal):
         logger.success(f"Tree absorbed DAG: {p}, {r}")
 
         # debug / log
-        config: SachmisConfig = get_config()
-
-        if config.defaults.debug.draw_tree_at_back_attach:
+        if config().defaults.debug.draw_tree_at_back_attach:
             printer.title("Tree")
             self.draw()
 

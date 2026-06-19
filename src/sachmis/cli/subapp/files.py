@@ -1,15 +1,13 @@
 from loguru import logger
 from sstcore.cli import SafeTyper, sargs
 
-from ...config import SachmisConfig, get_config
+from ...config import config
 from ...data.arboreal import Forest
 from ...data.camp import CampManager
 from ...data.files import UploadFile
 from ...data.uploader import Uploader
 from ...utils.print import printer
 from ..args import Google, Xai
-
-config: SachmisConfig = get_config()
 
 
 def main() -> None:
@@ -25,9 +23,9 @@ app = SafeTyper(
 @app.command()
 def show(details: bool = False):
     """Show all files in camp registry"""
-    forest: Forest = Forest.read_mode(config.paths.forest_file)
+    forest: Forest = Forest.read_mode(config().paths.forest_file)
     camp: CampManager = forest.get_camp()
-    base_name: str = config.paths.base_dir.stem
+    base_name: str = config().paths.base_dir.stem
 
     if details:
         printer(camp.files)
@@ -42,7 +40,7 @@ def load(fresh: bool = False, files: sargs.Files = None):
 
     printer("Not implemented, fresh: ", fresh)  # TODO: clear
 
-    with Forest.edit_mode(config.paths.forest_file) as forest:
+    with Forest.edit_mode(config().paths.forest_file) as forest:
         camp: CampManager = forest.get_camp()
         printer(f"Files before: {len(camp.files.files)}")
 
@@ -73,7 +71,7 @@ def push(xai: Xai = False, google: Google = False, ensure=True):
 
     uploader = Uploader(*_zero_is_all(xai, google))
 
-    with Forest.edit_mode(config.paths.forest_file) as forest:
+    with Forest.edit_mode(config().paths.forest_file) as forest:
         camp: CampManager = forest.get_camp()
 
         registry_files: list[UploadFile] = camp.files.files
@@ -97,7 +95,7 @@ def status(xai: Xai = False, google: Google = False):
     uploader = Uploader(*_zero_is_all(xai, google))
 
     uploader.compare_with_remote_files(
-        Forest.read_mode(config.paths.forest_file).files.files
+        Forest.read_mode(config().paths.forest_file).files.files
     )
 
 

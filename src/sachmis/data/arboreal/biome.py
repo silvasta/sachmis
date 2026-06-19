@@ -8,7 +8,7 @@ from pydantic import Field
 from sstcore.data.files import SstFile
 from sstcore.utils import day_count
 
-from ...config import SachmisConfig, get_config
+from ...config import config
 from .base import Arboreal, ArborealTracker
 from .forest import Forest
 
@@ -46,10 +46,11 @@ class Biome(Arboreal[Forest]):
     @classmethod
     def with_name(cls, name: str | None = None) -> Self:
         logger.info("Create new Biome")
-        config: SachmisConfig = get_config()
 
-        biome_filename: str = config.names.biome_file if name is None else name
-        biome_file: Path = config.paths.new_biome_file(biome_filename)
+        biome_filename: str = (
+            config().names.biome_file if name is None else name
+        )
+        biome_file: Path = config().paths.new_biome_file(biome_filename)
 
         biome: Biome = cls.create_with_tracker(
             path=biome_file, local_id=day_count()
@@ -63,13 +64,12 @@ class Biome(Arboreal[Forest]):
 
     def apply_to_config(self, biome_file: Path):
         logger.info("Merge changes back to Settings file")
-        config: SachmisConfig = get_config()
 
-        if biome_file.name == config.names.biome_file:
+        if biome_file.name == config().names.biome_file:
             logger.debug("path from Names already active in Biome")
         else:
-            config.names.biome_file = biome_file.name
-            config.save_settings()
+            config().names.biome_file = biome_file.name
+            config().save_settings()
             logger.info(f"Updated active Biome in Names to {biome_file.name}")
 
         logger.success(f"{self.tracker} Active Biome! {biome_file=}")

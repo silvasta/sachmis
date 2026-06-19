@@ -1,15 +1,11 @@
 from sstcore.cli import SafeTyper, utils_app
 
-from ...config import SachmisConfig, get_config
-
-config: SachmisConfig = get_config()
-
 
 def main() -> None:
     app()
 
 
-# LATER: move less needed stuff here
+# INFO: this below is sstcore.utils_app (no delete!)
 
 app: SafeTyper = utils_app
 

@@ -5,7 +5,7 @@ from loguru import logger
 from sstcore.data import SstFile
 from sstcore.utils.paint import ColorBox
 
-from ..config import SachmisConfig, get_config
+from ..config import config
 from ..exceptions import ArborealError, DataRuntimeError, SachmisDataError
 from ..utils import printer
 from .arboreal import ArborealTracker, Biome, Tree
@@ -14,8 +14,6 @@ from .conversation import Response
 from .files import Role, UploadFile
 from .handler import DataHandler, FrontFileHandler
 from .uploader import Uploader
-
-config: SachmisConfig = get_config()
 
 
 class DataManager:
@@ -31,7 +29,7 @@ class DataManager:
 
     def __init__(self):
         """Setup and check required: Biome, Forest"""
-        self.biome_file: Path = config.paths.biome_file()
+        self.biome_file: Path = config().paths.biome_file()
         logger.info(f"Biome: {self.biome_file}")
         printer(self)
 
@@ -121,13 +119,13 @@ class DataManager:
                 # IMPORTANT: check if handle arbos separate, and what else
                 logger.error(f"Context: {exception_value=}")
                 logger.warning("State not saved!")
-                return config.defaults.context.data_error_arboreal.swallow
+                return config().defaults.context.data_error_arboreal.swallow
 
             if issubclass(exception_type, SachmisDataError):
                 # IMPORTANT: handle all Data issues here
                 logger.error(f"SachmisDataError: {exception_value}")
                 logger.warning("State not saved!")
-                return config.defaults.context.data_error_sachmis.swallow
+                return config().defaults.context.data_error_sachmis.swallow
 
             logger.warning("State not saved!")
 
@@ -136,7 +134,7 @@ class DataManager:
 
         logger.info("DataManager: Clean Exit")
 
-        return config.defaults.context.data_end.swallow
+        return config().defaults.context.data_end.swallow
 
     ### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --
     ### Handlers
@@ -209,7 +207,7 @@ class DataManager:
 
     def _attach_new_full_responses_to_biome(self):
 
-        with Biome.edit_mode(config.paths.biome_file()) as biome:
+        with Biome.edit_mode(config().paths.biome_file()) as biome:
             biome.responses.extend(self._full_responses)
 
         logger.info(f"Attached {len(self._full_responses)} files to Biome")

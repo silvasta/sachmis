@@ -4,7 +4,7 @@ from typing import Self
 from loguru import logger
 from sstcore.data import FileRegistry, SstFileRegistry
 
-from ...config import SachmisConfig, get_config
+from ...config import config
 from ...exceptions import ArborealRegistryMissingError
 from ..camp import CampManager
 from ..files import RoleRegistry, UploadRegistry
@@ -109,10 +109,9 @@ class Forest(Arboreal[Tree]):
 
     def attach_new_tree(self, topic: str) -> ArborealTracker[Tree]:
         """Create new Tree with initial Sprout"""
-        config: SachmisConfig = get_config()
 
         tree_id: int = self._next_instance_id()
-        tree_file: Path = config.paths.tree_file(id=tree_id, topic=topic)
+        tree_file: Path = config().paths.tree_file(id=tree_id, topic=topic)
 
         new_tree: Tree = self._setup_tree(tree_file, local_id=tree_id)
         new_tree.save_state(tree_file, lock_required=False)

@@ -14,13 +14,10 @@ from sstcore.utils import FolderScanner, PathTreeNode, ProjectFilter
 from sstcore.utils.parse import ParsedName
 from sstcore.utils.tree import build_path_tree
 
-from ...config import SachmisConfig, get_config
+from ...config import config
 from ...config.models import uniques as model_uniques
 from ...config.names import TreeNameSchema
 from ...exceptions import SachmisLaunchError
-
-config: SachmisConfig = get_config()
-
 
 IGNORE_DIRS: set[str] = {".camp"}
 
@@ -58,7 +55,7 @@ class FrontFileRegistry(FileRegistry[SstFile]):
     ) -> TreeNameSchema | None:
         # IDEA: just use relative_path.part[0]?
         for part in (path or Path.cwd()).parts:
-            if tree_schema := config.names.tree_schema_safe(part):
+            if tree_schema := config().names.tree_schema_safe(part):
                 return tree_schema
 
     def all_keywords(self) -> set[str]:
@@ -97,7 +94,7 @@ class FrontFileRegistry(FileRegistry[SstFile]):
         for file in self.get_files_by_parent(path):
             united_keywords |= file.keywords
             shared_keywords &= file.keywords
-            sprout_id: str = config.names.id_keyword(
+            sprout_id: str = config().names.id_keyword(
                 file.local_path, strict=False
             )
             sprout_groups[sprout_id].append(file)
@@ -112,13 +109,15 @@ class FrontFileRegistry(FileRegistry[SstFile]):
         )
         # PARAM: default filter stuff, maybe to config.defaults?
         filter = ProjectFilter(exclude={".camp"}, require_any={".md"})
-        scanner = FolderScanner(scan_root=config.paths.base_dir, filter=filter)
+        scanner = FolderScanner(
+            scan_root=config().paths.base_dir, filter=filter
+        )
         output_files: Self = cls(
-            local_root=config.paths.base_dir,
+            local_root=config().paths.base_dir,
             scanner=scanner,
-            tree_parser=config.names.tree_parser,
-            prompt_parser=config.names.prompt_parser,
-            response_parser=config.names.response_parser,
+            tree_parser=config().names.tree_parser,
+            prompt_parser=config().names.prompt_parser,
+            response_parser=config().names.response_parser,
         )
         output_files.analyze_output_file_status(attach=True)
         output_files.tree()
@@ -154,16 +153,16 @@ class FrontFileRegistry(FileRegistry[SstFile]):
         return new_files
 
     def _extract_if_path_is_tree(self, path) -> SstFile | None:
-        if schema := config.names.tree_schema_safe(path.name):
+        if schema := config().names.tree_schema_safe(path.name):
             return self._create_sst_file(path, schema.keywords())
 
     def _extract_if_path_is_prompt(self, path) -> SstFile | None:
-        if schema := config.names.prompt_schema_safe(path.name):
+        if schema := config().names.prompt_schema_safe(path.name):
             sprout_info: set[str] = self._from_sprout_to_tree(path)
             return self._create_sst_file(path, sprout_info | schema.keywords())
 
     def _extract_if_path_is_response(self, path) -> SstFile | None:
-        if schema := config.names.response_schema_safe(path.name):
+        if schema := config().names.response_schema_safe(path.name):
             sprout_info: set[str] = self._from_sprout_to_tree(path)
             return self._create_sst_file(path, sprout_info | schema.keywords())
 
@@ -176,10 +175,10 @@ class FrontFileRegistry(FileRegistry[SstFile]):
         keywords: set[str] = set()
 
         for level, part in enumerate(path.parents, start=1):
-            if prompt_schema := config.names.prompt_schema_safe(part):
+            if prompt_schema := config().names.prompt_schema_safe(part):
                 keywords.add(f"P{level}_{prompt_schema.id_keyword}")  # PARAM:
 
-            if tree_schema := config.names.tree_schema_safe(part):
+            if tree_schema := config().names.tree_schema_safe(part):
                 keywords.add(tree_schema.id_keyword)
                 keywords.add(f"L{level}")
                 return keywords

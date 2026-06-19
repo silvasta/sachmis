@@ -4,7 +4,6 @@ from typing import Self
 
 from loguru import logger
 
-from ..config import SachmisConfig, get_config
 from ..config.defaults import ModelParam
 from ..config.models import DummyFamily, Geminis, Groks, ModelFamily
 from ..data import DataManager
@@ -14,8 +13,6 @@ from .context import ForestExtractor, TreeExtractor
 from .model import Gemini, Grok, Model, launch
 from .model.dummy import DummyModel
 from .sprout import Sprout
-
-config: SachmisConfig = get_config()
 
 
 def load_model(sprout: Sprout, param: ModelParam | None = None) -> Model:

@@ -2,18 +2,17 @@ from itertools import product
 
 from sstcore.cli import sargs
 
-from ...config import SachmisConfig, get_config
+from ...config import config
 from ...data.conversation import PromptTransitionRules, ResponseTransitionRules
 from ...data.setup import create_new_base
 from ...utils.print import printer
 from .. import args
 from ..sketch.model import model_family_table
 
-config: SachmisConfig = get_config()
 
-
-def init(name: args.Name = config.names.base_dir):
+def init(name: args.Name = ""):
     """Create new Base with Forest and Local Data Structure"""
+    name: str = name or config().names.base_dir
     create_new_base(name)
 
 
@@ -65,12 +64,10 @@ def rules():
 
 
 def config_details(write_config: sargs.Write = False):
-    """Print config to Console, optional override json settings"""
-    config: SachmisConfig = get_config()  # TODO: better selection
-    printer(config.setup_info)
-    printer(config.settings)
-    printer(config.paths.dot_env)
-    printer(config.setting_file)
+    """Print config() to Console, optional override json settings"""
+    printer(config().settings)
+    printer(config().paths.dot_env)
+    printer(config().setting_file)
 
     if write_config:
-        config.save_settings()
+        config().save_settings()

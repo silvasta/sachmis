@@ -4,10 +4,6 @@ from typing import Any
 from boltons.strutils import slugify
 from pydantic import BaseModel, Field, model_validator
 
-from ...config import SachmisConfig, get_config
-
-config: SachmisConfig = get_config()
-
 # LATER:
 # from sstcore.utils import SimpleTreeNode
 # class SproutNode(SimpleTreeNode):

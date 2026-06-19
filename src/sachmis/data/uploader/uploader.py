@@ -2,13 +2,10 @@ from itertools import product
 
 from loguru import logger
 
-from ...config import SachmisConfig, get_config
 from ..files import RemoteState, UploadFile
 from .base import CompareResult, FileUploader
 from .google import GoogleUploader
 from .xai import XaiUploader
-
-config: SachmisConfig = get_config()
 
 type RemoteUploader = XaiUploader | GoogleUploader
 

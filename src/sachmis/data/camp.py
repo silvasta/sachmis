@@ -4,7 +4,7 @@ from loguru import logger
 from sstcore.data import SstFile, SstFileRegistry
 from sstcore.utils import PathFilter
 
-from ..config import SachmisConfig, get_config
+from ..config import config
 from ..exceptions import DataRuntimeError
 from ..utils.print import printer
 from .files import Role, RoleRegistry, UploadFile, UploadRegistry
@@ -27,25 +27,24 @@ class CampManager:
         files: UploadRegistry | None = None,
         images: SstFileRegistry | None = None,
     ):
-        config: SachmisConfig = get_config()
 
         # Files Setup
         self.files = files or UploadRegistry(
-            local_root=Path(config.paths.file_dir)
+            local_root=Path(config().paths.file_dir)
         )
         if not hasattr(self.files, "scanner") or self.files.scanner is None:
             self.files.setup_scanner(PathFilter())
 
         # Images Setup
         self.images = images or SstFileRegistry(
-            local_root=Path(config.paths.image_dir)
+            local_root=Path(config().paths.image_dir)
         )
         if not hasattr(self.images, "scanner") or self.images.scanner is None:
             self.images.setup_scanner(PathFilter())
 
         # Roles Setup
         self.roles = roles or RoleRegistry(
-            local_root=Path(config.paths.camp_role_dir)
+            local_root=Path(config().paths.camp_role_dir)
         )
         if not hasattr(self.roles, "scanner") or self.roles.scanner is None:
             self.roles.setup_scanner(PathFilter())
@@ -101,7 +100,7 @@ class CampManager:
         if files:  # Mirror = copy for CLI provided links
             prepared_files.extend(self.files.mirror_from_path(source=files))
 
-        local_files: Path = get_config().paths.local_file_dir
+        local_files: Path = config().paths.local_file_dir
 
         if local_files.exists():
             prepared_files.extend(self.files.absorb_from_path(local_files))

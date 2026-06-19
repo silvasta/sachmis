@@ -3,11 +3,9 @@ from typing import Any
 from loguru import logger
 from xai_sdk import Client
 
-from ...config import SachmisConfig, get_config
+from ...config import config
 from ..files import UploadFile, XaiUploadState
 from .base import FileUploader
-
-config: SachmisConfig = get_config()
 
 
 class XaiUploader(FileUploader):
@@ -32,7 +30,7 @@ class XaiUploader(FileUploader):
 
     def _load_client(self):
 
-        self.client = Client(api_key=config.from_env(key="XAI_API_KEY"))
+        self.client = Client(api_key=config().from_env(key="XAI_API_KEY"))
         logger.info("xAI Client loaded")
 
     def _fetch_all_files(self) -> list[Any]:

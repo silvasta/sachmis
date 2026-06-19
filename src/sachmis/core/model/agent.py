@@ -3,14 +3,11 @@ from typing import Any
 
 from loguru import logger
 
-from ...config import SachmisConfig, get_config
 from ...config.defaults import ModelParam
 from ...config.models import ModelFamily
 from ...data.conversation import Prompt
 from ...utils.print import printer
 from ..sprout import Sprout
-
-config: SachmisConfig = get_config()
 
 
 class Model(ABC):

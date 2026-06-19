@@ -7,7 +7,7 @@ from sstcore.tui import ListSelectorApp
 from sstcore.utils.paint import ColorBox
 
 from ...cli import args
-from ...config import SachmisConfig, get_config
+from ...config import config
 from ...data.arboreal import ArborealTracker, Biome
 from ...utils.print import printer
 from .executor import BiomeExecutor
@@ -23,12 +23,10 @@ app = SafeTyper(
 )
 
 
-config: SachmisConfig = get_config()
-
-
 @app.command()
-def setup(name: args.Name = config.names.biome_file):
+def setup(name: args.Name = ""):
     """Create new Biome with global data structure"""
+    name: str = name or config().names.biome_file
     executor = BiomeExecutor()
     executor.execute(executor.create_new_biome, name)
 
@@ -39,7 +37,7 @@ def select():
     executor = BiomeExecutor()
 
     def _select() -> Biome:
-        biomes: list[Path] = list(get_config().paths.biome_files)
+        biomes: list[Path] = list(config().paths.biome_files)
         tui = ListSelectorApp(items=biomes, multi_select=False)
 
         if not (selected := tui.run()):
@@ -69,8 +67,7 @@ def show():
 
 
 def _load() -> Biome:
-    config = get_config()
-    biome_file = config.paths.biome_file()
+    biome_file = config().paths.biome_file()
     return Biome.read_mode(biome_file)
 
 
@@ -102,7 +99,7 @@ def forest_statistic(biome: Biome):
 
 def print_all_biome_files():
     printer.lines(
-        lines=list(get_config().paths.biome_files),
+        lines=list(config().paths.biome_files),
         title="Selecting from Biome Files",
     )
 

@@ -6,7 +6,7 @@ from sstcore import PathGuard
 from sstcore.data import SstFile
 from sstcore.utils.paint import ColorBox
 
-from ...config import SachmisConfig, get_config
+from ...config import config
 from ...config.models import uniques as model_uniques
 from ...config.names import id_keywords_backwards
 from ...exceptions import SachmisDataError, SachmisLaunchError
@@ -69,9 +69,8 @@ class FrontFileHandler:
         return f"{_front}[{_status} at {_write_dir}, {_result_files}]"
 
     def _relative_write_dir(self) -> Path:
-        config: SachmisConfig = get_config()
         return PathGuard.relative(
-            target=self.write_dir, root=config.paths.base_dir, strict=False
+            target=self.write_dir, root=config().paths.base_dir, strict=False
         )
 
     @property
@@ -121,17 +120,15 @@ class FrontFileHandler:
         self._print_for_init()
 
     def _print_for_init(self):  # NEXT: clean entry prints
-        config: SachmisConfig = get_config()
-        if not config.paths.in_forest:
+        if not config().paths.in_forest:
             printer.danger("Outside Forest Dir!")
         else:
-            relative_to_base = config.paths.cwd_to_base_dir()
+            relative_to_base = config().paths.cwd_to_base_dir()
             printer.title(f"Location: {relative_to_base=}", frame="purple")
 
     def _load_prompt_text(self):
-        config: SachmisConfig = get_config()
 
-        self.input_prompt_path: Path = config.paths.input_prompt
+        self.input_prompt_path: Path = config().paths.input_prompt
         # FIX: no PathGuard.file if wrong directory!
         logger.info(f"Loading prompt text from: {self.input_prompt_path=}")
 
@@ -141,12 +138,11 @@ class FrontFileHandler:
 
     def scan_forest(self):
         """Build Registry with FileTree of Forest Front View Files"""
-        config: SachmisConfig = get_config()
 
         self.registry: FrontFileRegistry = FrontFileRegistry.ready()
 
         if (tree_schema := self.registry.find_tree_above()) is None:
-            if not config.paths.cwd_in_top_dir:
+            if not config().paths.cwd_in_top_dir:
                 raise SachmisLaunchError("Bad Location, Sprout has not Tree!")
             self.scanned_tree_id = 0
         else:
@@ -203,10 +199,7 @@ class FrontFileHandler:
         return filtered_files
 
     def handle_response(self, response: Response):
-        config: SachmisConfig = get_config()
         logger.info(f"Handling {response=}")
-
-        # REMOVE:
         self.response = response
 
         if self.status == Status.UNDEFINED:
@@ -215,7 +208,7 @@ class FrontFileHandler:
             self._check_cwd_and_tasks()
             self.rotate_prompt(response.sprout_id, response.topic)
 
-        response_file: Path = config.paths.response_file(
+        response_file: Path = config().paths.response_file(
             self.write_dir, response.sprout_id, response.model, response.topic
         )
         logger.info(response_file)
@@ -223,9 +216,8 @@ class FrontFileHandler:
         response_file.write_text(response.content)
 
     def _check_cwd_and_tasks(self):
-        config: SachmisConfig = get_config()
 
-        if config.paths.cwd_in_top_dir:
+        if config().paths.cwd_in_top_dir:
             self.status: Status = Status.ROOT
             self.action_init()
             return
@@ -246,8 +238,7 @@ class FrontFileHandler:
 
     def rotate_prompt(self, sprout_id: int, topic: str):
         # TODO: self.topic or topic? drop at least 1
-        config: SachmisConfig = get_config()
-        prompt_path: Path = config.paths.prompt_file(
+        prompt_path: Path = config().paths.prompt_file(
             self.write_dir, sprout_id, topic
         )
         PathGuard.rotate(
@@ -259,10 +250,9 @@ class FrontFileHandler:
 
     def action_init(self):
         """Setup new tree dir"""
-        config: SachmisConfig = get_config()
         printer.header(f"Start of Init: {self.status}", frame="purple")
 
-        tree_stem: str = config.names.tree_stem(
+        tree_stem: str = config().names.tree_stem(
             self.response.tree_id, self.response.topic
         )
         printer(tree_stem)
@@ -277,11 +267,10 @@ class FrontFileHandler:
 
     def action_dig(self):
         """Make new subfolder and copy existing prompt/response"""
-        config: SachmisConfig = get_config()
         printer.header(f"Start of Dig: {self.status}", frame="purple")
 
-        previous_stem = config.names.response_stem(
-            self.response.sprout_id,  # FIX: previous sprout_id!!
+        previous_stem = config().names.response_stem(
+            self.response.sprout_id,
             self.response.model,
             self.response.topic,
         )

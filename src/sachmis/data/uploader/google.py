@@ -3,11 +3,9 @@ from typing import Any
 
 from loguru import logger
 
-from ...config import SachmisConfig, get_config
+from ...config import config
 from ..files import GoogleUploadState, UploadFile
 from .base import FileUploader
-
-config: SachmisConfig = get_config()
 
 
 class GoogleUploader(FileUploader):
@@ -31,7 +29,7 @@ class GoogleUploader(FileUploader):
     def _load_client(self):
         from google.genai import Client
 
-        self.client = Client(api_key=config.from_env(key="GEMINI_API_KEY"))
+        self.client = Client(api_key=config().from_env(key="GEMINI_API_KEY"))
         logger.info("Google Client loaded")
 
     def _fetch_all_files(self) -> list[Any]:

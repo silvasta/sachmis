@@ -2,11 +2,9 @@ from loguru import logger
 
 from sachmis.config.defaults import ModelParam
 
-from ...config import SachmisConfig, get_config
+from ...config import config
 from ...config.models import DummyFamily
 from .agent import Model
-
-config: SachmisConfig = get_config()
 
 
 class DummyModel(Model):
@@ -60,7 +58,7 @@ class DummyModel(Model):
         """
 
     def _extract_response_id(self) -> str:
-        return config.timestamp
+        return config().timestamp
 
     def _extract_usage(self) -> dict | None:
         return {"cost": "a lot"}

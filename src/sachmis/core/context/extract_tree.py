@@ -4,7 +4,7 @@ from loguru import logger
 
 from sachmis.utils import printer
 
-from ...config import SachmisConfig, get_config
+from ...config import config
 from ...data import DataManager
 from ...data.arboreal import ArborealTracker, Tree
 
@@ -28,12 +28,11 @@ class TreeExtractor(AbstractContextManager):
         logger.debug("Tree Data extracted - Closing Tree for now...")
 
     def __exit__(self, exc_type, _exc_val, _exc_tb):
-        config: SachmisConfig = get_config()
         logger.debug("...Tree Extractor ")
 
         if exc_type is not None:  # LATER: what can happen?
             logger.warning(f"Task failed with {exc_type.__name__}")
-            return config.defaults.context.tree_error.swallow
+            return config().defaults.context.tree_error.swallow
 
         logger.debug("Loading Tree...")
         with Tree.edit_mode(self.tracker.path) as tree:
@@ -42,4 +41,4 @@ class TreeExtractor(AbstractContextManager):
             printer(tree.dag)
 
         logger.debug("Tree closed - Data transferred back")
-        return config.defaults.context.tree_end.swallow
+        return config().defaults.context.tree_end.swallow

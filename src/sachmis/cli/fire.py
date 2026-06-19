@@ -4,7 +4,7 @@ from loguru import logger
 from sstcore.cli import sargs
 from sstcore.data import SstFile
 
-from ..config import SachmisConfig, get_config
+from ..config import config
 from ..core import capstone
 from ..core.model import Model
 from ..data import DataManager
@@ -16,8 +16,6 @@ from ..utils.parse import parse_raw_models
 from ..utils.print import printer
 from . import args
 from .sketch.model import model_family_table
-
-config: SachmisConfig = get_config()
 
 DEBUG = True
 
@@ -211,7 +209,7 @@ def _prepare_image_args(
     if images:  # Mirror = copy for CLI provided links
         prepared_images.extend(camp.images.mirror_from_path(source=images))
 
-    if (local_files := get_config().paths.local_file_dir).exists():
+    if (local_files := config().paths.local_file_dir).exists():
         camp.images.absorb_from_path(local_files)
 
     for image in prepared_images:
@@ -230,7 +228,7 @@ def _prepare_role(pick_role: bool) -> Path | None:
     printer.title("Preparing Role...")
 
     if pick_role:
-        roles: list[Path] = config.paths.role_paths(mode="all")  # PARAM:
+        roles: list[Path] = config().paths.role_paths(mode="all")  # PARAM:
         role: Path = selector.role_path(roles)
         logger.info(f"Selected Role: {role.stem}")
     else:

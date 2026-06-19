@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field, PrivateAttr, ValidationError
 from sstcore.data import SstFile
 from sstcore.utils.paint import ColorBox
 
-from ...config import SachmisConfig, get_config
+from ...config import config
 from ...exceptions import (
     ArborealError,
     ArborealFileMissingError,
@@ -54,10 +54,9 @@ class ArboView:  # LATER: check similar for SstFile
         """System local timezone creation string"""
         if not (created_at := getattr(self, "created_at", None)):
             return "N/A"
-        config: SachmisConfig = get_config()
         # LATER: printer dispatch for custom datetime prints
         return created_at.astimezone().strftime(
-            config.defaults.timestamp_format
+            config().defaults.timestamp_format
         )
 
     def __str__(self) -> str:

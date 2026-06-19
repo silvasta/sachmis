@@ -1,20 +1,18 @@
 from sstcore.cli import SafeTyper
 from sstcore.exceptions import TuiSelectorError
 
-from ..config import SachmisConfig, get_config
+from ..config import config
+from ..config.manager import config_loader
 from ..exceptions import ArborealFileError, SachmisLaunchError
 from ..utils import printer
 from . import command, subapp
 from .fire import fire
 from .thunder import thunder
 
-config: SachmisConfig = get_config()
-
-
 app = SafeTyper(
     name="sachmis",
     help="CLI for direct communication with LLMs",
-    param=config.setup_info,
+    config_loader=config_loader,
 )
 
 # core
@@ -23,7 +21,6 @@ app.command()(fire)
 
 # important
 app.command()(command.init)
-# app.command("roll")(command.rollout)
 
 # utils
 app.command("models")(command.model_display)
@@ -39,10 +36,10 @@ app.add_typer(subapp.utils)
 
 
 # DEBUG
-if config.defaults.debug.subapp:
+if config().defaults.debug.subapp:
     app.add_typer(subapp.debug)
 # TODO: some debug section? maybe own file?
-if config.defaults.debug.printer_debugs:
+if config().defaults.debug.printer_debugs:
     printer.project_debugs = True
 # DEBUG
 

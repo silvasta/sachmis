@@ -5,7 +5,7 @@ from pathlib import Path
 from loguru import logger
 from sstcore.utils import PathGuard
 
-from ..config import SachmisConfig, get_config
+from ..config import config
 from ..exceptions import ArborealFileMissingError
 from ..utils.print import printer
 from .arboreal import ArborealTracker, Biome
@@ -26,32 +26,31 @@ def _ensure_base_dir(base_name: str, root_dir: Path | None = None):
 
 
 def create_new_base(base_name: str | None = None):
-    config: SachmisConfig = get_config()
     logger.info("Create new Base with Forest")
 
-    if (biome_file := config.paths.unconfirmed_biome_file).exists():
+    if (biome_file := config().paths.unconfirmed_biome_file).exists():
         logger.info(f"Attaching new base to Biome: {biome_file.name}")
     else:
         logger.error("Biome needed for new Base!")
         logger.error("Check: sachmis biome {setup | show | select}")
         raise ArborealFileMissingError("Biome", biome_file)
 
-    if config.paths.in_forest:
+    if config().paths.in_forest:
         logger.error("Already in Base! No new Forest will be created.")
         return
 
-    base_name: str = base_name or config.names.base_dir
+    base_name: str = base_name or config().names.base_dir
     base_dir: Path = _ensure_base_dir(base_name)
 
     try:
         with chdir(base_dir):
-            PathGuard.dir(config.names.camp_dir)
-            Path(config.names.prompt).touch()
+            PathGuard.dir(config().names.camp_dir)
+            Path(config().names.prompt).touch()
             printer.success("Files and dirs ready: creating Forest now!")
 
-            forest_file: Path = config.paths.forest_file
+            forest_file: Path = config().paths.forest_file
 
-            with Biome.edit_mode(config.paths.biome_file()) as biome:
+            with Biome.edit_mode(config().paths.biome_file()) as biome:
                 forest_tracker: ArborealTracker = biome.attach_new_forest(
                     forest_file
                 )

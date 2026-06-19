@@ -5,12 +5,10 @@ from loguru import logger
 from pydantic import Field
 from sstcore.data import SstFile
 
-from ...config import SachmisConfig, get_config
+from ...config import config
 from ...exceptions import PromptError
 from ..files import Role, UploadFile
 from .base import SproutData
-
-config: SachmisConfig = get_config()
 
 
 class Prompt(SproutData):
@@ -70,7 +68,7 @@ class Prompt(SproutData):
         return self.content
 
     def _assemble_stem(self) -> str:
-        return config.names.prompt_stem(id=self.sprout_id, topic=self.topic)
+        return config().names.prompt_stem(id=self.sprout_id, topic=self.topic)
 
     @staticmethod
     def _find_topic(topic: str | None, content: str) -> str:
@@ -78,7 +76,7 @@ class Prompt(SproutData):
             return topic
         if topic := Prompt.extract_topic(content):
             return topic
-        return config.defaults.topic
+        return config().defaults.topic
 
     @staticmethod
     def extract_topic(prompt_text: str) -> str:

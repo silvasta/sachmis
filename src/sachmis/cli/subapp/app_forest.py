@@ -1,7 +1,7 @@
 from sstcore.cli import SafeTyper
 from sstcore.utils.paint import ColorBox
 
-from ...config import SachmisConfig, get_config
+from ...config import config
 from ...data.arboreal import ArborealTracker, Forest, Tree
 from ...utils.print import printer
 
@@ -19,11 +19,10 @@ app = SafeTyper(
 @app.command()
 def trees(id: int = 0):  # TASK:  generic for Arbo
     """Show statistics of active Forest"""
-    config: SachmisConfig = get_config()
 
-    printer.title(f"Loading {config.paths.forest_file}", style="warning")
+    printer.title(f"Loading {config().paths.forest_file}", style="warning")
 
-    forest: Forest = Forest.read_mode(config.paths.forest_file)
+    forest: Forest = Forest.read_mode(config().paths.forest_file)
     trees: list[ArborealTracker] = forest.trees
 
     for t in trees:
@@ -39,12 +38,11 @@ def trees(id: int = 0):  # TASK:  generic for Arbo
 @app.command()
 def stat():  # TASK:  generic for Arbo
     """Show statistics of active Forest"""
-    config: SachmisConfig = get_config()
     c: ColorBox = ColorBox.with_mode("bold")
 
-    printer.title(f"Loading {config.paths.forest_file}", style="warning")
+    printer.title(f"Loading {config().paths.forest_file}", style="warning")
 
-    forest: Forest = Forest.read_mode(config.paths.forest_file)
+    forest: Forest = Forest.read_mode(config().paths.forest_file)
     trees: list[ArborealTracker] = forest.trees
 
     printer.path_exists_table([tree.path for tree in trees])

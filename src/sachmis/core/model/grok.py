@@ -4,14 +4,12 @@ from xai_sdk import Client
 from xai_sdk.chat import Response, file, image, system, user
 from xai_sdk.sync.chat import Chat
 
-from ...config import SachmisConfig, get_config
+from ...config import config
 from ...config.defaults import GrokParam, ModelParam
 from ...config.models import Groks
 from ...data.files import XaiUploadState
 from ...exceptions import SachmisDataError
 from .agent import Model
-
-config: SachmisConfig = get_config()
 
 
 class Grok(Model):
@@ -25,7 +23,7 @@ class Grok(Model):
         """Load defaults if param not set"""
         # LATER: centralize
         if param is None:
-            param: GrokParam = config.defaults.grok
+            param: GrokParam = config().defaults.grok
         if isinstance(param, GrokParam):
             return param
         # LATER: imprve
@@ -33,7 +31,7 @@ class Grok(Model):
 
     def _load_client(self):
         self.client = Client(
-            api_key=config.from_env(key="XAI_API_KEY"),
+            api_key=config().from_env(key="XAI_API_KEY"),
             timeout=self.param.timeout,
         )
 
