@@ -10,8 +10,7 @@ from ..exceptions import ArborealFileMissingError
 from ..utils.print import printer
 from .arboreal import ArborealTracker, Biome
 
-# REFACTOR: Module: setup base? data handler? conductor?
-# - replace logger with printer for CLI stuff, how to do both? how to switch?
+# REFACTOR:  where to setup base? data handler? conductor?
 
 
 def _ensure_base_dir(base_name: str, root_dir: Path | None = None):
