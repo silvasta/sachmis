@@ -7,7 +7,7 @@ from ...data.conversation import PromptTransitionRules, ResponseTransitionRules
 from ...data.setup import create_new_base
 from ...utils.print import printer
 from .. import args
-from ..sketch.model import model_family_table
+from ..canvas.model import model_family_table
 
 
 def init(name: args.Name = ""):

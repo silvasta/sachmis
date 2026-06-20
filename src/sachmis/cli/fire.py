@@ -15,7 +15,7 @@ from ..tui import selector
 from ..utils.parse import parse_raw_models
 from ..utils.print import printer
 from . import args
-from .sketch.model import model_family_table
+from .canvas.model import model_family_table
 
 DEBUG = True
 
