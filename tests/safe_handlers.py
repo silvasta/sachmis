@@ -23,18 +23,17 @@ exceptions: dict[Exception, dict[str, Any]] = {
 
 def main(stress_test=True):
     """Run all Exception UI tests"""
+    breakpoint()
     for index, error in enumerate(exceptions.keys()):
-        error_name = printer.colors.red(error.__name__)
+        error_name: str = printer.colors.red(error.__name__)
         printer.debug(f"Testing: {error_name}")
         run_app(index, stress_test, error_name)
 
 
 @app.command()
 def throw(index: int):
-    printer("Start of throw")
     error, kwargs = list(exceptions.items())[index]
     raise error(**kwargs)
-    printer("End of throw")
 
 
 def run_app(index: int, stress_test=True, error_name: str = ""):
