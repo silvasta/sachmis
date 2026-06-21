@@ -1,0 +1,858 @@
+# Branding for `sachmis`
+
+## Next Steps
+
+Right now I am in the final refactoring (hopefully) for the project.
+
+`IretCamp` will be the new default name for the main local folder, replacing `base` that was too general.
+
+Beside that a proper name is nice it helps to find structure and order inside the project when everything is precisely named.
+
+**Decisions I recently took**
+
+- Only 1 `Manager` inside `sachmis.data`package: `DataManager`
+- Purpose and name of `CampManager` changes: it is no longer provided by `Forest`, it gets the same status (dependency level etc) and as well the same name suffix as the other handlers in `data`
+
+I introduced the handlers 2 weeks ago while refactoring the huge `DataManager`. 2 days ago I realized that my `cli.app.SafeTyper` needs like 10-20 Exception handlers and I created a new `cli.app.handlers` module. This is now confusing because of the `data.handler` package...
+
+- Exception handler need and get the universal name `handlers` therefore the name `data.handler` must be changed
+
+The good thing is, this happens now during the great refactoring.
+
+### TASKS
+
+In this order, the easy tasks first.
+
+- New name for `IretCamp/.camp`
+- Find new name and discuss final purpose for `data.handler` package:
+  - `data.camp.CampManager` move to: `data.{new_name}.Camp{NewName}`
+  - `data.handler.FrontFileHandler` responsible for public, not hidden files inside base: read prompt, scan folder and provide current model status for selection, write response and rotate prompt into same dir, create new empty prompt at old location
+  - `data.handler.runtime.DataHandler` responsible for hold and provide Prompt/Response bipartite DAG during runtime: extract DAG from Tree, create data package for Models, process response from Model, finally attach updates back to Tree.
+  - `data.uploader` package with diamond structure: 1 base, n=2 intermediate (`XaiUploader`, `GoogleUploader`), 1 connector. Depends on `data.files.UploadFile`, is responsible just to ensure local input files are available on the provider platform during runtime and to manage files on the platform (check status, upload, delete) while launched alone with `cli.subapp.files`
+  - final optimizations in file tree
+
+## FROM HERE
+
+- I chose oasis and operators.
+
+The outpost inside the camp makes somehow less sense, maybe the other way around but `IretOutpost is to long`
+
+### Ideas for `.camp`
+
+- `.akh` not bad but a bit too mystic?
+- `.vault` ok but for the simple data and config folder it sounds like very valuable
+- `.(s)oasis` ( the optional s for sachmis )
+- **`.oasis`** s no longer needed as already inside project,
+  - at least 1 Egypt related thing with at least something like a tree 🌴
+
+### Ideas for `data.handler`
+
+- staff, so far favourite
+- team
+- operatives
+- operator(s)
+- **operators**
+- squad (unsure)
+- worker (not bad)
+
+### Final process for operators
+
+Fine
+
+- **no Uploader here**
+- **CampOperator**
+
+Unsure
+
+- `FrontFileOperator`, I recently changed this name and I am still not happy...
+  - the name is paired with the module and registry in files
+  - before it was just `Rollout` but latests since `RolloutRegistry` that made no more sense...
+  - **Ideas how to name it?**
+
+- `RuntimeOperator` this one is not bad, initially it was the first handler, then Rollout was a derivative with the idea to create another derivative that works less with folders but with data only handled in background and rendered in camp just on request (that is still a plan but for now no priority)
+
+<!-- TODO: Check the file snippets below and provide new ideas for creative and expressive names -->
+
+```py
+# current data.handler.front
+from enum import StrEnum, auto
+from pathlib import Path
+
+from loguru import logger
+from sstcore import PathGuard
+from sstcore.data import SstFile
+from sstcore.utils.paint import ColorBox
+
+from ...config import config
+from ...config.models import uniques as model_uniques
+from ...config.names import id_keywords_backwards
+from ...exceptions import SachmisDataError, SachmisLaunchError
+from ...utils import model_from_unique, printer
+from ..conversation import Prompt, Response, SproutSelectData
+from ..files import FrontFileRegistry
+
+
+class Status(StrEnum):
+    """Govern the file system Operation Strategy and Execution"""
+
+    # NEXT: define proper status and link actions here!
+
+    UNDEFINED = auto()
+    ROOT = auto()
+    SINGLE = auto()
+    LONG = auto()
+    CROWD = auto()
+
+
+class FrontFileHandler:
+    """Manage Prompt and Response write to Forest dir"""
+
+    scanned_tree_id: int = 0
+    _prompt_text: str = ""
+    _topic: str = ""
+
+    status: Status = Status.UNDEFINED
+    write_dir: Path = Path.cwd()
+
+    _result_files: list[Path] = []
+
+    @property
+    def result_file_paths(self) -> list[Path]:
+        """Provide absolute Paths of already written result files"""
+        return self._result_files
+
+    def result_files_relative(
+        self,
+        root_dir: Path | None = None,
+    ) -> list[Path]:
+        """Provide relative Paths of already written result files"""
+        return list(
+            PathGuard.relative(target=path, root=root_dir, strict=False)
+            for path in self._result_files
+        )
+
+    @property
+    def topic(self):  # WARN: check how it is handed over and around!
+        """Ensure Handler has loaded a valid topic"""
+        if not (topic := self._topic):
+            name: str = self.__class__.__name__
+            SachmisDataError(f"{name} has no valid Prompt Topic!")
+        return topic
+
+    def __init__(self):
+        self._load_prompt_text()
+        self.scan_forest()
+        self._print_for_init()
+
+    def _print_for_init(self):  # NEXT: clean entry prints
+        if not config().paths.in_forest:
+            printer.danger("Outside Forest Dir!")
+        else:
+            relative_to_base = config().paths.cwd_to_base_dir()
+            printer.title(f"Location: {relative_to_base=}", frame="purple")
+
+    def _load_prompt_text(self):
+
+        self.input_prompt_path: Path = config().paths.input_prompt
+        # FIX: no PathGuard.file if wrong directory!
+        logger.info(f"Loading prompt text from: {self.input_prompt_path=}")
+
+        self._prompt_text: str = self.input_prompt_path.read_text()
+        self._topic: str = Prompt.extract_topic(self._prompt_text)
+        logger.info(f"Loaded prompt with Topic: {self.topic}")
+
+    def scan_forest(self):
+        """Build Registry with FileTree of Forest Front View Files"""
+
+        self.registry: FrontFileRegistry = FrontFileRegistry.ready()
+
+        if (tree_schema := self.registry.find_tree_above()) is None:
+            if not config().paths.cwd_in_top_dir:
+                raise SachmisLaunchError("Bad Location, Sprout has not Tree!")
+            self.scanned_tree_id = 0
+        else:
+            self.scanned_tree_id: int = tree_schema.tree_id
+
+    def models(self) -> list[SproutSelectData]:
+        """Provide Successor Models from CWD for Selection"""
+
+        model_select_data: list[SproutSelectData] = []
+
+        sprout_groups: dict[str, list[SstFile]] = (
+            self.registry.get_sprout_groups()
+        )
+        logger.info(f"Found {len(sprout_groups.keys())} Sprouts in CWD")
+
+        for _sprout_id_keyword, sprout_files in sprout_groups.items():
+            targets: dict[str, SstFile] = self._filter_by_model(sprout_files)
+            model_select_data.extend(self._create_select_data(targets))
+
+        return model_select_data
+    ...
+```
+
+```py
+
+# current data.files.front
+"""
+Organize FileTree of Base Directory as Front Side of Forest
+
+"""
+
+from collections import defaultdict
+from pathlib import Path
+from typing import Self
+
+from loguru import logger
+from sstcore import PathGuard
+from sstcore.data import FileRegistry, SstFile
+from sstcore.utils import FolderScanner, PathTreeNode, ProjectFilter
+from sstcore.utils.parse import ParsedName
+from sstcore.utils.tree import build_path_tree
+
+from ...config import config
+from ...config.models import uniques as model_uniques
+from ...config.names import TreeNameSchema
+from ...exceptions import SachmisLaunchError
+
+IGNORE_DIRS: set[str] = {".camp"}
+
+ALLOWED_EXTS: set[str] = {".md"}
+
+
+def plot():  # TASK: customize tree plot
+    _tree: PathTreeNode = build_path_tree(paths=[], root_name="name")
+
+
+# TODO: _create_local_file() will most likely fail?
+# - new FrontFile file tracker?
+# - or derive from SstFileRegistry
+class FrontFileRegistry(FileRegistry[SstFile]):
+    tree_parser: ParsedName
+    prompt_parser: ParsedName
+    response_parser: ParsedName
+    scanner: FolderScanner
+    _sync_mode: PathGuard.SyncMode = PathGuard.SyncMode.OVERRIDE
+
+  ...
+```
+
+```py
+# data.handler.runtime
+import uuid
+
+from loguru import logger
+from sstcore.utils.paint import ColorBox
+
+from ...exceptions import SachmisDataError
+from ...utils import printer
+from ..arboreal import ArborealTracker, Tree
+from ..conversation import Prompt, Response, SelectedSproutData, SproutDAG
+from ..conversation.dag import ResponseNode
+from ..conversation.fusion import SproutPackage
+
+
+class DataHandler:
+    _tree_tracker: ArborealTracker[Tree] | None = None
+    _initial_prompt: Prompt | None = None
+
+    _dag_of_entire_tree: SproutDAG | None = None
+    _growing_dag: SproutDAG | None = None
+
+    _sprout_registry: dict[str, str | None] = {}  # [next, prev]
+
+    def __init__(self, tracker: ArborealTracker[Tree]):
+        self._tree_tracker: ArborealTracker[Tree] = tracker
+
+    @property
+    def tree_tracker(self) -> ArborealTracker[Tree]:
+        if not self._tree_tracker:
+            raise SachmisDataError("Missing Tracker!")
+        return self._tree_tracker
+
+    @property
+    def tree_id(self) -> int:
+        return self.tree_tracker.local_id
+
+    @property
+    def prompt(self) -> Prompt:
+        if not self._initial_prompt:
+            raise SachmisDataError("No Initial Prompt loaded, wait for Tree")
+        return self._initial_prompt
+
+    @property
+    def growing_dag(self) -> SproutDAG:
+        if not self._growing_dag:
+            raise SachmisDataError("No DAG loaded, can't provide DAG")
+        return self._growing_dag
+
+    @property
+    def tree_dag(self) -> SproutDAG:
+        if not self._dag_of_entire_tree:
+            raise SachmisDataError("No DAG loaded, can't provide DAG")
+        return self._dag_of_entire_tree
+
+    def extract_data_from_tree(self, tree: Tree, topic: str, prompt_text: str):
+        """Transform Tree Data to new Prompt and setup DAG"""
+
+        self._initial_prompt: Prompt = Prompt.from_text(
+            content=prompt_text,
+            sprout_id=tree.next_sprout_id(),
+            topic=topic,  # LATER: check when to extract/slugify
+            tree_id=self.tree_id,
+        )
+        self._dag_of_entire_tree: SproutDAG = tree.export_dag()
+        self._growing_dag: SproutDAG = SproutDAG.init(self._initial_prompt)
+
+        logger.debug(f"result: {self}")
+        self._print_extracted_dag()
+
+    def _print_extracted_dag(self):
+        printer(self._cli)
+        # printer.debug("Tree DAG", self.tree_dag._cli)
+        # printer.debug("Sprout DAG", self.growing_dag._cli, stop=True)  # NEXT:
+
+    def prepare_package(self, selection: SelectedSproutData) -> SproutPackage:
+        """Load SproutPackage with everything needed sfor a new DAG"""
+
+        # NEXT: selection->data
+        # NEXT: selection->data
+        # NEXT: selection->data
+        # NEXT: selection->data
+        # NEXT: selection->data
+        logger.debug(f"Creating package for {selection=}")
+
+        if selection.sprout_id == 0:  # case root (or fail)
+            previous_response_id = None
+            previous_remote_id = None
+
+        elif node := self.tree_dag.find_previous_model_response_from_sprout(
+            selection.model, selection.sprout_id
+        ):
+            previous_response_id: str = node.response.unique_id
+            previous_remote_id: str = node.response.remote_id
+
+        else:  # TODO: here below, a bit confusing?
+            raise SachmisDataError(f"Missing Selected Model: {selection=}")
+
+        next_response_id: str = str(uuid.uuid4())
+        self._sprout_registry[next_response_id] = previous_response_id
+        logger.debug(
+            "attached to sprout_registry:\n"
+            f"{next_response_id=}\n{previous_response_id=}"
+        )
+        # REFACTOR: package with everything and only everything that is needed
+        return SproutPackage(
+            model=selection.model,
+            prompt=self.prompt,
+            next_response_id=next_response_id,
+            previous_response_id=previous_response_id,
+            previous_remote_id=previous_remote_id,
+        )
+
+    def handle_response(self, response: Response):
+        """Process the received Prompt or Response with your Schema"""
+
+        logger.info(f"Handling {response=}")
+
+        if response.unique_id not in self._sprout_registry:
+            # TASK: create special Error: handle response temp_bak_file
+            raise SachmisDataError("Failed Response ID handling...")
+
+        new_node: ResponseNode = ResponseNode.from_response(response)
+        self.growing_dag.attach_leaf(self.prompt.unique_id, new_node)
+   ...
+```
+
+<!-- NEXT: stop here -->
+<!-- NEXT: stop here -->
+<!-- NEXT: stop here -->
+<!-- NEXT: stop here -->
+<!-- NEXT: stop here -->
+<!-- NEXT: stop here -->
+<!-- NEXT: stop here -->
+<!-- NEXT: stop here -->
+<!-- NEXT: stop here -->
+<!-- NEXT: stop here -->
+<!-- NEXT: stop here -->
+
+## Info about camp
+
+`.camp` is the local data and config folder, managed by `CampManager`
+
+I can easily replace the existing `camp_dir`:
+
+```sh
+silvan@omen-u2604:~/latest-sachmis|latest 
+⇒  rg "camp_dir"
+note.md
+342:            PathGuard.dir(config().names.camp_dir)
+
+configs/settings.json
+12:    "camp_dir": ".camp",
+
+src/sachmis/exceptions/launch.py
+15:    """Current Task needs CWD inside camp_dir"""
+
+src/sachmis/data/setup.py
+46:            PathGuard.dir(config().names.camp_dir)
+
+src/sachmis/config/names.py
+26:    camp_dir: str = ".camp"
+
+src/sachmis/config/paths.py
+77:            path=Path.cwd(), indicator=self._names.camp_dir
+109:            logger.debug(f"Inside {self.camp_dir_as_parent=}")
+115:    def camp_dir_as_parent(self):
+117:            path=Path.cwd(), parent_dir_name=self._names.camp_dir
+125:    def camp_dir(self) -> Path:
+126:        return self.base_dir / self._names.camp_dir
+131:        return self.camp_dir / self._names.forest_file
+137:        return self.camp_dir / self._names.tree_dir
+154:        return self.camp_dir / self._names.file_dir
+164:        return self.camp_dir / self._names.image_dir
+189:        return self.camp_dir / self._names.role_dir
+```
+
+`CampManager` is like the runtime Forest equipped with powerful registries:
+
+```py
+# sachmis.data.camp
+from pathlib import Path
+
+from loguru import logger
+from sstcore.data import SstFile, SstFileRegistry
+from sstcore.utils import PathFilter
+
+from ..config import config
+from ..exceptions import DataRuntimeError
+from ..utils.print import printer
+from .files import Role, RoleRegistry, UploadFile, UploadRegistry
+
+
+class CampManager:
+    """Manage local utilities that are not covered by the Forest"""
+
+    # LATER:
+    # TASK: hardlink registry for git-like Code Trees
+    # - check sstcore.data.files_todo
+
+    roles: RoleRegistry
+    files: UploadRegistry
+    images: SstFileRegistry
+
+    def __init__(
+        self,
+        roles: RoleRegistry | None = None,
+        files: UploadRegistry | None = None,
+        images: SstFileRegistry | None = None,
+    ):
+
+        # Files Setup
+        self.files = files or UploadRegistry(
+            local_root=Path(config().paths.file_dir)
+        )
+        if not hasattr(self.files, "scanner") or self.files.scanner is None:
+            self.files.setup_scanner(PathFilter())
+
+        # Images Setup
+        self.images = images or SstFileRegistry(
+            local_root=Path(config().paths.image_dir)
+        )
+        if not hasattr(self.images, "scanner") or self.images.scanner is None:
+            self.images.setup_scanner(PathFilter())
+
+        # Roles Setup
+        self.roles = roles or RoleRegistry(
+            local_root=Path(config().paths.camp_role_dir)
+        )
+        if not hasattr(self.roles, "scanner") or self.roles.scanner is None:
+            self.roles.setup_scanner(PathFilter())
+
+        logger.info("setup complete")
+
+    def load_role(self, role: Path | None = None) -> Role | None:
+        """Great pipeline still in construction"""
+        if role is not None:
+            if not role.is_file():
+                logger.warning(f"Invalid path: {role=}")
+            return Role.read(path=role)
+
+    def attach_from_camp_folder(self) -> list[UploadFile]:
+
+        new_files: list[UploadFile] = (
+            self.files.attach_new_files_from_local_folder()
+        )
+        printer.lines_with_len(  # MOVE: to CLI
+            name="New Files",
+            lines=[file.description for file in new_files],
+        )
+        logger.error("Move to CLI!!!!")
+
+        return new_files
+
+    def absorb_files(self, paths: Path | list[Path]) -> list[UploadFile]:
+        """Move files at path location into camp and registry"""
+        return self.files.absorb_from_path(paths)
+
+    def mirror_files(self, paths: Path | list[Path]) -> list[UploadFile]:
+        """Copy files at path location into camp and registry"""
+        return self.files.mirror_from_path(paths)
+
+    def absorb_images(self, paths: Path | list[Path]) -> list[SstFile]:
+        """Move images at path location into camp and registry"""
+        return self.images.absorb_from_path(paths)
+
+    def mirror_images(self, paths: Path | list[Path]) -> list[SstFile]:
+        """Copy images at path location into camp and registry"""
+        return self.images.mirror_from_path(paths)
+
+    def mirror_roles(self, paths: Path | list[Path]) -> list[Role]:
+        """Copy images at path location into camp and registry"""
+        return self.roles.mirror_from_path(paths)
+
+    def prepare_and_load(self, files: list[Path] | None) -> list[UploadFile]:
+        # LATER: integrate pick here?
+        # - probably not the pick but the match and load after pick
+
+        prepared_files: list[UploadFile] = []
+
+        if files:  # Mirror = copy for CLI provided links
+            prepared_files.extend(self.files.mirror_from_path(source=files))
+
+        local_files: Path = config().paths.local_file_dir
+
+        if local_files.exists():
+            prepared_files.extend(self.files.absorb_from_path(local_files))
+
+        for file in prepared_files:
+            if not file.confirm_local_status(self.files.local_root):
+                raise DataRuntimeError(f"Failed to Import {file=}")
+
+        return prepared_files
+
+```
+
+Earlier it made sense that Forest provides `camp: CampManager`
+
+```py
+# sachmis.data.arboreal.tree
+from pathlib import Path
+from typing import Self
+
+from loguru import logger
+from sstcore.data import FileRegistry, SstFileRegistry
+
+from ...config import config
+from ...exceptions import ArborealRegistryMissingError
+from ..camp import CampManager
+from ..files import RoleRegistry, UploadRegistry
+from .base import Arboreal, ArborealTracker
+from .tree import Tree
+
+
+class Forest(Arboreal[Tree]):
+    """Master Tree File: Data of all Trees and Sprouts in Base"""
+
+    roles: RoleRegistry
+    files: UploadRegistry
+    images: SstFileRegistry
+
+    @property
+    def n_files(self) -> int:
+        return self.files.n_files
+
+    @property
+    def n_images(self) -> int:
+        return self.images.n_files
+
+    @property
+    def n_trees(self) -> int:
+        """Calculated by num trackers"""
+        return self.registry.n_trackers
+
+    @property
+    def trees(self) -> list[ArborealTracker]:
+        """Serialized part of registry with UUID and ArborealTracker"""
+        return self.registry.all_trackers
+
+    @property
+    def missing_trees(self) -> list[ArborealTracker]:
+        return self.registry.tracker_with_invalid_paths()
+
+    # TODO:
+    # def n_sprouts(self) -> int:
+    #     return sum(tree.n_sprouts for tree in self.loaded_trees)
+
+    ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
+    ### -- Forest - Custom Functions
+    ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
+
+    @classmethod
+    def with_camp(
+        cls, path: Path, local_id: int, camp: CampManager | None = None
+    ) -> Self:
+        camp: CampManager = camp or CampManager()
+        return cls.create_with_tracker(
+            path=path,
+            local_id=local_id,
+            roles=camp.roles,
+            files=camp.files,
+            images=camp.images,
+        )
+
+    def get_camp(self) -> CampManager:
+        """Attach registry to new CampManager"""
+        return CampManager(
+            roles=self.roles,
+            files=self.files,
+            images=self.images,
+        )
+
+    def attach_camp_back_by_mirror(self, camp: CampManager):
+        """Simply Mirror the changes since Extraction"""
+
+        self._attach_back(self.roles, camp.roles)
+        self._attach_back(self.files, camp.files)
+        self._attach_back(self.images, camp.images)
+
+    @staticmethod
+    def _attach_back[RegistryT: FileRegistry](
+        forest: RegistryT, camp: RegistryT
+    ):
+        """Mirror, Log and Print"""  # TODO: update status
+        new: list = forest.mirror_from_registry(external_registry=camp)
+        name: str = camp.__class__.__name__
+        # printer.lines(header=f"New Files from {name} to Forest", lines=new)
+        logger.info(f"loaded {len(new)} Files from Camp {name} to Forest")
+
+    ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
+    ### -- Tree - Access to Member
+    ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
+
+    def provide_tree(self, tree_id: int) -> ArborealTracker:
+        if tree := self.find_tree_by_local_id(tree_id):
+            return tree
+        raise ArborealRegistryMissingError("Forest", "Tree", f"{tree_id=}")
+
+    def find_tree_by_local_id(self, id: int) -> ArborealTracker | None:
+        return self.registry.find_tracker_by_local_id(id)
+
+    def attach_tree(
+        self, tree: Tree, tree_file: Path, local_id: int
+    ) -> ArborealTracker:
+        logger.info(f"Attaching {tree} with {tree_file=}")
+        return self.registry.attach(
+            arboreal=tree, path=tree_file, local_id=local_id
+        )
+
+    def attach_new_tree(self, topic: str) -> ArborealTracker[Tree]:
+        """Create new Tree with initial Sprout"""
+
+        tree_id: int = self._next_instance_id()
+        tree_file: Path = config().paths.tree_file(id=tree_id, topic=topic)
+
+        new_tree: Tree = self._setup_tree(tree_file, local_id=tree_id)
+        new_tree.save_state(tree_file, lock_required=False)
+
+        return self.attach_tree(
+            tree=new_tree, tree_file=tree_file, local_id=tree_id
+        )
+
+    def _setup_tree(self, tree_file: Path, local_id: int) -> Tree:
+        return Tree.create_with_tracker(path=tree_file, local_id=local_id)
+
+```
+
+But since I refactored `sachmis.data` and created different `DataHandler` that are on second highest level (just below `DataManager`) it makes no sense to let `CampManager` be dependent on `data.arboreal` and not one of the Handlers
+
+When I invert dependencies to camp imports Forest, then I can attach the `base` (now `IretCamp`) folder creation to camp and resolve the lonely module `setup.py`.
+
+```py
+# sachmis.data.setup
+import shutil
+from contextlib import chdir
+from pathlib import Path
+
+from loguru import logger
+from sstcore.utils import PathGuard
+
+from ..config import config
+from ..exceptions import ArborealFileMissingError
+from ..utils.print import printer
+from .arboreal import ArborealTracker, Biome
+
+# REFACTOR:  where to setup base? data handler? conductor?
+
+
+def _ensure_base_dir(base_name: str, root_dir: Path | None = None):
+    base_dir: Path = (root_dir or Path.cwd()) / base_name
+
+    if base_dir != (unique_base_dir := PathGuard.unique(base_dir)):
+        printer.danger(f"Detected Folder with new {base_name=}!")
+        logger.warning(f"Using: {unique_base_dir=}")
+        base_dir: Path = unique_base_dir
+
+    return PathGuard.dir(base_dir)
+
+
+def create_new_base(base_name: str | None = None):
+    logger.info("Create new Base with Forest")
+
+    if (biome_file := config().paths.unconfirmed_biome_file).exists():
+        logger.info(f"Attaching new base to Biome: {biome_file.name}")
+    else:
+        logger.error("Biome needed for new Base!")
+        logger.error("Check: sachmis biome {setup | show | select}")
+        raise ArborealFileMissingError("Biome", biome_file)
+
+    if config().paths.in_forest:
+        logger.error("Already in Base! No new Forest will be created.")
+        return
+
+    base_name: str = base_name or config().names.base_dir
+    base_dir: Path = _ensure_base_dir(base_name)
+
+    try:
+        with chdir(base_dir):
+            PathGuard.dir(config().names.camp_dir)
+            Path(config().names.prompt).touch()
+            printer.success("Files and dirs ready: creating Forest now!")
+
+            forest_file: Path = config().paths.forest_file
+
+            with Biome.edit_mode(config().paths.biome_file()) as biome:
+                forest_tracker: ArborealTracker = biome.attach_new_forest(
+                    forest_file
+                )
+
+    except Exception as error:  # clean up in any case
+        logger.error("Failed to create base!")
+        shutil.rmtree(base_dir)
+        raise error
+
+    logger.info(  # TODO: stat print instead of full tracker
+        f"New Base Created: {forest_tracker=}"
+    )
+```
+
+## current file tree
+
+```sh
+.
+├── __init__.py
+├── __main__.py
+├── cli
+│   ├── __init__.py
+│   ├── app.py
+│   ├── args.py
+│   ├── canvas
+│   │   ├── __init__.py
+│   │   └── model.py
+│   ├── command
+│   │   ├── __init__.py
+│   │   └── collection.py
+│   ├── fire.py
+│   ├── handlers.py
+│   ├── subapp
+│   │   ├── __init__.py
+│   │   ├── app_forest.py
+│   │   ├── biome.py
+│   │   ├── debug.py
+│   │   ├── executor.py
+│   │   ├── files.py
+│   │   └── utils.py
+│   └── thunder.py
+├── config
+│   ├── __init__.py
+│   ├── defaults.py
+│   ├── manager.py
+│   ├── models
+│   │   ├── __init__.py
+│   │   ├── dummy.py
+│   │   ├── family.py
+│   │   ├── gemini.py
+│   │   └── grok.py
+│   ├── names.py
+│   ├── paths.py
+│   └── settings.py
+├── core
+│   ├── __init__.py
+│   ├── capstone.py
+│   ├── context
+│   │   ├── __init__.py
+│   │   ├── extract_forest.py
+│   │   └── extract_tree.py
+│   ├── model
+│   │   ├── __init__.py
+│   │   ├── agent.py
+│   │   ├── dummy.py
+│   │   ├── gemini.py
+│   │   ├── grok.py
+│   │   └── launch.py
+│   ├── retry
+│   │   ├── __init__.py
+│   │   ├── base.py
+│   │   ├── _todo_tenacity.py
+│   └── sprout.py
+├── data
+│   ├── __init__.py
+│   ├── arboreal
+│   │   ├── __init__.py
+│   │   ├── base.py
+│   │   ├── biome.py
+│   │   ├── forest.py
+│   │   └── tree.py
+│   ├── camp.py
+│   ├── conversation
+│   │   ├── __init__.py
+│   │   ├── base.py
+│   │   ├── base_dag.py
+│   │   ├── dag.py
+│   │   ├── fusion.py
+│   │   ├── prompt.py
+│   │   ├── response.py
+│   │   └── rules.py
+│   ├── files
+│   │   ├── __init__.py
+│   │   ├── front.py
+│   │   ├── role.py
+│   │   └── upload.py
+│   ├── handler
+│   │   ├── __init__.py
+│   │   ├── front.py
+│   │   └── runtime.py
+│   ├── manager.py
+│   ├── setup.py
+│   └── uploader
+│       ├── __init__.py
+│       ├── base.py
+│       ├── google.py
+│       ├── uploader.py
+│       └── xai.py
+├── tui
+│   ├── __init__.py
+│   ├── app.py
+│   ├── app.tcss
+│   └── selector.py
+└── utils
+    ├── __init__.py
+    ├── image.py
+    ├── ndjson.py
+    ├── parse.py
+    └── print.py
+```
+
+## Process Response Алиса
+
+Ideas for `.camp`:
+
+- `.akh` not bad but a bit too mystic?
+- `.vault` ok but the simple util folder sounds like to valuable
+
+Ideas for `data.handler`:
+
+- staff
+- team
+- operatives
+- operator(s)
