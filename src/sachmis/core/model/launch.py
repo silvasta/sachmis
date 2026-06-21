@@ -30,7 +30,9 @@ def sequential_pipeline(models: list[Model]):
         try:
             model.assemble_prompt()
             model.fire()
-        except Exception as e:
+        except Exception as e:  # NEXT: catch this proper!
+            # NEXT: ensure log in any launch function tracks everything!
+            # NEXT: infrom SO about fail (mainly for async)
             logger.error(
                 f"Problem with {model}:"
                 f"{model.model.unique} caused {type(e)}, details:\n{e}"
@@ -61,10 +63,13 @@ def async_pipeline(models: list[Model]):
 
     async def pipeline(models: list[Model]):
         printer.title(f"Launching Thunder with {len(models)} models")
+
         tasks: list = [model.fire() for model in models]
         results = await tqdm.gather(*tasks, return_exceptions=True)
+
         for model, result in zip(models, results, strict=False):
             model.assemble_prompt()  # WARN: model.assemble_prompt() needed, proper here?
+
             if isinstance(result, Exception):
                 logger.error(
                     f"Problem with model {model.model.unique}: {result}"

@@ -14,8 +14,6 @@ app = SafeTyper(
 )
 
 # core
-# printer.warn("Thunder")
-# printer.danger("Fire")
 app.command()(thunder)
 app.command()(fire)
 
@@ -24,19 +22,19 @@ app.command()(command.init)
 
 # utils
 app.command("models")(command.model_display)
-app.command()(command.rules)  # TODO: check
+app.command()(command.rules)  # REMOVE: until needed, ensure not  forget
 app.command("config")(command.config_details)
 
 # nested
 app.add_typer(subapp.files)
 app.add_typer(subapp.biome)
 app.add_typer(subapp.forest)
-# app.add_typer(subapp.tree) # TASK: change to tree handler?
 app.add_typer(subapp.utils)
 
 
-# TASK: where to place? DEBUG
-app.add_typer(subapp.debug)
-printer.project_debugs = True
+app.add_typer(subapp.debug)  # TODO: where to place? DEBUG
+# printer.project_debugs = True
 
 attach_handlers(app)
+
+printer.success("Handler Attached to SafeTyper")
