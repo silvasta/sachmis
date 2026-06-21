@@ -12,13 +12,13 @@ from ...config.names import id_keywords_backwards
 from ...exceptions import SachmisDataError, SachmisLaunchError
 from ...utils import model_from_unique, printer
 from ..conversation import Prompt, Response, SproutSelectData
-from ..files.front import FrontFileRegistry
+from ..files import FrontFileRegistry
 
 
 class Status(StrEnum):
-    """Status of CWD Folder and Files"""
+    """Govern the file system Operation Strategy and Execution"""
 
-    # NEXT: define status
+    # NEXT: define proper status and link actions here!
 
     UNDEFINED = auto()
     ROOT = auto()
@@ -38,58 +38,6 @@ class FrontFileHandler:
     write_dir: Path = Path.cwd()
 
     _result_files: list[Path] = []
-
-    ### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --
-    ### START of Representation
-    ### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --
-
-    def __repr__(self):
-        front: str = type(self).__name__
-        return (
-            f"{front}("
-            f"scanned_tree_id={self.scanned_tree_id}, "
-            f"_topic={self._topic!r}, "
-            f"status={self.status}, "
-            f"write_dir={self.write_dir}, "
-            f"result_files_count={len(self._result_files)}"
-            f")"
-        )
-
-    def __str__(self) -> str:
-        return self._assemble_str()
-
-    def _assemble_str(self, status="", write_dir=None, front=""):
-        """Dispatch for __str__ and colorful: defaults for __str__"""
-        _front: str = front or type(self).__name__
-
-        _status = status or self.status
-        _write_dir = write_dir or self._relative_write_dir()
-        _result_files = f"{len(self._result_files)} result files written"
-
-        return f"{_front}[{_status} at {_write_dir}, {_result_files}]"
-
-    def _relative_write_dir(self) -> Path:
-        return PathGuard.relative(
-            target=self.write_dir, root=config().paths.base_dir, strict=False
-        )
-
-    @property
-    def colorful(self) -> str:
-        c: ColorBox = ColorBox.with_mode("bold")
-        front: str = c.magenta(type(self).__name__)
-        # LATER: dispatch by status (inside Status)
-        status = c.cyan(self.status)
-        # LATER: provide path formatting better than this
-        write_dir = printer._format(self._relative_write_dir())
-        return c.white(self._assemble_str(status, write_dir, front))
-
-    @property
-    def _cli(self) -> str:
-        return self.colorful
-
-    ### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --
-    ### END of Representation
-    ### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --
 
     @property
     def result_file_paths(self) -> list[Path]:
@@ -276,3 +224,55 @@ class FrontFileHandler:
         )
         self.write_dir: Path = PathGuard.dir(previous_stem)
         logger.info(f"Target Dir created: {previous_stem}")
+
+    ### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --
+    ### START of Representation
+    ### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --
+
+    def __repr__(self):
+        front: str = type(self).__name__
+        return (
+            f"{front}("
+            f"scanned_tree_id={self.scanned_tree_id}, "
+            f"_topic={self._topic!r}, "
+            f"status={self.status}, "
+            f"write_dir={self.write_dir}, "
+            f"result_files_count={len(self._result_files)}"
+            f")"
+        )
+
+    def __str__(self) -> str:
+        return self._assemble_str()
+
+    def _assemble_str(self, status="", write_dir=None, front=""):
+        """Dispatch for __str__ and colorful: defaults for __str__"""
+        _front: str = front or type(self).__name__
+
+        _status = status or self.status
+        _write_dir = write_dir or self._relative_write_dir()
+        _result_files = f"{len(self._result_files)} result files written"
+
+        return f"{_front}[{_status} at {_write_dir}, {_result_files}]"
+
+    def _relative_write_dir(self) -> Path:
+        return PathGuard.relative(
+            target=self.write_dir, root=config().paths.base_dir, strict=False
+        )
+
+    @property
+    def colorful(self) -> str:
+        c: ColorBox = ColorBox.with_mode("bold")
+        front: str = c.magenta(type(self).__name__)
+        # LATER: dispatch by status (inside Status)
+        status = c.cyan(self.status)
+        # LATER: provide path formatting better than this
+        write_dir = printer._format(self._relative_write_dir())
+        return c.white(self._assemble_str(status, write_dir, front))
+
+    @property
+    def _cli(self) -> str:
+        return self.colorful
+
+    ### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --
+    ### END of Representation
+    ### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --

@@ -24,11 +24,11 @@ IGNORE_DIRS: set[str] = {".camp"}
 ALLOWED_EXTS: set[str] = {".md"}
 
 
-def plot():  # NEXT: tree plot
+def plot():  # TASK: customize tree plot
     _tree: PathTreeNode = build_path_tree(paths=[], root_name="name")
 
 
-# FIX: _create_local_file() will most likely fail?
+# TODO: _create_local_file() will most likely fail?
 # - new FrontFile file tracker
 # - or derive from SstFileRegistry
 class FrontFileRegistry(FileRegistry[SstFile]):
