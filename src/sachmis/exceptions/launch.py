@@ -1,27 +1,23 @@
 from .base import SachmisLaunchError
 
-
-class NotInForestError(FileNotFoundError, SachmisLaunchError):
-    """Current Task needs CWD inside base_dir with Forest"""
-
-    def __init__(self, message=None):
-        if message is None:
-            super().__init__(_message_not_in("Base with Forest"))
-        else:
-            super().__init__(message)
+# IDEA:s config, cli(after launch), ....
 
 
 class NotInCampError(FileNotFoundError, SachmisLaunchError):
-    """Current Task needs CWD inside camp_dir"""
+    """Launch needs CWD inside IretCamp with Forest and sOasis"""
 
-    def __init__(self, message=None):
+    def __init__(
+        self,
+        # IDEA: this in root? with always forward, sometimes use?
+        message=None,
+    ):
         if message is None:
             super().__init__(_message_not_in("Camp of Forest and Base"))
         else:
             super().__init__(message)
 
 
-# MOVE: to error handling in app
+# REFACTOR: to error handling in app
 def _message_not_in(identifier) -> str:
     return (
         f"\nCurrent location not in {identifier}!"
