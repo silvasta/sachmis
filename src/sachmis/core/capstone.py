@@ -72,17 +72,20 @@ class Fire(AbstractContextManager):
         return self.agents
 
     def launch(self, use_async=False, dry_run=False):
+        # IMPORTANT: save launch
+        # TASK: catch!
         launch.models(self.agents, use_async, dry_run)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        # NEXT: ensure Fire.__exit__
         return self.stack.__exit__(exc_type, exc_val, exc_tb)
 
     def __repr__(self):
-        name = f"{self.__class__.__name__}Contex"
+        name = f"{type(self).__name__}Contex"  # TODO: replace Contex->Session?
         if hasattr(self.stack, "_exit_callbacks"):
             if isinstance(self.stack._exit_callbacks, deque):
                 stack = f"{len(self.stack._exit_callbacks)} Stacks"
         else:
-            stack = "Exitstack"
+            stack = "Exitstack"  # TODO: is this empty? name it like that
         models = f"{len(self.agents)} loaded Models"
         return f"{name} with {stack} and {models}"

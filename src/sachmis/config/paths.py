@@ -12,10 +12,9 @@ from sstcore.utils.path import (
 )
 
 from ..exceptions import (
-    ArborealFileExistsError,
-    ArborealFileMissingError,
+    ArborealDataError,
+    ArborealTrackingError,
     NotInCampError,
-    NotInForestError,
 )
 from .defaults import Defaults
 from .names import Names
@@ -30,7 +29,7 @@ class Paths(SstPaths[Names, Defaults]):
 
     @property
     def biome_dir(self) -> Path:
-        return self.data_home
+        return self.data_home / "biome"
 
     def biome_file(self, filename: str | None = None) -> Path:
         """Path to active Biome File or Error"""
@@ -38,7 +37,7 @@ class Paths(SstPaths[Names, Defaults]):
             return PathGuard.file(target=self._biome_file(filename))
         except FileNotFoundError as error:
             logger.error(f"Missing biome: {error=}")
-        raise ArborealFileMissingError("Biome", self._biome_file())
+        raise ArborealTrackingError("Biome", self._biome_file())
 
     def _biome_file(self, filename: str | None = None) -> Path:
         """path constructor class"""
@@ -65,54 +64,48 @@ class Paths(SstPaths[Names, Defaults]):
         new_biome_file: Path = self._biome_file(biome_filename)
 
         if new_biome_file in self.biome_files:
-            raise ArborealFileExistsError("Biome", new_biome_file)
+            raise ArborealDataError("Biome", new_biome_file)
 
         logger.success(f"Created Path for new Biome: {new_biome_file=}")
 
         return new_biome_file
 
     @property
-    def base_dir(self) -> Path:
+    def iret_camp_dir(self) -> Path:
         root: Path | None = recursive_root(
-            path=Path.cwd(), indicator=self._names.camp_dir
+            # NEXT: control everywhere adapteda!
+            path=Path.cwd(),
+            indicator=self._names.camp_dir,
         )
         if root is None:
-            raise NotInForestError
+            raise NotInCampError
         return root
 
     @property
-    def cwd_in_top_dir(self) -> bool:
-        """Tree Folder Level: Error for outside Forest"""
-        return Path.cwd() == self.base_dir
+    def inside_camp(self) -> bool:
+        """Answer if the current Location is inside any IretCamp"""
+        return Path.cwd() == self.iret_camp_dir
 
-    def cwd_to_base_dir(self, strict=True) -> Path:
-        """Error for outside Forest, try with strict=False for ../../path"""
+    def cwd_location_from_iret(self, strict=True) -> Path:
+        """Provide relative Path from camp root to CWD or Raise"""
         return PathGuard.relative(
-            target=Path.cwd(), root=self.base_dir, strict=strict
+            target=Path.cwd(), root=self.iret_camp_dir, strict=strict
         )
 
-    @property
-    def in_forest(self) -> bool:
-        with suppress(NotInForestError):
-            logger.debug(f"Inside {self.base_dir=}")
-            if self._this_executes_only_when_base_dir_exists():
-                return True
-        return False
-
-    def _this_executes_only_when_base_dir_exists(self) -> bool:
+    def _this_executes_only_when_iret_camp_dir_exists(self) -> bool:
         """Trick the ty-pe checker and provide clear suppress"""
         return True
 
     @property
-    def in_camp(self) -> bool:
-        with suppress(NotInForestError):
-            logger.debug(f"Inside {self.camp_dir_as_parent=}")
-            if self._this_executes_only_when_base_dir_exists():
+    def inside_oasis(self) -> bool:
+        with suppress(NotInCampError):
+            logger.debug(f"Inside {self.find_oasis=}")
+            if self._this_executes_only_when_iret_camp_dir_exists():
                 return True
         return False
 
     @property
-    def camp_dir_as_parent(self):
+    def find_oasis(self):
         parent: Path | None = recursive_parent(
             path=Path.cwd(), parent_dir_name=self._names.camp_dir
         )
@@ -123,7 +116,7 @@ class Paths(SstPaths[Names, Defaults]):
     @property
     @PathGuard.dir
     def camp_dir(self) -> Path:
-        return self.base_dir / self._names.camp_dir
+        return self.iret_camp_dir / self._names.camp_dir
 
     @property
     def forest_file(self) -> Path:

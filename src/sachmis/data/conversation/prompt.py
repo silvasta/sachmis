@@ -82,6 +82,10 @@ class Prompt(SproutData):
     def extract_topic(prompt_text: str) -> str:
         """Find first line with content and create slug"""
 
+        # IMPORTANT: topic extract
+        # - find the location in the project to do this exactly 1 time
+        # - cut the maximal length
+
         if lines := prompt_text.splitlines():
             first_non_empty_line: str | None = next(
                 (line.strip() for line in lines if line.strip()), None

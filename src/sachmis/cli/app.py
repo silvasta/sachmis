@@ -4,7 +4,7 @@ from ..config.manager import config_loader
 from ..utils import printer
 from . import command, subapp
 from .fire import fire
-from .handlers import attach_handlers
+from .handlers import attach_exception_handlers
 from .thunder import thunder
 
 app = SafeTyper(
@@ -35,6 +35,6 @@ app.add_typer(subapp.utils)
 app.add_typer(subapp.debug)  # TODO: where to place? DEBUG
 # printer.project_debugs = True
 
-attach_handlers(app)
+attach_exception_handlers(app)
 
 printer.success("Handler Attached to SafeTyper")

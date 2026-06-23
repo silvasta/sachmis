@@ -6,7 +6,7 @@ from ..exceptions import ArborealFileError, SachmisLaunchError
 from ..utils import printer
 
 
-def attach_handlers(app: SafeTyper) -> None:
+def attach_exception_handlers(app: SafeTyper) -> None:
     """Binds all global error handlers to the CLI engine."""
 
     @app.register_error(SachmisLaunchError)
