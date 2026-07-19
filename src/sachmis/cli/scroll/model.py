@@ -1,13 +1,30 @@
 from itertools import cycle
 
 from rich.table import Table
-from sstcore.utils.paint import ColorBox
+from sstcore import printer
+from sstcore.utils.color import ColorBox
 
 from ...config import models
 from ...core.model import Model
-from ...utils import printer
 
-c: ColorBox = printer.colorbox()
+c = ColorBox()
+
+
+def conversation_transition_result(  # MOVE: where?
+    prompt: str, response: str, result: bool, from_prompt: bool
+):
+    source = f"Prompt {c.cyan(prompt)}"
+    target = f"Response {c.magenta(response)}"
+
+    if not from_prompt:
+        target, source = source, target
+
+    text = f"{source} --> {target}"
+
+    if result:
+        printer.success(text)
+    else:
+        printer.danger(text)
 
 
 def model_previous_id(

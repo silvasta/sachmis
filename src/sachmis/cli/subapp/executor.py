@@ -8,18 +8,14 @@ from pydantic import BaseModel, ConfigDict
 from rich.prompt import Confirm
 from sstcore.tui import ListSelectorApp
 from sstcore.utils import printer
-from sstcore.utils.paint import ColorBox
+from sstcore.utils.color import ColorBox
 
-from ...config import config
 from ...data.arboreal.biome import Biome, BiomeStatus
-from ...exceptions import ArborealFileExistsError, ArborealFileMissingError
 
-# MOVE: CLI, Core, Data.Arboreal?
-# TASK: ArborealExecutor?
-# TODO: for Forest? Tree?
+c = ColorBox()
 
 
-class BiomeExecutor(BaseModel):
+class BiomeExecutor(BaseModel):  # NEXT: why basemodel?
     """Orchestrates Biome operations, manages prompt loops, and enforces typed output."""
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -126,16 +122,3 @@ class BiomeExecutor(BaseModel):
                 text = f"{c.green(n_biome)} Biome Files found!"
                 printer.success(text)
                 printer.lines(list(config().paths.biome_files))
-
-
-c: ColorBox = printer.colorbox()
-
-
-def _p(path: Path) -> str:
-    """Render path by folder and file color split"""
-    return printer._format(path)
-
-
-def _b(text: str) -> str:
-    """Short inline colorizing for Biome names with surrounding"""
-    return c.green(text)

@@ -1,9 +1,9 @@
-from sstcore.cli import SafeTyper
-from sstcore.utils.paint import ColorBox
+from sachmis.config import SachmisConfig
+from typer import Context
+from sstcore import SafeTyper, System, printer
+from sstcore.utils.color import ColorBox
 
-from ...config import config
 from ...data.arboreal import ArborealTracker, Forest, Tree
-from ...utils.print import printer
 
 
 def main() -> None:
@@ -17,12 +17,19 @@ app = SafeTyper(
 
 
 @app.command()
-def trees(id: int = 0):  # TASK:  generic for Arbo
+def trees(
+    ctx: Context,
+    id: int = 0,
+):  # TASK:  generic for Arbo
     """Show statistics of active Forest"""
 
-    printer.title(f"Loading {config().paths.forest_file}", style="warning")
+    config: SachmisConfig = ctx.obj["config"]
 
-    forest: Forest = Forest.read_mode(config().paths.forest_file)
+    # TODO: emit?
+    _sst: System = ctx.obj["config"]
+    printer.title(f"Loading {config.paths.forest_file}", style="warning")
+
+    forest: Forest = Forest.read_mode(config.paths.forest_file)
     trees: list[ArborealTracker] = forest.trees
 
     for t in trees:
@@ -36,13 +43,14 @@ def trees(id: int = 0):  # TASK:  generic for Arbo
 
 
 @app.command()
-def stat():  # TASK:  generic for Arbo
+def stat(ctx: Context):
     """Show statistics of active Forest"""
-    c: ColorBox = ColorBox.with_mode("bold")
+    config: SachmisConfig = ctx.obj["config"]
+    c: ColorBox = ColorBox.bold()
 
-    printer.title(f"Loading {config().paths.forest_file}", style="warning")
+    printer.title(f"Loading {config.paths.forest_file}", style="warning")
 
-    forest: Forest = Forest.read_mode(config().paths.forest_file)
+    forest: Forest = Forest.read_mode(config.paths.forest_file)
     trees: list[ArborealTracker] = forest.trees
 
     printer.path_exists_table([tree.path for tree in trees])

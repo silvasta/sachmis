@@ -1,12 +1,13 @@
 from loguru import logger
-from sstcore.cli import SafeTyper, sargs
+from sstcore import SafeTyper, System, printer
+from sstcore.cli import sargs
+from typer import Context
 
-from ...config import config
+from ...config import SachmisConfig
 from ...data.arboreal import Forest
-from ...data.camp import CampManager
 from ...data.files import UploadFile
+from ...data.operator import CampManager
 from ...data.uploader import Uploader
-from ...utils.print import printer
 from ..args import Google, Xai
 
 
@@ -21,30 +22,33 @@ app = SafeTyper(
 
 
 @app.command()
-def show(details: bool = False):
+def show(ctx: Context, details: bool = False):
     """Show all files in camp registry"""
-    forest: Forest = Forest.read_mode(config().paths.forest_file)
+    config: SachmisConfig = ctx.obj["config"]
+    forest: Forest = Forest.read_mode(config.paths.forest_file)
     camp: CampManager = forest.get_camp()
-    base_name: str = config().paths.base_dir.stem
+    camp_name: str = config.paths.camp_dir.stem
 
     if details:
         printer(camp.files)
 
-    printer.title(f"Files in Camp of Base '{base_name}' {camp.files.n_files}")
+    printer.title(f"Files in Camp '{camp_name}' {camp.files.n_files}")
     printer([file.local_path for file in camp.files.files])
 
 
 @app.command()
-def load(fresh: bool = False, files: sargs.Files = None):
+def load(
+    ctx: Context,
+    files: sargs.Files = None,
+):
     """Load local files from folder into camp registry"""
+    config: SachmisConfig = ctx.obj["config"]
 
-    printer("Not implemented, fresh: ", fresh)  # TODO: clear
-
-    with Forest.edit_mode(config().paths.forest_file) as forest:
+    with Forest.edit_mode(config.paths.forest_file) as forest:
+        # FIX: no camp from forest
         camp: CampManager = forest.get_camp()
         printer(f"Files before: {len(camp.files.files)}")
 
-        # FIX: panel stays empty (but works otherwise)
         new_files: list[UploadFile] = camp.prepare_and_load(files)
         printer.lines_with_len(
             name="New Loaded Files",
@@ -58,20 +62,35 @@ def load(fresh: bool = False, files: sargs.Files = None):
 
 
 @app.command()
-def online(xai: Xai = False, google: Google = False):
+def online(
+    ctx: Context,
+    xai: Xai = False,
+    google: Google = False,
+):
     """Show all files on remote registry"""
 
+    # MOVE: into Uploader
+    _sst: System = ctx.obj["config"]
     uploader = Uploader(*_zero_is_all(xai, google))
     uploader.show_all_files()
 
 
 @app.command()
-def push(xai: Xai = False, google: Google = False, ensure=True):
+def push(
+    ctx: Context,
+    xai: Xai = False,
+    google: Google = False,
+    ensure=True,
+):
     """Sync all files in Forest to remote registry"""
 
+    config: SachmisConfig = ctx.obj["config"]
+
+    # MOVE: into Uploader
+    _sst: System = ctx.obj["config"]
     uploader = Uploader(*_zero_is_all(xai, google))
 
-    with Forest.edit_mode(config().paths.forest_file) as forest:
+    with Forest.edit_mode(config.paths.forest_file) as forest:
         camp: CampManager = forest.get_camp()
 
         registry_files: list[UploadFile] = camp.files.files
@@ -89,19 +108,34 @@ def push(xai: Xai = False, google: Google = False, ensure=True):
 
 
 @app.command()
-def status(xai: Xai = False, google: Google = False):
+def status(
+    ctx: Context,
+    xai: Xai = False,
+    google: Google = False,
+):
     """Show remote status of all files in Forest"""
 
+    config: SachmisConfig = ctx.obj["config"]
+
+    # MOVE: into Uploader
+    _sst: System = ctx.obj["config"]
     uploader = Uploader(*_zero_is_all(xai, google))
 
     uploader.compare_with_remote_files(
-        Forest.read_mode(config().paths.forest_file).files.files
+        Forest.read_mode(config.paths.forest_file).files.files
     )
 
 
 @app.command()
-def clear(xai: Xai = False, google: Google = False):
+def clear(
+    ctx: Context,
+    xai: Xai = False,
+    google: Google = False,
+):
     """Delete all files in remote registry"""
+
+    # MOVE: into Uploader
+    _sst: System = ctx.obj["config"]
 
     uploader = Uploader(xai, google)  # No _zero_is_all!
     if not uploader.clients:

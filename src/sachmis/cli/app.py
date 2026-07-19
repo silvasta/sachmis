@@ -1,7 +1,7 @@
-from sstcore.cli import SafeTyper
+from sstcore.cli import SafeTyper, tools
+from sstcore.system.core import sst_system_loader
 
-from ..config.manager import config_loader
-from ..utils import printer
+from ..config import config_loader
 from . import command, subapp
 from .fire import fire
 from .handlers import attach_exception_handlers
@@ -10,7 +10,7 @@ from .thunder import thunder
 app = SafeTyper(
     name="sachmis",
     help="CLI for direct communication with LLMs",
-    config_loader=config_loader,
+    system_loader=sst_system_loader(config_loader()),
 )
 
 # core
@@ -22,19 +22,17 @@ app.command()(command.init)
 
 # utils
 app.command("models")(command.model_display)
-app.command()(command.rules)  # REMOVE: until needed, ensure not  forget
 app.command("config")(command.config_details)
 
 # nested
 app.add_typer(subapp.files)
 app.add_typer(subapp.biome)
 app.add_typer(subapp.forest)
-app.add_typer(subapp.utils)
+app.add_typer(tools)
 
 
-app.add_typer(subapp.debug)  # TODO: where to place? DEBUG
-# printer.project_debugs = True
+app.add_typer(subapp.debug)  # NOTE: where to place? DEBUG
 
 attach_exception_handlers(app)
 
-printer.success("Handler Attached to SafeTyper")
+app.system.printer.success("Handler Attached to SafeTyper")

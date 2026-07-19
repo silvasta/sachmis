@@ -1,26 +1,32 @@
 from pathlib import Path
 
 from loguru import logger
+from sstcore import System
 from sstcore.cli import sargs
 from sstcore.data import SstFile
+from sstcore.system import Emitter
+from sstcore.utils import Printer
+from typer import Context
 
-from ..config import config
+from sachmis.config import SachmisConfig
+
 from ..core import capstone
 from ..core.model import Model
 from ..data import DataManager
-from ..data.camp import CampManager, UploadFile
-from ..data.conversation import SelectedSproutData
+from ..data.files import UploadFile
+from ..data.operator import CampManager
+from ..data.sprout_dto import SelectedSproutDTO
 from ..exceptions.data import DataRuntimeError
 from ..tui import selector
 from ..utils.parse import parse_raw_models
-from ..utils.print import printer
 from . import args
-from .canvas.model import model_family_table
+from .scroll.model import model_family_table
 
 DEBUG = True
 
 
 def fire(
+    ctx: Context,
     # Arguments
     models: args.Models = None,
     # sprout: args.Sprout = False, # TODO: some partial select
@@ -37,8 +43,14 @@ def fire(
 ):
     """Prepare Models with Local Prompt and Fire"""
 
+    sst: System = ctx.obj["system"]
+    printer: Printer = ctx.obj["printer"]
+    emit: Emitter = sst.emitter
+
     with capstone.Fire() as session:
-        models: list[SelectedSproutData] = _prepare_model_args(session, models)
+        models: list[SelectedSproutDTO] = _prepare_model_args(
+            emit, session, models
+        )
         agents: list[Model] = session.load_models(models)
 
         # TODO: show models here first...?
@@ -49,14 +61,16 @@ def fire(
         session.data.load_files(files)
 
         images: list[SstFile] = _prepare_image_args(
-            session.data.camp, images, pick_image
+            sst, session.data.camp, images, pick_image
         )
         session.data.handler.prompt.attach_images(images)
 
-        role: Path | None = _prepare_role(pick_role)
+        role: Path | None = _prepare_role(sst, pick_role)
         session.data.load_role(role)
 
-        if not direct_fire and not confirm_fire(agents, session.data):
+        if not direct_fire and not confirm_fire(
+            sst.printer, agents, session.data
+        ):
             return
 
         logger.info("Ready to Fire")
@@ -73,7 +87,9 @@ def fire(
     logger.info("All processes finished")
 
 
-def confirm_fire(models: list[Model], data: DataManager) -> bool:
+def confirm_fire(
+    printer: Printer, models: list[Model], data: DataManager
+) -> bool:
 
     printer.special("Summary of Release")
 
@@ -123,32 +139,35 @@ def confirm_fire(models: list[Model], data: DataManager) -> bool:
 
 
 def _prepare_model_args(
-    session: capstone.Fire, models: list[str] | None, multi_select=True
-) -> list[SelectedSproutData]:
+    emit: Emitter,
+    session: capstone.Fire,
+    models: list[str] | None,
+    multi_select=True,
+) -> list[SelectedSproutDTO]:
 
-    printer.debug(
-        "Start of Selector",
-        session.data.front.models(),
-        stop=True,
-        # NEXT: select
-        # NEXT: select
-        # NEXT: select
-        # NEXT: select
-    )
-    printer.title("Model Selection")
+    # printer.debug(
+    #     # NEXT: select
+    #     "Start of Selector",
+    #     # NEXT: select
+    #     session.data.front.models(),
+    #     # NEXT: select
+    #     stop=True,
+    # )
+
+    emit.log("Model Selection")
 
     if models and (parsed_models := parse_raw_models(models)):
         text = f"{len(parsed_models)} Models parsed for Pipeline"
         printer.header(text)
-        return SelectedSproutData.from_zero(parsed_models)
+        return SelectedSproutDTO.from_zero(parsed_models)
 
     match len(scanned_models := session.data.front.models()):  # TEST:
         case 0:
-            return SelectedSproutData.from_zero(
+            return SelectedSproutDTO.from_zero(
                 selector.model_family(multi_select=True)
             )
         case 1:
-            return [SelectedSproutData.from_scan(scanned_models.pop())]
+            return [SelectedSproutDTO.from_scan(scanned_models.pop())]
         case _:
             return selector.model_from_scan(
                 models=scanned_models,
@@ -185,11 +204,12 @@ def _prepare_file_args(
 
 
 def _prepare_image_args(
-    camp: CampManager, images: list[Path] | None, pick_image: bool
+    sst: System, camp: CampManager, images: list[Path] | None, pick_image: bool
 ) -> list[SstFile]:  # LATER:: as function of camp
 
     # REFACTOR: files and images, simple function of Camp
-    printer.title("Preparing Images...")
+    sst.printer.title("Preparing Images...")
+    config: SachmisConfig = sst.config
 
     prepared_images: list[SstFile] = []
 
@@ -202,33 +222,34 @@ def _prepare_image_args(
                 case 1:
                     file: SstFile = file[0]
                     prepared_images.append(file)
-                    logger.debug(f"added new file: {file.description}")
+                    logger.debug(f"added new file: {file!r}")
                 case _:
                     logger.error(f"Multiple files with: {path}, {file=}")
 
     if images:  # Mirror = copy for CLI provided links
         prepared_images.extend(camp.images.mirror_from_path(source=images))
 
-    if (local_files := config().paths.local_file_dir).exists():
+    if (local_files := config.paths.local_file_dir).exists():
         camp.images.absorb_from_path(local_files)
 
     for image in prepared_images:
         if not image.confirm_local_status(camp.images.local_root):
             raise DataRuntimeError(f"Failed to Import {file=}")
 
-    printer.md(f"...{len(prepared_images)} images selected for pipeline")
+    sst.printer.md(f"...{len(prepared_images)} images selected for pipeline")
 
     return prepared_images
 
 
-def _prepare_role(pick_role: bool) -> Path | None:
+def _prepare_role(sst: System, pick_role: bool) -> Path | None:
     # TASK: extend to gathering statistics, creating layouts
     # LATER:: as function of camp
 
-    printer.title("Preparing Role...")
+    sst.printer.title("Preparing Role...")
+    config: SachmisConfig = sst.config
 
     if pick_role:
-        roles: list[Path] = config().paths.role_paths(mode="all")  # PARAM:
+        roles: list[Path] = config.paths.role_paths(mode="all")  # PARAM:
         role: Path = selector.role_path(roles)
         logger.info(f"Selected Role: {role.stem}")
     else:

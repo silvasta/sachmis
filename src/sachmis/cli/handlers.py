@@ -1,22 +1,24 @@
 # sachmis/cli/handlers.py
+from sstcore import printer
 from sstcore.cli import SafeTyper
 from sstcore.exceptions import TuiSelectorError
 
-from ..exceptions import ArborealFileError, SachmisLaunchError
-from ..utils import printer
+from ..exceptions import ArborealError, SachmisLaunchError
 
 
 def attach_exception_handlers(app: SafeTyper) -> None:
     """Binds all global error handlers to the CLI engine."""
+    #
+    # TODO: bind proper ErrorHandler to SafeTyper with Bus connection
 
-    @app.register_error(SachmisLaunchError)
+    @app.errors.handle()
     def handle_launch(error: SachmisLaunchError):
-        printer.warn(f"{printer.colors.red('Problem!')} {error=}")
+        printer.warn(f"{printer.color_box.red('Problem!')} {error=}")
 
-    @app.register_error(TuiSelectorError)
+    @app.errors.handle()
     def handle_tui_selector(error: TuiSelectorError):
         printer.danger(f"Selector failed: {error}")
 
-    @app.register_error(ArborealFileError)
-    def handle_arboreal_file(error: ArborealFileError):
+    @app.errors.handle()
+    def handle_arboreal_file(error: ArborealError):
         printer.danger(f"Critical Arboreal I/O Error: {error}")

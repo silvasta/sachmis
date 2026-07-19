@@ -1,15 +1,16 @@
+from collections.abc import Callable
 from pathlib import Path
 
 from loguru import logger
-from sstcore.cli import SafeTyper
+from sstcore import SafeTyper, System, printer
 from sstcore.exceptions import TuiSelectorError
 from sstcore.tui import ListSelectorApp
-from sstcore.utils.paint import ColorBox
+from typer import Context
+
+from sachmis.config import SachmisConfig
 
 from ...cli import args
-from ...config import config
 from ...data.arboreal import ArborealTracker, Biome
-from ...utils.print import printer
 from .executor import BiomeExecutor
 
 
@@ -24,20 +25,29 @@ app = SafeTyper(
 
 
 @app.command()
-def setup(name: args.Name = ""):
+def setup(
+    ctx: Context,
+    name: args.Name = "",
+):
     """Create new Biome with global data structure"""
-    name: str = name or config().names.biome_file
-    executor = BiomeExecutor()
+    config: SachmisConfig = ctx.obj["config"]
+
+    name: str = name or config.names.biome_file
+    executor = BiomeExecutor()  # FIX:
     executor.execute(executor.create_new_biome, name)
 
 
 @app.command()
-def select():
+def select(ctx: Context):
     """Show all Biome Files and select active Biome"""
+    config: SachmisConfig = ctx.obj["config"]
+
+    # MOVE: into BiomeExecutor
+    _sst: System = ctx.obj["config"]
     executor = BiomeExecutor()
 
     def _select() -> Biome:
-        biomes: list[Path] = list(config().paths.biome_files)
+        biomes: list[Path] = list(config.paths.biome_files)
         tui = ListSelectorApp(items=biomes, multi_select=False)
 
         if not (selected := tui.run()):
@@ -53,30 +63,39 @@ def select():
 
 
 @app.command()
-def show():
+def show(ctx: Context):
     """Show all Biomes and load active Biome"""
 
-    executor = BiomeExecutor()
-    biome: Biome = executor.execute(_load)
+    config: SachmisConfig = ctx.obj["config"]
 
-    # INFO: check .debug app
-    # TASK: replace by stat, move to ArboView
+    # MOVE: into BiomeExecutor
+    _sst: System = ctx.obj["config"]
+    executor = BiomeExecutor()
+    biome: Biome = executor.execute(_load_operation(config))
+
     logger.info(f"Loaded {biome.n_forest=}, {biome.n_responses=}")
 
-    print_all_biome_files()
+    print_all_biome_files(config)
 
 
-def _load() -> Biome:
-    biome_file = config().paths.biome_file()
-    return Biome.read_mode(biome_file)
+def _load_operation(config: SachmisConfig) -> Callable[..., Biome]:
+    def load():
+        biome_file = config.paths.biome_file()
+        return Biome.read_mode(biome_file)
+
+    return load
 
 
 @app.command("stat")
-def arboreal_statistic():
+def arboreal_statistic(ctx: Context):
     """Show statistics of active Biome"""
+    config: SachmisConfig = ctx.obj["config"]
+
+    # MOVE: into BiomeExecutor
+    _sst: System = ctx.obj["config"]
     executor = BiomeExecutor()
 
-    biome: Biome = executor.execute(_load)
+    biome: Biome = executor.execute(_load_operation(config))
     printer.success(f"Loaded Biome: {biome.tracker}")
     forest_statistic(biome)
 
@@ -97,24 +116,11 @@ def forest_statistic(biome: Biome):
     printer.path_exists_table([forest.path for forest in forests])
 
 
-def print_all_biome_files():
+def print_all_biome_files(config: SachmisConfig):
     printer.lines(
-        lines=list(config().paths.biome_files),
+        lines=list(config.paths.biome_files),
         title="Selecting from Biome Files",
     )
-
-
-c: ColorBox = printer.colorbox()
-
-
-def _path(path: Path) -> str:
-    """Render path by folder and file color split"""
-    return printer._format(path)
-
-
-def _b(text: str) -> str:
-    """Short inline colorizing for Biome names with surrounding"""
-    return c.green(text)
 
 
 if __name__ == "__main__":

@@ -1,19 +1,22 @@
 from itertools import product
 
+from sstcore import printer
 from sstcore.cli import sargs
+from typer import Context
 
-from ...config import config
-from ...data.conversation import PromptTransitionRules, ResponseTransitionRules
-from ...data.setup import create_new_base
-from ...utils.print import printer
+from sachmis.config import SachmisConfig
+
+from ...data.dag import PromptTransitionRules, ResponseTransitionRules
+from ...data.operator._iret_camp_folder_setup import create_new_base
 from .. import args
-from ..canvas.model import model_family_table
+from ..scroll.model import conversation_transition_result, model_family_table
 
 
-def init(name: args.Name = ""):
-    """Create new Base with Forest and Local Data Structure"""
-    name: str = name or config().names.base_dir
-    create_new_base(name)
+def init(ctx: Context, name: args.Name = ""):
+    """Create new Camp with Forest and Local Data Structure"""
+    config: SachmisConfig = ctx.obj["config"]
+    name: str = name or config.names.camp_dir
+    create_new_base(ctx.obj["system"], name)
 
 
 def model_display():
@@ -42,11 +45,8 @@ def rules():
             printer(f"{r_pr1=}-{r_pr2=}")
             printer.red("Inconsistent TransitionRules!")
 
-        printer.conversation_transition_result(
-            prompt,
-            response,
-            result=r_pr1,
-            from_prompt=False,
+        conversation_transition_result(
+            prompt, response, result=r_pr1, from_prompt=False
         )
 
         r_rp1: bool = prompt.valid_successor(response)
@@ -55,19 +55,17 @@ def rules():
             printer(f"{r_rp1=}-{r_rp2=}")
             printer.red("Inconsistent TransitionRules!")
 
-        printer.conversation_transition_result(
-            prompt,
-            response,
-            result=r_rp1,
-            from_prompt=True,
+        conversation_transition_result(
+            prompt, response, result=r_rp1, from_prompt=True
         )
 
 
-def config_details(write_config: sargs.Write = False):
+def config_details(ctx: Context, write_config: sargs.Write = False):
     """Print config() to Console, optional override json settings"""
-    printer(config().settings)
-    printer(config().paths.dot_env)
-    printer(config().setting_file)
+    config: SachmisConfig = ctx.obj["config"]
+    printer(config.settings)
+    printer(config.paths.dot_env)
+    printer(config.setting_file)
 
     if write_config:
-        config().save_settings()
+        config.save_settings()
