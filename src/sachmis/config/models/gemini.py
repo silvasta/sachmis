@@ -1,4 +1,4 @@
-from sstcore.utils.paint import ColorBox
+from sstcore.utils.color import ColorBox
 
 from .family import ModelFamily
 
@@ -7,10 +7,9 @@ c = ColorBox()
 
 class Geminis(ModelFamily):
     G31 = "g3"
-    G31F = "g31f"
     G3I = "g3i"
     GR = "gr"
-    G35f = "g35f"
+    G35F = "g35f"
 
     # NOTE: Ideas
     # https://ai.google.dev/gemini-api/docs/robotics-overview
@@ -30,10 +29,9 @@ class Geminis(ModelFamily):
     def api_name(self) -> str:
         return {
             Geminis.G31: "gemini-3.1-pro-preview",
-            Geminis.G31F: "gemini-3.1-flash-lite-preview",
             Geminis.G3I: "gemini-3-pro-image-preview",
             Geminis.GR: "gemini-robotics-er-1.6-preview",
-            Geminis.G35f: "gemini-3.5-flash",
+            Geminis.G35F: "gemini-3.5-flash",
         }[self]
 
     @property

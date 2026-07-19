@@ -1,26 +1,24 @@
 from abc import ABCMeta, abstractmethod
 from enum import Enum, EnumMeta
 
-from sstcore.utils.paint import ColorBox
-
-# INFO: this is the Model Param Schema for fixed external data
+from sstcore.utils.color import ColorBox
 
 c = ColorBox()
 
 
 class AbstractEnum(ABCMeta, EnumMeta):
-    """This is enough to use ABC in Enum
+    """
+    This is enough to use ABC in Enum
+
     Usage:
-    class MyABCEnum(Enum, metaclass=AbstractEnum):
+      class MyABCEnum(Enum, metaclass=AbstractEnum):
+
     """
 
 
 class ModelFamily(Enum, metaclass=AbstractEnum):
     """Define general properties for models of all companies"""
 
-    # LATER: load family from csv
-    # - load including prices, status=Active etc,
-    # check file-analyzer for template pydantic read/write
     # REFACTOR: Use csv/pyandtic instead of Enum?
     # - still nice with Enum, match and validation
     # - maybe basemodel just for data?

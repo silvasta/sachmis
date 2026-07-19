@@ -22,8 +22,9 @@ class Names(SstNames):
 
     # Local file system - Base / Forest
     forest_file: str = "forest.json"
-    base_dir: str = "base"
-    camp_dir: str = "IretCamp"  # NEXT: fix this!
+    camp_dir: str = "iret"
+    # camp_dir: str = "IretCamp"
+    hidden_dir: str = ".oasis"
     tree_dir: str = "Trees"
     file_dir: str = "Files"
     image_dir: str = "Images"

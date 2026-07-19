@@ -1,7 +1,6 @@
 from loguru import logger
 
 from ..defaults import ModelToggle
-from ..manager import get_config
 from .dummy import DummyFamily
 from .family import ModelFamily
 from .gemini import Geminis
@@ -42,7 +41,6 @@ def family() -> list[ModelFamily]:
     return select(toggle.dummy, toggle.grok, toggle.gemini)
 
 
-# IDEA: @cache?
 def uniques() -> set[str]:
     return {model.unique for model in family()}
 
