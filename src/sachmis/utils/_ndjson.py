@@ -4,6 +4,8 @@ import os
 import time
 import uuid
 
+# NEXT: check for MarkdownRegistry
+
 
 class ProcessManager:
     def __init__(self, base_dir, log_filename="process_log.jsonl"):
