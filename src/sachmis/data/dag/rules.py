@@ -1,3 +1,10 @@
+"""
+Explain how the BipartiteDAG works
+
+- Rules so far NOT USED for explicit checks
+
+"""
+
 from enum import StrEnum, auto
 
 

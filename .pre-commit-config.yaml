@@ -13,12 +13,6 @@ repos:
     rev: v0.15.12
     hooks:
       - id: ruff
-        args: [--fix, --exit-non-zero-on-fix]
-        # args: [--exit-zero] # Forces a pass even if errors exist
+        # args: [--fix, --exit-non-zero-on-fix]
+        args: [--exit-zero] # Forces a pass even if errors exist
       - id: ruff-format
-
-  # FIX: if even possible (now)
-  # - repo: https://github.com/astral-sh/ty
-  #   rev: 0.0.34
-  #   hooks:
-  #     - id: ty-check

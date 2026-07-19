@@ -2,15 +2,15 @@ import uuid
 from dataclasses import dataclass
 from typing import Self
 
-from ...config.models import ModelFamily
-from .prompt import Prompt
+from ..config.models import ModelFamily
+from .conversation.prompt import Prompt
 
 
 @dataclass
-class SproutSelectData:  # TASK: rename, review
+class SproutSelectorDTO:  # TASK: rename, review
     """
     Provide scanned Data in displayable form until Selection of Models
-    - Data will be absorbed by SelectedSproutData
+    - Data will be absorbed by SelectedConversation
     """
 
     selector_uuid: str
@@ -31,10 +31,10 @@ class SproutSelectData:  # TASK: rename, review
 
 
 @dataclass
-class SelectedSproutData:  # TASK: rename, review
+class SelectedSproutDTO:  # TASK: rename, review
     """
     Provide selected Data in condensed form until Init of Models
-    - Replaces SproutSelectData after Selection
+    - Replaces SproutSelectorDTO after Selection
     - Data will be absorbed by ConversationNode
     """
 
@@ -43,7 +43,7 @@ class SelectedSproutData:  # TASK: rename, review
     sprout_id: int = 0
 
     @classmethod
-    def from_scan(cls, selected: SproutSelectData) -> Self:
+    def from_scan(cls, selected: SproutSelectorDTO) -> Self:
         return cls(
             model=selected.model,
             tree_id=selected.tree_id,
@@ -58,7 +58,7 @@ class SelectedSproutData:  # TASK: rename, review
 
 
 @dataclass
-class SproutPackage:
+class SproutPackage:  # TODO: DTO?
     model: ModelFamily
     prompt: Prompt
     next_response_id: str

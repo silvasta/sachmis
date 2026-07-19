@@ -1,7 +1,12 @@
 """
-Organize FileTree of Base Directory as Front Side of Forest
+Organize FileTree at Front Side of Forest
 
+- write but also find location in dag
 """
+
+__all__: list[str] = [
+    "MarkdownRegistry",
+]
 
 from collections import defaultdict
 from pathlib import Path
@@ -19,7 +24,7 @@ from ...config.models import uniques as model_uniques
 from ...config.names import TreeNameSchema
 from ...exceptions import SachmisLaunchError
 
-IGNORE_DIRS: set[str] = {".camp"}
+IGNORE_DIRS: set[str] = {".camp"}  # TODO:
 
 ALLOWED_EXTS: set[str] = {".md"}
 
@@ -28,10 +33,7 @@ def plot():  # TASK: customize tree plot
     _tree: PathTreeNode = build_path_tree(paths=[], root_name="name")
 
 
-# TODO: _create_local_file() will most likely fail?
-# - new FrontFile file tracker
-# - or derive from SstFileRegistry
-class FrontFileRegistry(FileRegistry[SstFile]):
+class MarkdownRegistry(FileRegistry[SstFile]):
     tree_parser: ParsedName
     prompt_parser: ParsedName
     response_parser: ParsedName

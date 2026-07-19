@@ -5,10 +5,9 @@ from pathlib import Path
 from loguru import logger
 from sstcore.utils import PathGuard
 
-from ..config import config
-from ..exceptions import ArborealFileMissingError
-from ..utils.print import printer
-from .arboreal import ArborealTracker, Biome
+from ...config import config
+from ...exceptions import ArborealFileMissingError
+from ..arboreal import ArborealTracker, Biome
 
 # REFACTOR:  where to setup base? data handler? conductor?
 

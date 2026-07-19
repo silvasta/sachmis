@@ -10,7 +10,7 @@ from filelock import FileLock
 from loguru import logger
 from pydantic import BaseModel, Field, PrivateAttr, ValidationError
 from sstcore.data import SstFile
-from sstcore.utils.paint import ColorBox
+from sstcore.utils.color import ColorBox
 
 from ...config import config
 from ...exceptions import (

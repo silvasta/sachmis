@@ -5,18 +5,14 @@ from typing import Literal
 import networkx as nx
 from pydantic import BaseModel, Field, PrivateAttr, model_validator
 
-# NEXT: load to prompt, send
 
-
-class Node(BaseModel):
-    # AI: if the label can be some property here, then it is easy
+class Node(BaseModel):  # TODO: label for nx.graph
     uuid: str
     partition: Literal["P", "R"]
     metadata: dict = Field(default_factory=dict)  # LATER: check again remove
 
 
 class Edge(BaseModel):
-    # AI: unsure how nx reads from here for draw()
     source: str
     target: str
 

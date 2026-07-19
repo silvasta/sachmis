@@ -1,10 +1,21 @@
+"""
+API Output
+
+- later: compare and chain
+
+"""
+
+__all__: list[str] = [
+    "Response",
+]
+
 from pydantic import Field
 
 from ...config import config
-from .base import SproutData
+from .base import Conversation
 
 
-class Response(SproutData):
+class Response(Conversation):
     model: str
     remote_id: str
     previous_response_id: str | None

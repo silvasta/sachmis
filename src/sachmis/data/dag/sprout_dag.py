@@ -1,77 +1,22 @@
-from typing import Annotated, Literal, Self
+__all__: list[str] = [
+    "BipartiteDAG",
+    "SproutNode",
+    "SproutEdge",
+    "SproutDAG",
+]
+
+from typing import Self
 
 import networkx as nx
 from loguru import logger
 from pydantic import Field
-from sstcore.utils.paint import ColorBox
+from sstcore.utils.color import ColorBox
 
 from ...config.models import ModelFamily
 from ...utils import printer
-from .base import SproutData
-from .base_dag import BipartiteDAG, Edge, Node
-from .prompt import Prompt
-from .response import Response
-
-# NEXT: load to prompt, send
-
-
-class BaseSproutNode(Node):
-    """Base Node for Prompt and Response"""
-
-    # AI: good idea?
-    # TASK: override uuid from base with property!
-
-    @property
-    def sprout_id(self) -> int:
-        return self._data.sprout_id
-
-    def sprout_stem(self) -> str:
-        # AI: this returns:
-        # - prompt: "p_1_ask-for-str"
-        #   prompt_pattern: str = "p_{sprout_id}_{topic}"
-        # - response: "r_1_d-d1_ask-for-str"
-        #   response_pattern: str = "r_{sprout_id}_{model}_{topic}"
-        # that would be perfect as identifier! if needed with cropped topic/maxlen
-        return self._data.sprout_stem
-
-    @property
-    def _data(self) -> SproutData:
-        raise NotImplementedError
-
-
-class PromptNode(BaseSproutNode):
-    partition: Literal["P"] = "P"
-    prompt: Prompt
-
-    @property
-    def _data(self) -> Prompt:
-        return self.prompt
-
-    @classmethod
-    def from_prompt(cls, prompt: Prompt) -> Self:
-        return cls(uuid=prompt.unique_id, prompt=prompt)
-
-
-class ResponseNode(BaseSproutNode):
-    partition: Literal["R"] = "R"
-    response: Response
-
-    @property
-    def _data(self) -> Response:
-        return self.response
-
-    @classmethod
-    def from_response(cls, response: Response) -> Self:
-        return cls(uuid=response.unique_id, response=response)
-
-
-type SproutNode = Annotated[
-    PromptNode | ResponseNode, Field(discriminator="partition")
-]
-
-
-class SproutEdge(Edge):
-    """Intended to apply Status or Weight to SproutEdge"""
+from ..conversation import Prompt, Response
+from .base import BipartiteDAG
+from .elements import PromptNode, ResponseNode, SproutEdge, SproutNode
 
 
 class SproutDAG(BipartiteDAG):
@@ -137,7 +82,6 @@ class SproutDAG(BipartiteDAG):
             else:
                 assert isinstance(node, ResponseNode)
                 response: Response = node.response
-                printer(("Found: ", response))  # REMOVE:
                 if response.model == model:
                     logger.success(f"Found: {node=}")
                     return node
@@ -173,8 +117,6 @@ class SproutDAG(BipartiteDAG):
         ]
 
         sub_dag = SproutDAG(nodes=sub_nodes, edges=sub_edges)
-        printer.special("Sub DAG")
-        printer(sub_dag)  # REMOVE:
 
         return sub_dag
 
@@ -225,9 +167,9 @@ class SproutDAG(BipartiteDAG):
     ### START of Representation
     ### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --
 
-    # LATER: move, maybe mixin
+    # TODO: View
 
-    def __str__(self):
+    def __str__(self):  # TODO: __str__ as ColoredName with __rich__
         name: str = self.__class__.__name__
         prompts = f"{self.n_prompts} Prompts"
         responses = f"{self.n_responses} Responses"
@@ -236,17 +178,13 @@ class SproutDAG(BipartiteDAG):
     # NOTE: __repr__ by pydantic, no intercept!
 
     @property
-    def colorful(self) -> str:  # TODO: colorful as styled_name
-        c: ColorBox = ColorBox.with_mode("bold")
+    def colorful(self) -> str:  # TODO: colorful as __rich__
+        c: ColorBox = ColorBox.bold()
         name: str = c.magenta(self.__class__.__name__)
         prompts = f"{self.n_prompts} {c.cyan('Prompts')}"
         responses = f"{self.n_responses} {c.r('Responses')}"
         return c.white(f"{name}[{prompts}, {responses}]")
 
     @property
-    def _cli(self) -> str:  # TODO: colorful as styled_name
+    def _cli(self) -> str:  # TODO: colorful as __cli__
         return self.colorful
-
-    ### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --
-    ### END of Representation
-    ### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --

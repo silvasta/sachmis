@@ -4,11 +4,10 @@ from pathlib import Path
 from typing import Any, TypeVar
 
 from loguru import logger
-from sstcore.utils.paint import ColorBox
+from sstcore.utils.color import ColorBox
 
 from ...config import config
-from ...utils.print import printer
-from ..files import RemoteState, UploadFile, UploadState
+from ..files.upload import RemoteState, UploadFile, UploadState
 
 TUploadState = TypeVar("TUploadState", bound=UploadState)
 

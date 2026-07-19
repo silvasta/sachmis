@@ -2,7 +2,7 @@ from itertools import product
 
 from loguru import logger
 
-from ..files import RemoteState, UploadFile
+from ..files.upload import RemoteState, UploadFile
 from .base import CompareResult, FileUploader
 from .google import GoogleUploader
 from .xai import XaiUploader

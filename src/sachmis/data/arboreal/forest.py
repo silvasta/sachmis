@@ -4,10 +4,9 @@ from typing import Self
 from loguru import logger
 from sstcore.data import FileRegistry, SstFileRegistry
 
-from ...config import config
-from ...exceptions import ArborealRegistryMissingError
-from ..camp import CampManager
-from ..files import RoleRegistry, UploadRegistry
+from ..files.role import RoleRegistry
+from ..files.upload import UploadRegistry
+from ..operators.oasis import CampManager
 from .base import Arboreal, ArborealTracker
 from .tree import Tree
 
@@ -49,6 +48,17 @@ class Forest(Arboreal[Tree]):
     ### -- Forest - Custom Functions
     ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
 
+    # MOVE: all to camp
+    # MOVE: all to camp
+    # MOVE: all to camp
+    # MOVE: all to camp
+    # MOVE: all to camp
+    # MOVE: all to camp
+    # MOVE: all to camp
+    # MOVE: all to camp
+    # MOVE: all to camp
+    # MOVE: all to camp
+    # MOVE: all to camp
     @classmethod
     def with_camp(
         cls, path: Path, local_id: int, camp: CampManager | None = None

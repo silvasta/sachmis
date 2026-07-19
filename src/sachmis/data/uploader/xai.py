@@ -4,7 +4,7 @@ from loguru import logger
 from xai_sdk import Client
 
 from ...config import config
-from ..files import UploadFile, XaiUploadState
+from ..files.upload import UploadFile, XaiUploadState
 from .base import FileUploader
 
 

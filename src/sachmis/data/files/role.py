@@ -1,3 +1,16 @@
+"""
+Track SystemRole Templates
+
+Later:
+  - check if local (in .oasis) or global and for sure other template parameter
+
+"""
+
+__all__: list[str] = [
+    "RoleRegistry",
+    "Role",
+]
+
 import json
 from pathlib import Path
 from typing import Self

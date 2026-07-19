@@ -4,7 +4,7 @@ from typing import Any
 from loguru import logger
 
 from ...config import config
-from ..files import GoogleUploadState, UploadFile
+from ..files.upload import GoogleUploadState, UploadFile
 from .base import FileUploader
 
 

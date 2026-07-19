@@ -2,8 +2,7 @@ from loguru import logger
 from pydantic import Field
 
 from ...config import config
-from ...utils import printer
-from ..conversation import SproutDAG
+from ..dag import SproutDAG
 from .base import Arboreal
 
 

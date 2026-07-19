@@ -4,15 +4,15 @@ from pathlib import Path
 from loguru import logger
 from sstcore import PathGuard
 from sstcore.data import SstFile
-from sstcore.utils.paint import ColorBox
+from sstcore.utils.color import ColorBox
 
 from ...config import config
 from ...config.models import uniques as model_uniques
 from ...config.names import id_keywords_backwards
 from ...exceptions import SachmisDataError, SachmisLaunchError
-from ...utils import model_from_unique, printer
-from ..conversation import Prompt, Response, SproutSelectData
-from ..files import FrontFileRegistry
+from ...utils import model_from_unique
+from ..conversation import Prompt, Response, SproutSelectorDTO
+from ..files import MarkdownRegistry
 
 
 class Status(StrEnum):
@@ -27,8 +27,8 @@ class Status(StrEnum):
     CROWD = auto()
 
 
-class FrontFileHandler:
-    """Manage Prompt and Response write to Forest dir"""
+class MarkdownOperator:
+    """Scan Filesystem, load Prompt, write Response, if needed in new Folder"""
 
     scanned_tree_id: int = 0
     _prompt_text: str = ""
@@ -67,7 +67,7 @@ class FrontFileHandler:
         self.scan_forest()
         self._print_for_init()
 
-    def _print_for_init(self):  # NEXT: clean entry prints
+    def _print_for_init(self):  # MOVE: emit
         if not config().paths.in_forest:
             printer.danger("Outside Forest Dir!")
         else:
@@ -87,7 +87,7 @@ class FrontFileHandler:
     def scan_forest(self):
         """Build Registry with FileTree of Forest Front View Files"""
 
-        self.registry: FrontFileRegistry = FrontFileRegistry.ready()
+        self.registry: MarkdownRegistry = MarkdownRegistry.ready()
 
         if (tree_schema := self.registry.find_tree_above()) is None:
             if not config().paths.cwd_in_top_dir:
@@ -96,10 +96,10 @@ class FrontFileHandler:
         else:
             self.scanned_tree_id: int = tree_schema.tree_id
 
-    def models(self) -> list[SproutSelectData]:
+    def models(self) -> list[SproutSelectorDTO]:
         """Provide Successor Models from CWD for Selection"""
 
-        model_select_data: list[SproutSelectData] = []
+        model_select_data: list[SproutSelectorDTO] = []
 
         sprout_groups: dict[str, list[SstFile]] = (
             self.registry.get_sprout_groups()
@@ -114,7 +114,7 @@ class FrontFileHandler:
 
     def _create_select_data(
         self, targets: dict[str, SstFile]
-    ) -> list[SproutSelectData]:
+    ) -> list[SproutSelectorDTO]:
         return [
             self._create_model_select_data(unique, file)
             for unique, file in targets.items()
@@ -122,13 +122,13 @@ class FrontFileHandler:
 
     def _create_model_select_data(
         self, model_unique: str, file: SstFile
-    ) -> SproutSelectData:
+    ) -> SproutSelectorDTO:
         logger.debug(f"creating ModelSelectData for {model_unique=}: {file}")
 
         if not (model := model_from_unique(model_unique)):
             raise SachmisDataError(f"Bad Parameter in {file}")
 
-        return SproutSelectData.from_file(  # NEXT: rename: ModelSelectData
+        return SproutSelectorDTO.from_file(
             model=model,
             tree_id=id_keywords_backwards("tree", file.keywords),
             sprout_id=id_keywords_backwards("sprout", file.keywords),
@@ -228,6 +228,8 @@ class FrontFileHandler:
     ### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --
     ### START of Representation
     ### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --
+
+    # TODO: View
 
     def __repr__(self):
         front: str = type(self).__name__

@@ -4,18 +4,13 @@ from loguru import logger
 from sstcore.data import SstFile, SstFileRegistry
 from sstcore.utils import PathFilter
 
-from ..config import config
-from ..exceptions import DataRuntimeError
-from ..utils.print import printer
-from .files import Role, RoleRegistry, UploadFile, UploadRegistry
+from ...config import config
+from ...exceptions import DataRuntimeError
+from ..files import Role, RoleRegistry, UploadFile, UploadRegistry
 
 
 class CampManager:
     """Manage local utilities that are not covered by the Forest"""
-
-    # LATER:
-    # TASK: hardlink registry for git-like Code Trees
-    # - check sstcore.data.files_todo
 
     roles: RoleRegistry
     files: UploadRegistry

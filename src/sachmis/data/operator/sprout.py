@@ -1,17 +1,18 @@
 import uuid
 
 from loguru import logger
-from sstcore.utils.paint import ColorBox
+from sstcore.utils.color import ColorBox
 
 from ...exceptions import SachmisDataError
-from ...utils import printer
 from ..arboreal import ArborealTracker, Tree
-from ..conversation import Prompt, Response, SelectedSproutData, SproutDAG
-from ..conversation.dag import ResponseNode
-from ..conversation.fusion import SproutPackage
+from ..conversation import Prompt, Response
+from ..dag import ResponseNode, SproutDAG
+from ..sprout_dto import SelectedSproutDTO, SproutPackage
 
 
-class DataHandler:
+class SproutOperator:
+    """Extract DAG from Tree and provide Agents with Prompt and get Response"""
+
     _tree_tracker: ArborealTracker[Tree] | None = None
     _initial_prompt: Prompt | None = None
 
@@ -71,7 +72,7 @@ class DataHandler:
         # printer.debug("Tree DAG", self.tree_dag._cli)
         # printer.debug("Sprout DAG", self.growing_dag._cli, stop=True)  # NEXT:
 
-    def prepare_package(self, selection: SelectedSproutData) -> SproutPackage:
+    def prepare_package(self, selection: SelectedSproutDTO) -> SproutPackage:
         """Load SproutPackage with everything needed for a new DAG"""
 
         # NEXT: selection->data
@@ -151,6 +152,7 @@ class DataHandler:
     ### START of Representation
     ### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --
 
+    # TODO: View
     def __repr__(self):
         handler: str = type(self).__name__
 
@@ -183,29 +185,11 @@ class DataHandler:
 
     @property
     def colorful(self) -> str:  # TODO: colorful as styled_name
-        c: ColorBox = ColorBox.with_mode("bold")
+        c: ColorBox = ColorBox.bold()
         handler: str = c.red(type(self).__name__)
         tree_dag: str = c.green(self._tree_dag_name(color=True))
         internal_dag: str = c.green(self._internal_dag_name(color=True))
         return self._assemble_str(tree_dag, internal_dag, handler)
-
-    # @property
-    # def _cli(self) -> str:
-    #     c: ColorBox = ColorBox.with_mode("bold")
-    #     handler: str = c.red(type(self).__name__)
-    #     tree_dag: str = c.green(self._tree_dag_name(color=True))
-    #     internal_dag: str = c.green(self._internal_dag_name(color=True))
-    #     return f"{handler}(\n{tree_dag}\nand\n{internal_dag})"
-    # IDEA: use like multiline formatting:
-    #   DataHandler(
-    #       TreeDag
-    #           and
-    #       GrowingDag
-    # )
-
-    @property
-    def _cli(self) -> str:  # TODO: colorful as styled_name
-        return self.colorful
 
     def _tree_dag_name(self, color=False) -> str:
 
@@ -233,7 +217,5 @@ class DataHandler:
     ### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --
 
 
-# WARN: END OF CLASS WAS BEFORE
-# MOVE: somewhere
-def _surrounding(inside: str) -> str:
+def _surrounding(inside: str) -> str:  # MOVE: somewhere
     return "{{" + inside + "}}"

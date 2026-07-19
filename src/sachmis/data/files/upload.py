@@ -1,3 +1,20 @@
+"""
+Handle Local Files (pdf,code,any..) for Upload
+
+- (Upload->Remote)State: Collect and apply Identifier at Upload or Usage
+
+- UploadFile: Track local file and remote state over time
+
+"""
+
+__all__: list[str] = [
+    "UploadState",
+    "XaiUploadState",
+    "GoogleUploadState",
+    "RemoteState",
+    "UploadFile",
+]
+
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Annotated, Literal
@@ -5,7 +22,10 @@ from typing import Annotated, Literal
 from loguru import logger
 from pydantic import BaseModel, Field
 from sstcore.data import FileRegistry, SstFile
-from sstcore.utils.parse import StyledName
+
+type RemoteState = Annotated[
+    XaiUploadState | GoogleUploadState, Field(discriminator="target")
+]
 
 
 class UploadState(BaseModel):
@@ -36,19 +56,6 @@ class GoogleUploadState(UploadState):
         return self.age > timedelta(hours=47)  # PARAM:
 
 
-type RemoteState = Annotated[
-    XaiUploadState | GoogleUploadState,
-    Field(discriminator="target"),
-]
-
-# MOVE: back to names after setting up style strategy
-remotes: StyledName = StyledName.parse_style(
-    style_pattern="[{style1}]{name}[/] Remotes: [{style2}]{remotes}[/]",
-    keys=["name", "remotes"],
-    styles=["blue", "green"],
-)
-
-
 class UploadFile(SstFile):
     """Local file for upload and usage in prompt"""
 
@@ -66,17 +73,6 @@ class UploadFile(SstFile):
     #     slug_stem: str = slugify(stem_at_load)
     #     slug_path: Path = local_path.with_stem(slug_stem)
     #     return cls(local_path=slug_path, stem_at_load=stem_at_load)
-
-    @property
-    def remotes(self) -> str:
-        return remotes.styled([self.name, self._remotes])
-
-    def _remotes(self) -> str:
-        return " - ".join(list(self.remote_states.keys()))
-
-    @property
-    def remotes_plain(self) -> str:
-        return remotes([self.name, self._remotes])
 
     def attach_remote(self, state: RemoteState):
         """Attach new remote states"""

@@ -3,16 +3,14 @@ from typing import Self
 
 from loguru import logger
 from sstcore.data import SstFile
-from sstcore.utils.paint import ColorBox
+from sstcore.utils.color import ColorBox
 
 from ..config import config
 from ..exceptions import ArborealError, DataRuntimeError, SachmisDataError
-from ..utils import printer
 from .arboreal import ArborealTracker, Biome, Tree
-from .camp import CampManager
 from .conversation import Response
 from .files import Role, UploadFile
-from .handler import DataHandler, FrontFileHandler
+from .operators import CampManager, MarkdownOperator, SproutOperator
 from .uploader import Uploader
 
 
@@ -21,9 +19,9 @@ class DataManager:
 
     # TASK: check and compare: what if Forest has other Biome than before?
 
-    _handler: DataHandler | None = None  # LATER: prepare for multiple Trees
+    _handler: SproutOperator | None = None  # LATER: prepare for multiple Trees
 
-    _front: FrontFileHandler | None = None
+    _front: MarkdownOperator | None = None
     _camp: CampManager | None = None
     _uploader: Uploader | None = None
 
@@ -70,23 +68,16 @@ class DataManager:
         )
         return f"{_manager}[{', '.join(_all_not_none_handler)}]"
 
+    # TODO: View
     @property
     def colorful(self) -> str:
-        c: ColorBox = ColorBox.with_mode("bold")
+        c: ColorBox = ColorBox.bold()
         manager: str = c(type(self).__name__, color="royal_blue1")
         handler: list[str] = [
             c(handler, color="steel_blue1")
             for handler in self._all_not_none_handler()
         ]
         return c(self._assemble_str(handler, manager), color="white")
-
-    @property
-    def _cli(self) -> str:
-        return self.colorful
-
-    ### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --
-    ### END of Representation
-    ### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --
 
     ### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --
     ### ContextManager stuff
@@ -95,7 +86,7 @@ class DataManager:
     def __enter__(self) -> Self:
         logger.info("DataManager: Loading Data in Context")
         self._full_responses: list[SstFile] = []
-        self._front = FrontFileHandler()
+        self._front = MarkdownOperator()
 
         return self
 
@@ -109,11 +100,11 @@ class DataManager:
             printer.header(
                 f"{c.red(error)} {exception_value}",
                 frame="red",
-                subtitle=f"{self._cli}",
+                subtitle=f"{self.colorful}",
                 subtitle_align="right",
             )
 
-            input()
+            input("data manager error")
 
             if issubclass(exception_type, ArborealError):
                 # IMPORTANT: check if handle arbos separate, and what else
@@ -141,19 +132,19 @@ class DataManager:
     ### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --
 
     @property
-    def handler(self) -> DataHandler:  # LATER: prepare for multiple Trees
+    def handler(self) -> SproutOperator:  # LATER: prepare for multiple Trees
         if self._handler is None:
-            raise DataRuntimeError("DataHandler not loaded!")
+            raise DataRuntimeError("SproutOperator not loaded!")
         return self._handler
 
     def attach_handler(self, tracker: ArborealTracker[Tree]):
-        self._handler = DataHandler(tracker)
+        self._handler = SproutOperator(tracker)
         logger.info(f"Attached: {self.handler.__class__.__name__}")
 
     @property
-    def front(self) -> FrontFileHandler:  # LATER: prepare for multiple Setups
+    def front(self) -> MarkdownOperator:  # LATER: prepare for multiple Setups
         if self._front is None:
-            raise DataRuntimeError("DataHandler not loaded!")
+            raise DataRuntimeError("SproutOperator not loaded!")
         return self._front
 
     @property

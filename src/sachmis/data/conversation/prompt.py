@@ -1,3 +1,14 @@
+"""
+API Input
+
+- later: predefined layouts
+
+"""
+
+__all__: list[str] = [
+    "Prompt",
+]
+
 from typing import Self
 
 from boltons.strutils import slugify
@@ -8,10 +19,10 @@ from sstcore.data import SstFile
 from ...config import config
 from ...exceptions import PromptError
 from ..files import Role, UploadFile
-from .base import SproutData
+from .base import Conversation
 
 
-class Prompt(SproutData):
+class Prompt(Conversation):
     role: Role | None = None  # LATER: replace by layout
     files: list[UploadFile] = Field(default_factory=list)
     images: list[SstFile] = Field(default_factory=list)
