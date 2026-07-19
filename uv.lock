@@ -1557,7 +1557,7 @@ wheels = [
 
 [[package]]
 name = "sstcore"
-version = "0.3.0b4"
+version = "0.3.0b5"
 source = { editable = "/home/silvan/Code/sstcore/latest" }
 dependencies = [
     { name = "fire" },
