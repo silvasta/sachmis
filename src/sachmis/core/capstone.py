@@ -7,7 +7,7 @@ from loguru import logger
 from ..config.defaults import ModelParam
 from ..config.models import DummyFamily, Geminis, Groks, ModelFamily
 from ..data import DataManager
-from ..data.conversation import SelectedSproutData
+from ..data.conversation import SelectedSproutDTO
 from ..data.conversation.fusion import SproutPackage
 from .context import ForestExtractor, TreeExtractor
 from .model import Gemini, Grok, Model, launch
@@ -57,7 +57,7 @@ class Fire(AbstractContextManager):
         logger.success("capstone.Fire session is ready")
         return self
 
-    def load_models(self, models: list[SelectedSproutData]) -> list[Model]:
+    def load_models(self, models: list[SelectedSproutDTO]) -> list[Model]:
         logger.info(f"Start of loading: {models=}")
 
         self.agents: list[Model] = []
