@@ -80,9 +80,10 @@ class ArborealDataError(ArborealError):
         super().__init__(msg)
 
 
-# TODO: check sst.RegistrySyncError
 class ArborealTrackingError(ArborealError):
     """Control Global Distributed Location of Biome, Forest and Tree"""
+
+    # TODO: path
 
     def __init__(self, message=None, arbo_to_track=None):
         # REFACTOR:

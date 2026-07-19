@@ -31,22 +31,22 @@ class SproutError(SachmisTaskError):  # TASK:
 
 
 class GrokError(ApiCallError):
-    """Attach at least 1 Funny Statistic"""
+    """Attach Model specific information to hook"""
 
     def __init__(self, *args, **kwargs):
         # TODO:
         super().__init__(*args, **kwargs)
 
 
-class GeminiError:
-    """Attach at least 1 Funny Statistic"""
+class GeminiError(ApiCallError):
+    """Attach Model specific information to hook"""
 
     def __init__(self, *args, **kwargs):
         # TODO:
         super().__init__(*args, **kwargs)
 
 
-class DummiError:
+class DummiError(ApiCallError):
     """Attach at least 1 Funny Statistic"""
 
     def __init__(self, *args, **kwargs):

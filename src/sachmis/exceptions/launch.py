@@ -1,26 +1,18 @@
 from .base import SachmisLaunchError
 
-# IDEA:s config, cli(after launch), ....
+
+class NotInCampError(SachmisLaunchError, FileNotFoundError):
+    """Launch needs CWD inside IretCamp with Forest and Oasis"""
+
+    def __init__(self, message=None):
+        # NOTE: that made more sense when multiple used this...
+        message: str = message or _assemble(location="Camp of Forest and Base")
+        super().__init__(message)
 
 
-class NotInCampError(FileNotFoundError, SachmisLaunchError):
-    """Launch needs CWD inside IretCamp with Forest and sOasis"""
-
-    def __init__(
-        self,
-        # IDEA: this in root? with always forward, sometimes use?
-        message=None,
-    ):
-        if message is None:
-            super().__init__(_message_not_in("Camp of Forest and Base"))
-        else:
-            super().__init__(message)
-
-
-# REFACTOR: to error handling in app
-def _message_not_in(identifier) -> str:
-    return (
-        f"\nCurrent location not in {identifier}!"
+def _assemble(location) -> str:
+    return (  # REFACTOR: to error handling in app
+        f"\nCurrent location not in {location}!"
         # IMPORTANT: sync with newest updates in CLI
         "\nCreate new Base with Forest: sachmis init {-n NAME}"
         "\nFind existing Bases with: sachmis show bases"
