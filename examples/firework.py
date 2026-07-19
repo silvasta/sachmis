@@ -221,29 +221,5 @@ class Exceptionator:
             printer.box_top("the new box with line at top")
 
 
-# INFO: Test and Debug from sstcore, soon remove
-# internal: ErrorList = [
-#     SstError,
-#     RegistrySyncError,
-#     ExceptorTask(
-#         error=NotImplementedDispatchError,
-#         args=("hello", 11),
-#         kwargs={"test": 112},), ]
-# tasks: ErrorList = [
-#     TuiSelectorError,
-#     KeyboardInterrupt,
-#     handled_task, ]
-# exceptor_tasks: list[ExceptorTask] = [
-#     ExceptorTask(error=SstError),
-#     ExceptorTask(
-#         error=SstError,
-#         args=("hello", 11),),
-#     ExceptorTask(
-#         error=NotImplementedDispatchError,
-#         args=("hello", 11),
-#         kwargs={"test": 112},), ]
-# all_tasks: ErrorList = tasks + exceptor_tasks
-
-
 if __name__ == "__main__":
     main()
