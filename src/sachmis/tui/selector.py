@@ -7,8 +7,7 @@ from sstcore.tui import ListSelectorApp, TreeSelectorApp
 
 from ..config.models import ModelFamily
 from ..config.models import family as all_models
-from ..data.conversation import SelectedSproutData, SproutSelectData
-from ..utils import printer
+from ..data.sprout_dto import SelectedSproutDTO, SproutSelectorDTO
 from ..utils.parse import parse_raw_models
 
 
@@ -34,8 +33,8 @@ def model_family(
 
 
 def model_from_scan(
-    models: list[SproutSelectData], multi_select: bool = True
-) -> list[SelectedSproutData]:
+    models: list[SproutSelectorDTO], multi_select: bool = True
+) -> list[SelectedSproutDTO]:
     """Select from list of Models with stored Information"""
 
     items: dict[str, str] = {
@@ -47,19 +46,19 @@ def model_from_scan(
     selected_uuids: list[str] | None = tui.run()
 
     if selected_uuids:
-        selected_models: list[SelectedSproutData] = [
-            SelectedSproutData.from_scan(model)
+        selected_models: list[SelectedSproutDTO] = [
+            SelectedSproutDTO.from_scan(model)
             for model in models
             if model.selector_uuid in set(selected_uuids)
         ]
         logger.success(f"Selected {len(selected_models)=}")
-        printer(selected_models)
 
         return selected_models
 
     raise TuiSelectorError("No valid models parsed from input...")
 
 
+# MOVE: sstcore
 def file_registry(
     files: FileRegistry, root_name: str | None = None
 ) -> list[Path]:
@@ -74,6 +73,7 @@ def file_registry(
     return []
 
 
+# MOVE: sstcore, split to path
 def role_path(roles: list[Path]) -> Path:
     """Select from Paths displayed by name and get 1 selected back"""
 
@@ -86,6 +86,7 @@ def role_path(roles: list[Path]) -> Path:
     raise TuiSelectorError
 
 
+# MOVE: sstcore
 def multi_linear[T](items: dict[T, str] | list[T] | set[T]) -> list[T]:
     """Select from linear Container and get multiple Elements back"""
 
@@ -95,6 +96,7 @@ def multi_linear[T](items: dict[T, str] | list[T] | set[T]) -> list[T]:
     raise TuiSelectorError
 
 
+# MOVE: sstcore
 def single_linear[T](items: dict[T, str] | list[T] | set[T]) -> T:
     """Select from linear Container and get 1 Element back"""
 
