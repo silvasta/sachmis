@@ -781,7 +781,7 @@ from loguru import logger
 from ..config.defaults import ModelParam
 from ..config.models import DummyFamily, Geminis, Groks, ModelFamily
 from ..data import DataManager
-from ..data.conversation import SelectedSproutData
+from ..data.conversation import SelectedSproutDTO
 from ..data.conversation.fusion import SproutPackage
 from .context import ForestExtractor, TreeExtractor
 from .model import Gemini, Grok, Model, launch
@@ -831,7 +831,7 @@ class Fire(AbstractContextManager):
         logger.success("capstone.Fire session is ready")
         return self
 
-    def load_models(self, models: list[SelectedSproutData]) -> list[Model]:
+    def load_models(self, models: list[SelectedSproutDTO]) -> list[Model]:
         logger.info(f"Start of loading: {models=}")
 
         self.agents: list[Model] = []
@@ -941,7 +941,7 @@ from ..core import capstone
 from ..core.model import Model
 from ..data import DataManager
 from ..data.camp import CampManager, UploadFile
-from ..data.conversation import SelectedSproutData
+from ..data.conversation import SelectedSproutDTO
 from ..exceptions.data import DataRuntimeError
 from ..tui import selector
 from ..utils.parse import parse_raw_models
@@ -970,7 +970,7 @@ def fire(
     """Prepare Models with Local Prompt and Fire"""
 
     with capstone.Fire() as session:
-        models: list[SelectedSproutData] = _prepare_model_args(session, models)
+        models: list[SelectedSproutDTO] = _prepare_model_args(session, models)
         agents: list[Model] = session.load_models(models)
 
         files: list[UploadFile] = _prepare_file_args(
@@ -1054,7 +1054,7 @@ def confirm_fire(models: list[Model], data: DataManager) -> bool:
 
 def _prepare_model_args(
     session: capstone.Fire, models: list[str] | None, multi_select=True
-) -> list[SelectedSproutData]:
+) -> list[SelectedSproutDTO]:
 
     printer.debug(
         "Start of Selector",
@@ -1066,15 +1066,15 @@ def _prepare_model_args(
     if models and (parsed_models := parse_raw_models(models)):
         text = f"{len(parsed_models)} Models parsed for Pipeline"
         printer.header(text)
-        return SelectedSproutData.from_zero(parsed_models)
+        return SelectedSproutDTO.from_zero(parsed_models)
 
     match len(scanned_models := session.data.front.models()):  # TEST:
         case 0:
-            return SelectedSproutData.from_zero(
+            return SelectedSproutDTO.from_zero(
                 selector.model_family(multi_select=True)
             )
         case 1:
-            return [SelectedSproutData.from_scan(scanned_models.pop())]
+            return [SelectedSproutDTO.from_scan(scanned_models.pop())]
         case _:
             return selector.model_from_scan(
                 models=scanned_models,
