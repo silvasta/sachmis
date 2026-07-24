@@ -7,6 +7,7 @@ c = ColorBox()
 
 
 class Groks(ModelFamily):
+    G45 = "g45"
     G43 = "g43"
     G420M = "g420"
     G420N = "g42n"
@@ -28,7 +29,7 @@ class Groks(ModelFamily):
     @property
     def family(self) -> str:
         """Full name that is used for API call"""
-        return c.cyan(self.__class__.__name__)
+        return c.cyan(type(self).__name__)
 
     @property
     def target(self) -> str:
@@ -38,6 +39,7 @@ class Groks(ModelFamily):
     @property
     def api_name(self) -> str:
         return {
+            Groks.G45: "grok-4.5",
             Groks.G43: "grok-4.3",
             Groks.G420M: "grok-4.20-multi-agent",
             Groks.G420N: "grok-4.20-non-reasoning",
@@ -57,6 +59,7 @@ class Groks(ModelFamily):
         image: dict[str, float] = {"input": 2.0, "cached": 0, "output": 10}
         # x2 for >200k
         g43: dict[str, float] = {"input": 1.25, "cached": 0.2, "output": 2.5}
+        g45: dict[str, float] = {"input": 2.0, "cached": 0.3, "output": 6}
         match self:
             case Groks.GCF1:
                 return code
@@ -66,6 +69,8 @@ class Groks(ModelFamily):
                 return image
             case Groks.G420M | Groks.G420N | Groks.G420R | Groks.G43:
                 return g43
+            case Groks.G45:
+                return g45
 
     def usage_cost(self, token_usage: dict[str, int]) -> float:
         """Calculates usage from 1 response"""
@@ -123,4 +128,5 @@ class Groks(ModelFamily):
         # TODO: move to printer?
         print(f"{total_cost=}")
 
+        # NEXT: create TableDTO! this will be the ultimate
         return total_cost  # LATER: return dataclass or so
