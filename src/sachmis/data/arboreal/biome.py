@@ -1,5 +1,4 @@
 from collections.abc import Callable
-from enum import StrEnum, auto
 from pathlib import Path
 from typing import Self
 
@@ -8,18 +7,11 @@ from pydantic import Field
 from sstcore.data.files import SstFile
 from sstcore.utils import day_count
 
-from ...config import config
+from sachmis.config import SachmisConfig
+
+from ...exceptions import ArborealTrackingError
 from .base import Arboreal, ArborealTracker
 from .forest import Forest
-
-
-class BiomeStatus(StrEnum):
-    STARTED = auto()
-    OK = auto()
-    FAIL_OBSERVE = auto()
-    FAIL_CREATE = auto()
-    CREATED = auto()
-    PROMPT = auto()
 
 
 class Biome(Arboreal[Forest]):
@@ -29,14 +21,13 @@ class Biome(Arboreal[Forest]):
 
     @property
     def n_responses(self) -> int:
+        """Show number of tracked full responses"""
         return len(self.responses)
 
     def attach_new_full_response(self, text: str, path: Path) -> None:
-        """Setup File tracker with relative path to full response dir"""
-
+        """Attach with tracker and relative path inside full response dir"""
         path.write_text(text)
         response: SstFile = SstFile(local_path=Path(path.name))
-
         self.responses.append(response)
 
     ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
@@ -44,35 +35,37 @@ class Biome(Arboreal[Forest]):
     ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
 
     @classmethod
-    def with_name(cls, name: str | None = None) -> Self:
-        logger.info("Create new Biome")
+    def named(cls, config: SachmisConfig, name: str | None = None) -> Self:
+        """Create new Biome and set as active Biome in config.Names"""
+        logger.info("Create new Biome")  # TODO: emit, or move to caller
 
-        biome_filename: str = (
-            config().names.biome_file if name is None else name
-        )
-        biome_file: Path = config().paths.new_biome_file(biome_filename)
+        biome_file: Path = config.paths._biome_file(name)
 
+        if biome_file in config.paths.biome_files:
+            raise ArborealTrackingError(
+                biome_file, issue="Exists", arbo="Biome"
+            )
         biome: Biome = cls.create_with_tracker(
             path=biome_file, local_id=day_count()
         )
-        logger.success("Biome created!")
+        logger.success("Biome created!")  # TODO: emit, maybe in Base
 
         biome.save_state(file=biome_file, lock_required=False)
-        biome.apply_to_config(biome_file)
+        biome.set_active(biome_file, config)  # LATER: as option?
 
         return biome
 
-    def apply_to_config(self, biome_file: Path):
-        logger.info("Merge changes back to Settings file")
+    def set_active(self, biome_file: Path, config: SachmisConfig):
+        """Sync as active Biome in serialized config.settings.Names"""
+        logger.info("Merge changes back to Settings file")  # TODO: emit?
 
-        if biome_file.name == config().names.biome_file:
-            logger.debug("path from Names already active in Biome")
-        else:
-            config().names.biome_file = biome_file.name
-            config().save_settings()
-            logger.info(f"Updated active Biome in Names to {biome_file.name}")
-
-        logger.success(f"{self.tracker} Active Biome! {biome_file=}")
+        if biome_file.name == config.names.biome_file:
+            logger.debug("Biome Name is already set in config.Names")
+        else:  # NOTE: log here probably important, idea: move func to config?
+            config.names.biome_file = biome_file.name
+            config.save_settings()
+            self.touch()
+            logger.info(f"Updated active Biome in Names: {biome_file.name}")
 
     ### -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- -- - -- ###
     ### -- Arboreal - Access to Members

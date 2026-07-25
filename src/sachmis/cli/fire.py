@@ -1,15 +1,14 @@
 from pathlib import Path
 
 from loguru import logger
-from sstcore import System
+from sstcore import System, printer
 from sstcore.cli import sargs
 from sstcore.data import SstFile
 from sstcore.system import Emitter
 from sstcore.utils import Printer
 from typer import Context
 
-from sachmis.config import SachmisConfig
-
+from ..config import SachmisConfig
 from ..core import capstone
 from ..core.model import Model
 from ..data import DataManager
@@ -193,7 +192,7 @@ def _prepare_file_args(
                 case 1:
                     file: UploadFile = file[0]
                     prepared_files.append(file)
-                    logger.debug(f"added new file: {file.description}")
+                    logger.debug(f"added new file: {file}")
                 case _:
                     logger.error(f"Multiple files with: {path}, {file=}")
 

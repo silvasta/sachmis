@@ -11,64 +11,58 @@ from sstcore.utils.path import (
     recursive_root,
 )
 
-from ..exceptions import (
-    ArborealDataError,
-    ArborealTrackingError,
-    NotInCampError,
-)
+from ..exceptions import ArborealTrackingError, NotInCampError
 from .defaults import Defaults
 from .names import Names
 
 
 class Paths(SstPaths[Names, Defaults]):
-    """Assemble paths for project"""
+    """Assemble Project Paths, ensure with PathGuard if needed"""
 
     @property
     def active_biome(self) -> bool:
+        """Check if File of active Biome Exists"""
         return self.unconfirmed_biome_file.exists()
 
     @property
+    @PathGuard.dir
     def biome_dir(self) -> Path:
+        """Provide ensured Biome Dir relative to Home Setup"""
         return self.data_home / "biome"
 
-    def biome_file(self, filename: str | None = None) -> Path:
-        """Path to active Biome File or Error"""
-        try:
-            return PathGuard.file(target=self._biome_file(filename))
+    def biome_file(self, name: str | None = None) -> Path:
+        """Provide ensured Path to active or assembled Biome File"""
+        biome_file: Path = self._biome_file(name)
+        try:  # TODO: use PathGuard.PathArgs!
+            return PathGuard.file(target=biome_file)
         except FileNotFoundError as error:
-            logger.error(f"Missing biome: {error=}")
-        raise ArborealTrackingError("Biome", self._biome_file())
+            raise ArborealTrackingError(
+                biome_file, issue="Missing", arbo="Biome"
+            ) from error
 
-    def _biome_file(self, filename: str | None = None) -> Path:
-        """path constructor class"""
-        return self.biome_dir / (filename or self._names.biome_file)
+    def _biome_file(self, name: str | None = None) -> Path:
+        """Assemble unconfirmed Path for Biome"""
+        filename: str = (
+            self._names.biome_file
+            if name is None
+            else f"{name.rstrip('.json')}.json"  # name == stem!
+        )
+        return self.biome_dir / filename
 
     @property
-    def unconfirmed_biome_file(self) -> Path:
-        """unchecked composition of path and name"""
+    def unconfirmed_biome_file(self, name: str | None = None) -> Path:
+        """Provide assembled Biome Path with value from Names"""
         return self._biome_file()
 
     @property
     def biome_files(self) -> set[Path]:
-        # LATER: ensure better, track state
+        """Provide Paths of all Biomes"""
         return set(self.biome_dir.glob("*.json"))
 
     @property
-    def num_biome_files(self) -> int:
+    def n_biome_files(self) -> int:
+        """Show number of Biomes in Biome Dir"""
         return len(self.biome_files)
-
-    def new_biome_file(self, name: str) -> Path:
-        """Generate new biome_file path if it not already exists"""
-
-        biome_filename: str = f"{name.rstrip('.json')}.json"
-        new_biome_file: Path = self._biome_file(biome_filename)
-
-        if new_biome_file in self.biome_files:
-            raise ArborealDataError("Biome", new_biome_file)
-
-        logger.success(f"Created Path for new Biome: {new_biome_file=}")
-
-        return new_biome_file
 
     @property
     def iret_camp_dir(self) -> Path:

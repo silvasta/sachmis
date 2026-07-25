@@ -1,7 +1,8 @@
-from sachmis.config import SachmisConfig
-from typer import Context
 from sstcore import SafeTyper, System, printer
 from sstcore.utils.color import ColorBox
+from typer import Context
+
+from sachmis.config import SachmisConfig
 
 from ...data.arboreal import ArborealTracker, Forest, Tree
 

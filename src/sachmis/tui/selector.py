@@ -84,23 +84,3 @@ def role_path(roles: list[Path]) -> Path:
         logger.success(f"Selected {(role := Path(selected[0])).name}")
         return role
     raise TuiSelectorError
-
-
-# MOVE: sstcore
-def multi_linear[T](items: dict[T, str] | list[T] | set[T]) -> list[T]:
-    """Select from linear Container and get multiple Elements back"""
-
-    if selected := ListSelectorApp(items=items, multi_select=True).run():
-        logger.success(f"Selected {len(selected)} elements")
-        return selected
-    raise TuiSelectorError
-
-
-# MOVE: sstcore
-def single_linear[T](items: dict[T, str] | list[T] | set[T]) -> T:
-    """Select from linear Container and get 1 Element back"""
-
-    if selected := ListSelectorApp(items=items, multi_select=False).run():
-        logger.success(f"Selected: {(item := selected[0])=}")
-        return item
-    raise TuiSelectorError

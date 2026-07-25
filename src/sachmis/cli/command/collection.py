@@ -4,8 +4,7 @@ from sstcore import printer
 from sstcore.cli import sargs
 from typer import Context
 
-from sachmis.config import SachmisConfig
-
+from ...config import SachmisConfig
 from ...data.dag import PromptTransitionRules, ResponseTransitionRules
 from ...data.operator._iret_camp_folder_setup import create_new_base
 from .. import args
@@ -26,6 +25,7 @@ def model_display():
 
 def rules():
     """Show Prompt / Response Relationship and Transitions"""
+    # LATER: check when that is useful, beside the beautiful scroll
 
     def _explain(rule: type):
         printer.title(name := rule.__name__)
@@ -62,6 +62,7 @@ def rules():
 
 def config_details(ctx: Context, write_config: sargs.Write = False):
     """Print config() to Console, optional override json settings"""
+    # LATER: merge with tools.config, attach or replace
     config: SachmisConfig = ctx.obj["config"]
     printer(config.settings)
     printer(config.paths.dot_env)

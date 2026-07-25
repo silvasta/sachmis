@@ -8,7 +8,7 @@ from ..exceptions import ArborealError, SachmisLaunchError
 
 def attach_exception_handlers(app: SafeTyper) -> None:
     """Binds all global error handlers to the CLI engine."""
-    #
+
     # TODO: bind proper ErrorHandler to SafeTyper with Bus connection
 
     @app.errors.handle()

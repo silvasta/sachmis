@@ -1,5 +1,5 @@
 from loguru import logger
-from sstcore.utils import setup_logging
+from sstcore.utils.log import setup_logging
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.screen import Screen
@@ -7,7 +7,7 @@ from textual.widgets import Static
 
 
 def main():
-    setup_logging(quiet=False)
+    setup_logging()
     with logger.catch():
         logger.info("Launch Combined TUI")
         tui = SachmisApp()

@@ -1,4 +1,4 @@
-from ..utils.print import printer
+from sstcore import printer
 
 # REFACTOR: everything here below
 # /41/󰌠 /aml.py

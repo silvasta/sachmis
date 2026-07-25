@@ -28,6 +28,7 @@ def _ensure_base_dir(
 
 def create_new_base(sst: System, base_name: str | None = None):
     config: SachmisConfig = sst.config
+    config.paths.biome_file()
 
     # TODO: emit
     logger.info("Create new Base with Forest")
@@ -49,7 +50,7 @@ def create_new_base(sst: System, base_name: str | None = None):
     try:
         with chdir(base_dir):
             PathGuard.dir(config.names.hidden_dir)
-            Path(sst.config.names.prompt).touch()
+            Path(config.names.prompt).touch()
             # TODO: emit
             printer.success("Files and dirs ready: creating Forest now!")
 

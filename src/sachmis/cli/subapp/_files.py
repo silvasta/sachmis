@@ -17,7 +17,7 @@ def main() -> None:
 
 app = SafeTyper(
     name="files",
-    help="Manage local files used for prompt attach",
+    help="Manage local files for prompt attach",
 )
 
 

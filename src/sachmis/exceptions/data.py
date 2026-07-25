@@ -1,10 +1,15 @@
 from pathlib import Path
+from typing import Literal
+
+from sstcore.utils import ColorBox
 
 from .base import ArborealError, ConversationError, DataOperationError
 
 ### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --
 ### Transfer and Operation
 ### -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- -- - -- -- --
+
+c: ColorBox = ColorBox.bold()
 
 
 # TODO: figure out if handling here or in task
@@ -73,23 +78,30 @@ class TreeGraphError(ConversationError):
 class ArborealDataError(ArborealError):
     """Control internal State of Biome, Forest and Tree"""
 
-    def __init__(self, msg: str, arboreal: str, file: Path):
-        # REFACTOR:
-        self.arboreal = arboreal
-        self.file = file
-        super().__init__(msg)
+    def __init__(
+        self,
+        issue: str,
+        arbo: str = "Arboreal",
+    ):
+        super().__init__()
+        self.issue: str = issue
+        self.arbo: str = arbo
 
 
 class ArborealTrackingError(ArborealError):
     """Control Global Distributed Location of Biome, Forest and Tree"""
 
-    # TODO: path
+    def __init__(
+        self,
+        file: Path,
+        issue: Literal["Missing", "Exists"],
+        arbo: str = "Arboreal",
+    ):
+        super().__init__(file=str(file), issue=issue, arbo=arbo)
+        self.file: Path = file
+        self.issue: str = issue
+        self.arbo: str = arbo
 
-    def __init__(self, message=None, arbo_to_track=None):
-        # REFACTOR:
-        if message:
-            msg: str = message
-        else:
-            arbo_to_track: str = arbo_to_track or "ArboT"
-            msg = f"Tracker diverged from {arbo_to_track=}"
-        super().__init__(msg)
+    def _modify_if_needed(self, rows: list[str]) -> None:
+        rows.append(f"{c.g(self.arbo + 'File')}{c.r(self.issue)}")
+        rows.append(str(self.file))  # LATER: colorize?

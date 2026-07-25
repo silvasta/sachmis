@@ -31,8 +31,6 @@ app.add_typer(subapp.forest)
 app.add_typer(tools)
 
 
-app.add_typer(subapp.debug)  # NOTE: where to place? DEBUG
-
 attach_exception_handlers(app)
 
 app.system.printer.success("Handler Attached to SafeTyper")

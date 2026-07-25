@@ -56,6 +56,7 @@ from .data import (
 )
 from .launch import NotInCampError
 from .task import (
+    CapstoneError,
     DummiError,
     GeminiError,
     GrokError,
