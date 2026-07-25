@@ -4,9 +4,15 @@ from pathlib import Path
 from typing import Any, TypeVar
 
 from loguru import logger
+from sstcore import System
+from sstcore.system import EmitFunctor
+from sstcore.utils import Printer
 from sstcore.utils.color import ColorBox
 
-from ...config import config
+from sachmis.utils.events import DataEvent
+
+from ...config import SachmisConfig
+from ...utils.views import RichAmpel, SimpleNameMixin, Status, UploadViews
 from ..files.upload import RemoteState, UploadFile, UploadState
 
 TUploadState = TypeVar("TUploadState", bound=UploadState)
@@ -14,65 +20,66 @@ TUploadState = TypeVar("TUploadState", bound=UploadState)
 c: ColorBox = ColorBox()
 
 
-@dataclass
-class CompareResult:
-    """Data container for files split by local or remote status"""
-
-    intersection_identifier: set[str]
-    only_local_identifier: set[str]
-    only_remote_identifier: set[str]
-
-    intersection: list[UploadFile]
-    only_local: list[UploadFile]
-    only_remote: list[str]
+class _View(UploadViews, SimpleNameMixin, RichAmpel):
+    pass
 
 
-class FileUploader(ABC):
+class FileUploader(_View, ABC):
     """Public functions for upload and template for remotes"""
-
-    client: Any
-    remote_files = None
 
     @property
     @abstractmethod
     def target(self) -> str:
-        """Name of remote as defined in UploadFile"""
+        """Name of Remote Provider"""  # LATER: use Provider Enum
 
     @property
-    @abstractmethod
-    def print_name(self) -> str:
-        """Name of remote styled for print"""
+    def printer(self) -> Printer:
+        return self._system.printer
 
     @property
-    @abstractmethod
-    def remote_state_cls(self) -> TUploadState:
-        """Derived class of UploadState"""
+    def _config(self) -> SachmisConfig:
+        return self._system.config
 
-    def __init__(self, local_dir: Path | None = None):
-        self.local_dir: Path = local_dir or config().paths.file_dir
+    def __init__(self, system: System, local_dir: Path | None = None):
+        self._system: System = system
+        self._emit: EmitFunctor = self._system.emitter.make(
+            event_name=DataEvent.UPLOADER, sender=f"{self}"
+        )
+        self.online_files: list[UploadFile] = []
+        self.local_dir: Path = local_dir or self._config.paths.file_dir
         self._load_client()
-        logger.debug(f"{self.__class__.__name__} ready")
+        logger.debug(f"Client Loaded: {self} ready!")
 
     @abstractmethod
     def _load_client(self) -> bool:
         """Connect to Remote with API key"""
 
-    def refresh_remote_registry(self):
-        self.get_remote_files(refresh_registry=True)
-
-    def get_remote_files(self, refresh_registry=False) -> Any:
-        """Ensure remote_files are loaded in remote registry"""
-        if refresh_registry or self.remote_files is None:
-            self.remote_files: list[Any] = self._fetch_all_files()
-
-        return self.remote_files
+    def get_online_files(self, refresh_registry=False) -> list[Any]:
+        """Ensure online_files are fetched from remote registry"""
+        if refresh_registry or self.online_files is None:
+            self.online_files: list[Any] = self._fetch_all_files()
+            self.status: Status = Status.FETCHED
+        return self.online_files
 
     @abstractmethod
     def _fetch_all_files(self) -> list[Any]:
         """Load all available files from remote registry"""
 
-    # REFACTOR: name to something like: ensure local synced
-    def upload_local_file(self, file: UploadFile, ensure_after_upload=False):
+    def get_remote_states(self, refresh_registry=False) -> list[RemoteState]:
+        """Transform all fetched Online Files to project RemoteStates"""
+        return [  # LATER: maybe cache somehow, but refreshable
+            self._to_remote_state(online_file)
+            # WARN: maybe errors?
+            for online_file in self.get_online_files(refresh_registry)
+        ]
+
+    @abstractmethod
+    # IDEA: make this classmethod on RemoteStates?
+    # - again same issue with class attach to Uploader...
+    def _to_remote_state(self, online_file: Any) -> RemoteState:
+        """Transform raw Online File to Sachmis Remote State with identifier"""
+
+    def sync_local_file(self, file: UploadFile, ensure_after_upload=False):
         """Check and ensure that file is uploaded"""
 
         local_ok: bool = file.confirm_local_status(self.local_dir)
@@ -81,16 +88,16 @@ class FileUploader(ABC):
         match (local_ok, remote_ok):
             case (True, True):
                 logger.debug(f"File is online: {file.name}")
+                # TODO: emit, use File? with Status?
             case (True, False):
                 logger.debug(f"File ready for upload: {file.name}")
-                state: RemoteState = self._upload_local_file(file)
-                logger.info(state)
-                file.attach_remote(state)
+                self.upload_file(file)
             case (False, True):
-                logger.warning("File is online but missing local!")
+                logger.warning("File Online but Missing Local!")
             case (False, False):
-                local_dir = self.local_dir
-                logger.error(f"File not online and missing in {local_dir=}!")
+                logger.error(
+                    f"File Missing Online and Local: {self.local_dir}"
+                )  # LATER: better Error
                 raise FileNotFoundError(f"{file.local_path=}")
 
         if ensure_after_upload:
@@ -100,123 +107,71 @@ class FileUploader(ABC):
                 raise RuntimeError(f"Check failed after upload: {file.name}")
 
     def confirm_remote_status(self, file: UploadFile) -> bool:
-        """Check if 'file' is valid in cached remote file list"""
-
-        if not file.has_remote(self.target):
+        """Check if RemoteState exists, is valid and in Online Registry"""
+        if not (remote_state := file.find_remote(self.target)):
             return False
-
-        self.refresh_remote_registry()  # Important for _confirm_online
-
-        if not (remote_is_valid := self._confirm_online(file)):
-            invalid_state: RemoteState | None = file.remove_remote(self.target)
-            logger.warning(f"Removed from UploadFile: {invalid_state=}")
-
-        return remote_is_valid
-
-    @abstractmethod
-    def _confirm_online(self, file: UploadFile) -> bool:
-        """Individual checks for each remote"""
-
-    def extract_remote_state(self, file: UploadFile) -> TUploadState:
-        """Returns attached UploadState of file, Error if missing"""
-        logger.debug(f"start extract: {self.remote_state_cls.__name__}")
-
-        remote_state: RemoteState = file.get_remote_state(self.target)
-        if isinstance(remote_state, self.remote_state_cls):
-            return remote_state
-
-        raise ValueError(f"{type(remote_state)=},{self.remote_state_cls=}")
+        remote_matches: list[RemoteState] = [
+            online_state
+            for online_state in self.get_remote_states()
+            if online_state.remote_id == remote_state.remote_id
+        ]
+        if remote_state.is_valid() and len(remote_matches) == 1:
+            return True
+        if len(remote_matches) > 1:
+            raise RuntimeError("Duplicated Remote Files!", remote_matches)
+        logger.debug(f"Removing invalid RemoteState: {remote_state}")
+        file.remove_remote(self.target)
+        return False
 
     @abstractmethod
-    def _upload_local_file(self, file: UploadFile):
-        """Upload 1 file and attach remote state to UploadFile"""
+    def upload_file(self, file: UploadFile) -> UploadFile:
+        """Upload 1 file and attach RemoteState to UploadFile"""
+        state: RemoteState = self._upload(file)
+        file.attach_remote(state)
+        self._emit(**{"uploaded": file})
+        return file
 
-    def show_all_files(self):
+    @abstractmethod
+    def _upload(self, file: UploadFile) -> RemoteState:
+        """Copy Local File to Remote Registry and collect State"""
+
+    def show_all_files(self, refresh=False):
         """Show all available files on remote"""
 
-        printer.title(f"Fetching files from: {self.print_name}")
-        remote_files: list[Any] = self._fetch_all_files()
+        self.printer.title(f"{self}: Fetching files...")
 
-        file_descriptions: list[str] = []
-        for file in remote_files:
-            try:
-                file_descriptions.append(
-                    self._remote_file_description(file),
-                )
-            except Exception as e:
-                logger.error(f"Problem with {file=}:\n{e}")
-                file_descriptions.append("problem...")
-
-        header = (
-            f"Files on {c.cyan(self.print_name)}: {len(file_descriptions)}"
-        )
-        title = f"{c.s(self.remote_state_cls.__name__)}"
-        printer.title(header, title)
-        printer(file_descriptions)
+        online_states: list[RemoteState] = self.get_remote_states(refresh)
+        header = f"{c.cyan(self)}Files: {len(online_states)}"
+        title: str = self.__rich__()
+        self.printer.title(header, title)
+        self.printer(online_states)
 
     @abstractmethod
-    def _remote_file_description(self, file: Any) -> str:
-        """Format remote file for print"""
+    def _remove(self, online_file: Any) -> bool:
+        """Remove remote file and confirm success"""
 
     def delete_all_uploaded_files(self):
         """Clear remote, may break stored messages for further usage!"""
 
-        # TASK: proper management file delete
-        remote_files: list[Any] = self._fetch_all_files()
+        online_files: list[Any] = self._fetch_all_files()
         logger.info("Start deleting files")
         n_deleted = 0
 
-        for file in remote_files:
-            n_deleted += 1 if self._rm_remote_file(file) else 0
+        for online_file in online_files:
+            n_deleted += 1 if self._remove(online_file) else 0
 
-        if (n_files := len(remote_files)) == n_deleted:
-            printer.success(f"Deleted all {n_deleted} of {n_files} files")
+        if (n_files := len(online_files)) == n_deleted:
+            self.printer.success(f"Deleted all {n_deleted} of {n_files} files")
         else:
-            printer.danger(f"{n_deleted=} but {n_files=}")
+            self.printer.danger(f"{n_deleted=} but {n_files=}")
 
-    def delete_remote_file(self, identifier: UploadFile) -> bool:
-        """Identify remote file with local file and delete"""
-        remote_file: Any = self._get_remote_file_by_local_file(identifier)
-        if delete_success := self._rm_remote_file(remote_file):
-            identifier.touch()
-        return delete_success
-
-    @abstractmethod
-    def _get_remote_file_by_local_file(self, identifier: UploadFile) -> Any:
-        """Identify remote file with local file"""
-
-    @abstractmethod
-    def _rm_remote_file(self, remote_file: Any) -> bool:
-        """Remove remote file and confirm success"""
-
-    @abstractmethod
-    def _get_local_identifier(self, local_files: list[UploadFile]) -> set[str]:
-        """Apply unique for each local file for hashable tracking"""
-
-    @abstractmethod
-    def _get_local_file_from_identifier(
-        self, local_files: list[UploadFile], identifier: set[str]
-    ) -> list[UploadFile]:
-        """Revert unique for each identifier to get local file back"""
-
-    @abstractmethod
-    def _get_remote_identifier(self) -> set[str]:
-        """Apply unique for each remote file for hashable tracking"""
-
-    @abstractmethod
-    def _get_remote_identifier(self) -> set[str]:
-        """Apply unique for each remote file for hashable tracking"""
-
-    @abstractmethod
-    def _get_remote_file_from_identifier(
-        self, identifier: set[str]
-    ) -> list[str]:
-        """Revert unique for each identifier to get local file back"""
-
-    def compare_with_remote_files(
+    def compare_with_online_files(
         self, local_files: list[UploadFile]
     ) -> CompareResult:
 
+        # AI_TASK: repair this, clean up, structure:
+        # - most of the work done be CompareResult, RemoteState and UploadFile
+        # __dunder__ for log, and print
         local_identifier: set[str] = self._get_local_identifier(local_files)
         remote_identifier: set[str] = self._get_remote_identifier()
 
@@ -297,8 +252,9 @@ class FileUploader(ABC):
         return result
 
     def _delete_not_in_list(self, local_files: list):
-        # LATER:
-        # REFACTOR: create intersection/difference etc of files
+        # IMPORTANT: this one was one of the most useful ones,
+        # - deleting duplicated uploads while dont breaking contexts with delete too much
+        # AI_TASK: ensure this works stable again
         online_files: Any = self.client.files.list()
         local_ids = set(
             file.x_id for file in local_files if file.x_id is not None
@@ -309,3 +265,16 @@ class FileUploader(ABC):
             else:
                 # self.delete_one_file(online_file)
                 pass
+
+
+@dataclass
+class CompareResult:
+    """Data container for files split by local or remote status"""
+
+    intersection_identifier: set[str]
+    only_local_identifier: set[str]
+    only_remote_identifier: set[str]
+
+    intersection: list[UploadFile]
+    only_local: list[UploadFile]
+    only_remote: list[str]

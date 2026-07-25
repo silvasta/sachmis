@@ -1,6 +1,7 @@
 from itertools import product
 
 from loguru import logger
+from sstcore import System
 
 from ..files.upload import RemoteState, UploadFile
 from .base import CompareResult, FileUploader
@@ -16,6 +17,7 @@ match_table: dict[str, type[FileUploader]] = {
 
 
 def create_single_uploader(
+    system: System,
     identifier: str | RemoteState,
 ) -> type[RemoteUploader]:
 
@@ -28,13 +30,14 @@ def create_single_uploader(
     else:
         raise ValueError(f"Invalid: {identifier=}, {type(identifier)=}")
 
-    return match_table[target]()
+    return match_table[target](system)
 
 
 class Uploader:
     _uploaders: dict[str, RemoteUploader] = {}
 
-    def __init__(self, xai=False, google=False):
+    def __init__(self, system: System, xai=False, google=False):
+        self.system: System = system
         if xai:
             self.prepare("xai")
         if google:
@@ -47,22 +50,23 @@ class Uploader:
     def prepare(self, target: str) -> RemoteUploader:
         """Create Uploader if not cached and provide Instance"""
         if target not in self._uploaders:
-            self._uploaders[target] = create_single_uploader(target)
+            self._uploaders[target] = create_single_uploader(
+                self.system, target
+            )
             logger.debug(f"Loaded {self._uploaders[target]}")
         return self._uploaders[target]
 
     def load_files(
-        self, files: list[UploadFile], ensure_after_upload=True
-    ) -> list[UploadFile]:
+        self, files: list[UploadFile], _ensure_after_upload=True
+    ) -> list[UploadFile]:  # LATER: check rules for already uploaded files
         """Push Files to Remote and provide confirmed uploaded Files"""
-        # LATER: check rules for already uploaded files
 
         logger.debug(f"attaching files: {(before := len(files))}")
         uploaded_files: list[UploadFile] = []
 
         for file, uploader in product(files, self.clients):
             try:
-                uploader.upload_local_file(file, ensure_after_upload)
+                uploader.upload_file(file)
                 uploaded_files.append(file)
 
             # LATER: check if raise or not
@@ -86,6 +90,7 @@ class Uploader:
 
     def compare_with_remote_files(self, files: list[UploadFile]):
         for uploader in self.clients:
+            # FIX::
             _result: CompareResult = uploader.compare_with_remote_files(files)
 
     def delete_all_uploaded_files(self):

@@ -13,9 +13,21 @@ from .files import Role, UploadFile
 from .operators import CampManager, MarkdownOperator, SproutOperator
 from .uploader import Uploader
 
+# class UploadFile(SstFile):
+# @classmethod
+# FIX: problem for absorb, path is changed before file is moved to that!
+# - consider absorbing (copy etc) moves from old stem to path with new stem
+# - ATTENTION: use STEM not NAME! otherwise: file_tex
+# stem_at_load: str = Field(default_factory=lambda path: path.stem)
+# def with_slug_name(cls, local_path: Path) -> Self:
+#     stem_at_load: str = local_path.stem
+#     slug_stem: str = slugify(stem_at_load)
+#     slug_path: Path = local_path.with_stem(slug_stem)
+#     return cls(local_path=slug_path, stem_at_load=stem_at_load)
+
 
 class DataManager:
-    """Global orchestrator for medium-level Data tasks"""
+    """Connect all DataOperator and Container"""
 
     # TASK: check and compare: what if Forest has other Biome than before?
 

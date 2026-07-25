@@ -13,6 +13,8 @@ __all__: list[str] = [
     "DummyFamily",
 ]
 
+default_toggle = ModelToggle(dummy=False, grok=True, gemini=True)
+
 
 def select(dummy=False, grok=False, gemini=False) -> list[ModelFamily]:
     """Load combination of all Model Families"""
@@ -30,10 +32,10 @@ def all() -> list[ModelFamily]:
     return select(dummy=True, grok=True, gemini=True)
 
 
-def family() -> list[ModelFamily]:
+def family(toggle: ModelToggle | None = None) -> list[ModelFamily]:
     """Filter combination of all Model Families by Defaults from json"""
 
-    toggle: ModelToggle = get_config().defaults.active
+    toggle: ModelToggle = toggle or default_toggle
 
     if any([toggle.dummy, not toggle.grok, not toggle.gemini]):
         logger.warning(f"ModelToggle away from default values!\n{toggle=}")
